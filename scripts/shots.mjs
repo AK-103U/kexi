@@ -27,6 +27,7 @@ const PAGES = {
   homepage: "/",
   posts: "/posts",
   post: "/posts/building-for-the-long-term",
+  math: "/posts/math-plugin-verification",
   about: "/pages/about",
   search: "/search?q=test",
   category: "/category/development",
