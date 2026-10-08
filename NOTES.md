@@ -19,17 +19,22 @@
 
 ```
 emdash-lab/
-├── astro.config.mjs      # output:"server" + adapter + emdash() 集成 + 字体
-├── package.json          # emdash.seed 指向 seed 文件
-├── emdash-env.d.ts       # 生成的类型，勿手改
-├── seed/seed.json        # 内容模型 + 示例内容
-├── scripts/shots.mjs     # 自建截图脚本（见第五节）
+├── astro.config.mjs               # output:"server" + adapter + emdash() 集成 + i18n + 字体
+├── package.json                   # emdash.seed 指向 seed 文件
+├── emdash-env.d.ts                # 生成的类型，勿手改
+├── seed/seed.json                 # 内容模型 + 双语示例内容
+├── seed/bylines-i18n.json         # byline 各语言文案覆盖
+├── scripts/shots.mjs              # 自建截图脚本（见第六节）
+├── scripts/seed-bylines-i18n.mjs  # 补齐 byline 的语言行（见第五节）
 └── src/
-    ├── live.config.ts    # 注册 _emdash live collection（boilerplate）
-    ├── pages/            # 公开路由，全部服务端渲染
+    ├── live.config.ts             # 注册 _emdash live collection（boilerplate）
+    ├── i18n/                      # config.ts（单一真源）/ ui.ts / zh.json / en.json
+    ├── pages/                     # 默认语言（zh）公开路由，全部服务端渲染
+    ├── pages/[locale]/            # 其他语言的薄壳路由（见第五节）
     ├── layouts/Base.astro
-    ├── components/PostCard.astro
-    └── styles/           # tokens.css / theme.css
+    ├── components/                # PostCard / LanguageSwitcher / Sidebar
+    ├── utils/rss.ts               # 按 locale 生成 feed
+    └── styles/                    # tokens.css / theme.css
 ```
 
 ---
@@ -102,7 +107,106 @@ emdash-lab/
 
 ---
 
-## 五、本机环境的坑（Windows）
+## 五、全量 i18n（UI 文案 + 内容 + 分类法）
+
+语言：**zh（默认，无 URL 前缀）+ en（`/en` 前缀）**，结构可扩展。
+
+### 单一真源
+
+`src/i18n/config.ts` 是唯一真源，`astro.config.mjs` 与主题代码都 import 它
+（`.mjs` 直接 import `.ts` 可行 —— Node 24 原生剥类型）：
+
+```ts
+export const siteConfig = {
+  siteUrl: "http://localhost:4321",   // hreflang 需要绝对 URL，部署时改这里
+  defaultLocale: "zh",
+  locales: ["zh", "en"],              // 顺序即语言切换器顺序
+  localeLabels: { zh: "中文", en: "English" },
+  localeTags: { zh: "zh-CN", en: "en-US" },
+  rssLanguages: { zh: "zh-CN", en: "en-US" },
+} as const;
+```
+
+`src/i18n/ui.ts` 提供 `useTranslations(lang)`（点分 key + `{param}` 插值）、
+`localePath(lang, path)`、`stripLocale`、`getLang(astro)`、`pageLang(props, astro)`、
+`formatDate(date, lang)`、`htmlLang(lang)`。字典是 `src/i18n/zh.json` / `en.json`；
+`MessageKey` 从 zh.json 推导，en 少 key 会编译报错。
+
+### 路由：薄壳模式
+
+默认语言走无前缀路由；其他语言在 `src/pages/[locale]/` 下放薄壳（4 行），
+薄壳 import 主页面并传 `locale`，主页面声明 `interface Props { locale?: string }`。
+
+| 主页面（zh，无前缀） | 薄壳（en，`/en`） |
+|---|---|
+| `src/pages/index.astro` | `src/pages/[locale]/index.astro` |
+| `src/pages/posts/index.astro` | `src/pages/[locale]/posts/index.astro` |
+| `src/pages/posts/[slug].astro` | `src/pages/[locale]/posts/[slug].astro` |
+| `src/pages/pages/[slug].astro` | `src/pages/[locale]/pages/[slug].astro` |
+| `src/pages/category/[slug].astro` | `src/pages/[locale]/category/[slug].astro` |
+| `src/pages/tag/[slug].astro` | `src/pages/[locale]/tag/[slug].astro` |
+| `src/pages/search.astro` | `src/pages/[locale]/search.astro` |
+| `src/pages/rss.xml.ts` | `src/pages/[locale]/rss.xml.ts` |
+
+薄壳必须校验 locale 合法性，非法则 `Astro.redirect("/404")`。
+
+### 坑（逐条实测）
+
+| 坑 | 说明 |
+|---|---|
+| 禁止 `routing.prefixDefaultLocale: true` | 会让 `/_emdash/admin` 全线 404 |
+| `astro.config.mjs` 必须配 `site` | 否则 hreflang alternates 静默返回 `[]` |
+| `entry.id` 在非默认语言带前缀（`en/foo`） | 链接一律用 `entry.data.slug` + `localePath`；直接拼 `entry.id` 会得到 `/posts/en/foo` |
+| 匿名请求的 ALS 上下文里没有 locale | 每次数据调用都要**显式**传 `{ locale }`：`getEmDashCollection` / `getEmDashEntry` / `getMenu` / `getTaxonomyTerms` / `getTermsForEntries` / `search` |
+| 列表查询**不** fallback | 只有 zh 的文章不会出现在 `/en/posts`（EmDash 设计如此）；详情页有 fallback |
+| `i18n.fallback` 不能用 defaultLocale 作 key | Astro 直接报错。而且 EmDash 的 `getFallbackChain` 本来就会把 defaultLocale 追加到链尾 → **en → zh 自动成立**；zh → en 在主题层手动补（`posts/[slug].astro`、`pages/[slug].astro`） |
+| settings / widgetAreas 没有 locale 列 | 站名与标语全局单值；侧边栏、页脚改为自建（`Sidebar.astro` + Base.astro 里的 `footer-nav`），标题走 UI 字典 |
+| `custom` 类型菜单 URL 不会自动加前缀 | seed 菜单直接写完整 URL（zh 无前缀、en 带 `/en`），用 `locale` + `translationOf` 关联 |
+| byline 没有 locale 字段 | seed 建的署名只落一种语言，需补丁脚本（见下） |
+
+### byline 的语言问题（必读）
+
+`SeedByline` 类型**没有** locale 字段；`_emdash_bylines.locale` 的**列默认值**是
+migration 040 执行时读到的 configured defaultLocale。而 `npx emdash seed`
+不加载 `astro.config.mjs`，`getI18nConfig()` 返回 null → 默认值被烘成 `'en'`。
+
+byline hydration 是**严格按 locale、没有 fallback** 的，于是另一种语言的详情页署名整个消失。
+
+修法：`scripts/seed-bylines-i18n.mjs`（`pnpm seed:bylines`）幂等补齐 ——
+遍历每个 byline translation_group，为 `siteConfig.locales` 里缺失的语言插一行；
+文案优先取 `seed/bylines-i18n.json` 的覆盖值，否则复制同组已有行。
+
+> 脚本直写 SQLite（`node:sqlite`，Node 24 内置），**绕开了 emdash 的进程内 byline 缓存**，
+> 跑完要重启 dev server 才看得到变化。
+
+### 双语 seed 的写法
+
+`seed.json` 的 `defaultLocale` 设为 `zh`；内容与分类法用 row-per-locale：
+同 slug 两条，zh 条目加 `translationOf` 指向 en 条目的 **seed id**，
+且 **zh 必须排在 en 之后**（`translationOf` 只能引用先出现的 id）。
+
+```jsonc
+{ "id": "post-1",    "slug": "building-for-the-long-term", "locale": "en", "status": "published", "data": { ... } },
+{ "id": "post-1-zh", "slug": "building-for-the-long-term", "locale": "zh", "translationOf": "post-1", "status": "published", "data": { ... } }
+```
+
+新增一篇文章 = 写两条。这是 row-per-locale 模型的必然代价。
+
+### 重建双语数据库
+
+```bash
+rm -f data.db data.db-shm data.db-wal
+npx emdash seed        # 注意：seed 进程不加载 astro.config，byline 会落在 'en'
+pnpm seed:bylines      # 补齐其他语言的 byline
+```
+
+`$media` 只支持 `url`（不支持本地文件），下载走 SSRF 校验 → Cloudflare DoH（3s 超时）。
+本机实测会间歇性 `Could not resolve hostname: This operation was aborted`，重跑几次即可；
+同一批 seed 里重复引用同一个 URL 不会重复下载（按 URL 缓存）。
+
+---
+
+## 六、本机环境的坑（Windows）
 
 官方 `pnpm screenshots` **完全不可用**：
 
@@ -136,7 +240,7 @@ dev server 绑在 `[::1]:4321`，`127.0.0.1` **连不上**。
 
 ---
 
-## 六、本版模板的已知小问题
+## 七、本版模板的已知小问题
 
 1. `seed.json` 的 widget 用了过时的 `settings` 键，`npx emdash seed --validate` 会警告：
    > `widgetAreas[0].widgets[3].settings: not applied; widget options belong in "props"`
@@ -147,49 +251,60 @@ dev server 绑在 `[::1]:4321`，`127.0.0.1` **连不上**。
 
 ---
 
-## 七、本次改动
+## 八、本次改动
 
 | 文件 | 改动 | 验证方式 |
 |---|---|---|
 | `src/styles/theme.css` | 柑橘色主色（`#E86233`）、圆角调大、标题减重 | 搜索页截图按钮变橙；页面 CSS 输出确认 |
 | `astro.config.mjs` | 正文字体 Inter → **Public Sans** | 页面 `font-family` 输出确认 |
+| `src/i18n/`、`src/pages/[locale]/`、`src/components/{LanguageSwitcher,Sidebar}.astro`、`src/utils/rss.ts` | 全量 i18n（zh 默认 + en） | 见第五节；40 张截图 + 双语文案断言 |
+| `seed/seed.json` | 改写为双语内容（16 posts + 2 pages + 双语分类法/菜单） | 重建数据库后中英页面均正常 |
+| `scripts/seed-bylines-i18n.mjs`、`seed/bylines-i18n.json` | 补齐 byline 的语言行 | 中英文章页均显示署名 |
+| `package.json`、`astro.config.mjs` | math 插件依赖键改用真实包名 `@ak-103u/emdash-plugin-math` | `pnpm install` 后 dev server 正常 |
 
 **明确没动**：`src/live.config.ts`（boilerplate）、`Base.astro` 的 head/body 钩子与数据获取逻辑。
 
 ---
 
-## 八、验证清单（全部通过）
+## 九、验证清单（全部通过）
 
 - [x] `pnpm dev` 启动无错，`emdash-env.d.ts` 生成 2 个集合
-- [x] 9 条路由状态码正确（7×200 + 1×404 + RSS 200）
-- [x] 16 张截图（8 路由 × 2 模式）无样式错乱
+- [x] 路由状态码正确：`/` `/en` `/posts` `/en/posts` 中英详情页、`/pages/about`、`/en/category/*`、`/en/tag/*`、`/search`、`/en/search`、`/rss.xml`、`/en/rss.xml` 全 200；`/xx/posts/foo` → 302；`/_emdash/admin` → 302
+- [x] 40 张截图（20 路由 × 2 模式）无样式错乱
 - [x] `theme.css` 覆盖生效，`light-dark()` 两模式各自取值
 - [x] 字体管线切换生效
 - [x] `pnpm typecheck` → 0 errors / 0 warnings / 0 hints
 - [x] 搜索正常（"frameworks" 4 条、"simplicity" 1 条）
 - [x] 图片管线正常（`/_image` 返回 44KB webp）
+- [x] 双语 UI 文案（导航、页脚、侧边栏、文章 meta、搜索、评论）与 `<html lang>` 各自正确
+- [x] hreflang 注入绝对 URL + `x-default`；单语言文章只输出实际存在的语言
+- [x] RSS `<language>` 按 locale 输出（`zh-CN` / `en-US`）
+- [x] 语言切换器双向可达；中英文章页署名均显示
+- [x] 回退提示：zh 页显示「本文暂无中文版本…」，en 页显示 "not yet available…"
 
 ---
 
-## 九、下一步可选方向
+## 十、下一步可选方向
 
-- **接回 math 插件**：`plugins: [mathPlugin()]`。注意已知的 KaTeX 字体 Vite `server.fs.allow` 问题 ——
-  插件包在 monorepo 外时 dev 下字体 404（生产构建不受影响）。
+- **重做主题布局** —— 用户明确说现有布局不符合心意，i18n 之后单独做这一项。
+  路由已按 locale 分好，改布局时只需动 `src/pages/*.astro` 与 `Base.astro` 的单点。
 - **做 Cloudflare 变体**：D1 + R2 + `wrangler.jsonc` + `worker.ts`。
 - **发布成 GitHub 模板**：`npm create astro@latest -- --template github:<you>/emdash-lab`。
-- **移植 citrus-grid 的设计语言**：它有完整的三语言 i18n、评论、系列、音乐播放器等。
 - **改 seed 做原创内容模型**：加 collection / 字段 / 自定义 PT 块（后者需要 native 插件注册编辑器）。
+- **补第三语言**：`siteConfig.locales` 加一项、`src/i18n/<lang>.json` 加字典、
+  `src/pages/[locale]/` 薄壳自动生效（薄壳按 `isLang` 校验，无需逐个改）。
 
 ---
 
-## 十、速查
+## 十一、速查
 
 ```bash
 cd F:/dev/blog/emdash-lab
 
 pnpm dev                    # 启动（注意用 [::1] 访问）
 pnpm typecheck              # 类型检查
-node scripts/shots.mjs      # 截图
+node scripts/shots.mjs      # 截图（含 en 变体）
+pnpm seed:bylines           # 补齐 byline 的语言行（跑完重启 dev）
 
 npx emdash seed --validate  # 只校验 seed
 npx emdash seed             # 应用 seed（含示例内容）
