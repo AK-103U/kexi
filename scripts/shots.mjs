@@ -22,7 +22,10 @@ import { fileURLToPath } from "node:url";
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = resolve(ROOT, "shots");
 
-/** 与官方 templates/screenshots.json 的 blog 条目对齐，外加几个 lab 特有的。 */
+/**
+ * 与官方 templates/screenshots.json 的 blog 条目对齐，外加几个 lab 特有的。
+ * 无后缀 = 默认语言（zh，无前缀）；`En` 后缀 = 英文（/en 前缀）。
+ */
 const PAGES = {
   homepage: "/",
   posts: "/posts",
@@ -34,6 +37,18 @@ const PAGES = {
   category: "/category/development",
   tag: "/tag/webdev",
   notfound: "/nonexistent",
+
+  // 英文变体，用来校验双语渲染与语言切换器
+  homepageEn: "/en",
+  postsEn: "/en/posts",
+  postEn: "/en/posts/building-for-the-long-term",
+  mathEn: "/en/posts/math-plugin-verification",
+  clashEn: "/en/posts/claude-clash-direct-routing",
+  aboutEn: "/en/pages/about",
+  searchEn: "/en/search?q=test",
+  categoryEn: "/en/category/development",
+  tagEn: "/en/tag/webdev",
+  notfoundEn: "/en/nonexistent",
 };
 
 const BREAKPOINTS = {
