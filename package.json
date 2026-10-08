@@ -12,7 +12,8 @@
     "build": "astro build",
     "preview": "astro preview",
     "start": "node ./dist/server/entry.mjs",
-    "typecheck": "astro check"
+    "typecheck": "astro check",
+    "seed:bylines": "node scripts/seed-bylines-i18n.mjs"
   },
   "dependencies": {
     "@astrojs/node": "^11.1.5",

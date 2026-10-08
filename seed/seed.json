@@ -1,14 +1,15 @@
 {
 	"$schema": "https://emdashcms.com/seed.schema.json",
 	"version": "1",
+	"defaultLocale": "zh",
 	"meta": {
 		"name": "Blog Starter",
-		"description": "A blog with posts and pages",
+		"description": "A bilingual (zh/en) blog with posts and pages",
 		"author": "EmDash"
 	},
 	"settings": {
-		"title": "My Blog",
-		"tagline": "Thoughts on building for the web"
+		"title": "EmDash Lab",
+		"tagline": "Notes on building for the web"
 	},
 	"collections": [
 		{
@@ -69,48 +70,139 @@
 	],
 	"taxonomies": [
 		{
+			"id": "tax:category:zh",
+			"name": "category",
+			"label": "分类",
+			"labelSingular": "分类",
+			"hierarchical": true,
+			"collections": ["posts"],
+			"locale": "zh",
+			"terms": [
+				{
+					"id": "term:category:development:zh",
+					"slug": "development",
+					"label": "开发",
+					"locale": "zh"
+				},
+				{
+					"id": "term:category:design:zh",
+					"slug": "design",
+					"label": "设计",
+					"locale": "zh"
+				},
+				{
+					"id": "term:category:notes:zh",
+					"slug": "notes",
+					"label": "随笔",
+					"locale": "zh"
+				}
+			]
+		},
+		{
+			"id": "tax:category:en",
 			"name": "category",
 			"label": "Categories",
 			"labelSingular": "Category",
 			"hierarchical": true,
 			"collections": ["posts"],
+			"locale": "en",
+			"translationOf": "tax:category:zh",
 			"terms": [
 				{
+					"id": "term:category:development:en",
 					"slug": "development",
-					"label": "Development"
+					"label": "Development",
+					"locale": "en",
+					"translationOf": "term:category:development:zh"
 				},
 				{
+					"id": "term:category:design:en",
 					"slug": "design",
-					"label": "Design"
+					"label": "Design",
+					"locale": "en",
+					"translationOf": "term:category:design:zh"
 				},
 				{
+					"id": "term:category:notes:en",
 					"slug": "notes",
-					"label": "Notes"
+					"label": "Notes",
+					"locale": "en",
+					"translationOf": "term:category:notes:zh"
 				}
 			]
 		},
 		{
+			"id": "tax:tag:zh",
+			"name": "tag",
+			"label": "标签",
+			"labelSingular": "标签",
+			"hierarchical": false,
+			"collections": ["posts"],
+			"locale": "zh",
+			"terms": [
+				{
+					"id": "term:tag:webdev:zh",
+					"slug": "webdev",
+					"label": "Web 开发",
+					"locale": "zh"
+				},
+				{
+					"id": "term:tag:opinion:zh",
+					"slug": "opinion",
+					"label": "观点",
+					"locale": "zh"
+				},
+				{
+					"id": "term:tag:tools:zh",
+					"slug": "tools",
+					"label": "工具",
+					"locale": "zh"
+				},
+				{
+					"id": "term:tag:creativity:zh",
+					"slug": "creativity",
+					"label": "创意",
+					"locale": "zh"
+				}
+			]
+		},
+		{
+			"id": "tax:tag:en",
 			"name": "tag",
 			"label": "Tags",
 			"labelSingular": "Tag",
 			"hierarchical": false,
 			"collections": ["posts"],
+			"locale": "en",
+			"translationOf": "tax:tag:zh",
 			"terms": [
 				{
+					"id": "term:tag:webdev:en",
 					"slug": "webdev",
-					"label": "Web Development"
+					"label": "Web Development",
+					"locale": "en",
+					"translationOf": "term:tag:webdev:zh"
 				},
 				{
+					"id": "term:tag:opinion:en",
 					"slug": "opinion",
-					"label": "Opinion"
+					"label": "Opinion",
+					"locale": "en",
+					"translationOf": "term:tag:opinion:zh"
 				},
 				{
+					"id": "term:tag:tools:en",
 					"slug": "tools",
-					"label": "Tools"
+					"label": "Tools",
+					"locale": "en",
+					"translationOf": "term:tag:tools:zh"
 				},
 				{
+					"id": "term:tag:creativity:en",
 					"slug": "creativity",
-					"label": "Creativity"
+					"label": "Creativity",
+					"locale": "en",
+					"translationOf": "term:tag:creativity:zh"
 				}
 			]
 		}
@@ -130,23 +222,49 @@
 	],
 	"menus": [
 		{
+			"id": "menu:primary:zh",
 			"name": "primary",
-			"label": "Primary Navigation",
+			"label": "主导航",
+			"locale": "zh",
 			"items": [
 				{
 					"type": "custom",
-					"label": "Home",
+					"label": "首页",
 					"url": "/"
 				},
 				{
 					"type": "custom",
-					"label": "About",
+					"label": "关于",
 					"url": "/pages/about"
 				},
 				{
 					"type": "custom",
-					"label": "Posts",
+					"label": "文章",
 					"url": "/posts"
+				}
+			]
+		},
+		{
+			"id": "menu:primary:en",
+			"name": "primary",
+			"label": "Primary Navigation",
+			"locale": "en",
+			"translationOf": "menu:primary:zh",
+			"items": [
+				{
+					"type": "custom",
+					"label": "Home",
+					"url": "/en"
+				},
+				{
+					"type": "custom",
+					"label": "About",
+					"url": "/en/pages/about"
+				},
+				{
+					"type": "custom",
+					"label": "Posts",
+					"url": "/en/posts"
 				}
 			]
 		}
@@ -189,31 +307,6 @@
 						"type": "monthly",
 						"limit": 6
 					}
-				}
-			]
-		},
-		{
-			"name": "footer",
-			"label": "Footer",
-			"description": "Widget area displayed in the site footer",
-			"widgets": [
-				{
-					"type": "content",
-					"title": "About",
-					"content": [
-						{
-							"_type": "block",
-							"style": "normal",
-							"children": [
-								{
-									"_type": "span",
-									"text": "A blog about software, design, and the occasional stray thought.",
-									"_key": "k1"
-								}
-							],
-							"_key": "k0"
-						}
-					]
 				}
 			]
 		}
@@ -280,6 +373,7 @@
 				"id": "about",
 				"slug": "about",
 				"status": "published",
+				"locale": "en",
 				"data": {
 					"title": "About",
 					"content": [
@@ -309,6 +403,42 @@
 						}
 					]
 				}
+			},
+			{
+				"id": "about-zh",
+				"slug": "about",
+				"status": "published",
+				"locale": "zh",
+				"translationOf": "about",
+				"data": {
+					"title": "关于",
+					"content": [
+						{
+							"_type": "block",
+							"style": "normal",
+							"children": [
+								{
+									"_type": "span",
+									"text": "一个用来写软件、设计和偶尔冒出来的杂念的地方。没有更新计划，没有订阅漏斗。只是些我想写下来的东西。",
+									"_key": "k1"
+								}
+							],
+							"_key": "k0"
+						},
+						{
+							"_type": "block",
+							"style": "normal",
+							"children": [
+								{
+									"_type": "span",
+									"text": "用 Astro 和 EmDash 构建。源码是开放的，如果你想看看它是怎么运作的。",
+									"_key": "k3"
+								}
+							],
+							"_key": "k2"
+						}
+					]
+				}
 			}
 		],
 		"posts": [
@@ -316,6 +446,7 @@
 				"id": "post-1",
 				"slug": "building-for-the-long-term",
 				"status": "published",
+				"locale": "en",
 				"data": {
 					"title": "Building for the Long Term",
 					"excerpt": "The frameworks will change. The databases will change. What survives is the clarity of your thinking.",
@@ -416,9 +547,115 @@
 				}
 			},
 			{
+				"id": "post-1-zh",
+				"slug": "building-for-the-long-term",
+				"status": "published",
+				"locale": "zh",
+				"translationOf": "post-1",
+				"data": {
+					"title": "为长期而构建",
+					"excerpt": "框架会更替，数据库会更替。真正留下来的，是你思考的清晰度。",
+					"featured_image": {
+						"$media": {
+							"url": "https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=1200&h=800&fit=crop",
+							"alt": "暗色房间里显示器上的代码",
+							"filename": "building-long-term.jpg"
+						}
+					},
+					"content": [
+						{
+							"_type": "block",
+							"style": "normal",
+							"children": [
+								{
+									"_type": "span",
+									"text": "每隔几年，整个行业就会集体认定：我们过去做的一切都是错的，有更好的办法。新框架、新范式、新构建工具。变化从不停歇，稍不留神，你花在迁移上的时间就比构建还多。",
+									"_key": "k1"
+								}
+							],
+							"_key": "k0"
+						},
+						{
+							"_type": "block",
+							"style": "normal",
+							"children": [
+								{
+									"_type": "span",
+									"text": "我写软件的时间足够长，见过好几轮这样的循环。从 jQuery 到 Backbone，到 Angular，到 React，再到下一个。每一次转变在当时都显得十万火急。回头看，真正重要的东西很少和框架有关。",
+									"_key": "k3"
+								}
+							],
+							"_key": "k2"
+						},
+						{
+							"_type": "block",
+							"style": "h2",
+							"children": [
+								{
+									"_type": "span",
+									"text": "什么会留下来",
+									"_key": "k5"
+								}
+							],
+							"_key": "k4"
+						},
+						{
+							"_type": "block",
+							"style": "normal",
+							"children": [
+								{
+									"_type": "span",
+									"text": "干净的数据模型会留下来。系统之间清晰的边界会留下来。好的命名会留下来。在可以做得更聪明的时候选择保持简单——这一点一定会留下来。",
+									"_key": "k7"
+								}
+							],
+							"_key": "k6"
+						},
+						{
+							"_type": "block",
+							"style": "normal",
+							"children": [
+								{
+									"_type": "span",
+									"text": "留不下来的，是为了炫耀而写的代码、为从未出现的问题搭起的抽象，以及围绕框架的偏好而非领域的现实所设计的架构。",
+									"_key": "k9"
+								}
+							],
+							"_key": "k8"
+						},
+						{
+							"_type": "block",
+							"style": "normal",
+							"children": [
+								{
+									"_type": "span",
+									"text": "我写过的最好的代码是无聊的。它读起来像散文，把一件事做好，不需要范畴论的博士学位才能看懂。我写过的最糟的代码，在当时技术上很惊艳。",
+									"_key": "k11"
+								}
+							],
+							"_key": "k10"
+						}
+					]
+				},
+				"bylines": [
+					{
+						"byline": "byline-editorial"
+					},
+					{
+						"byline": "byline-guest",
+						"roleLabel": "客座文章"
+					}
+				],
+				"taxonomies": {
+					"category": ["development"],
+					"tag": ["opinion"]
+				}
+			},
+			{
 				"id": "post-2",
 				"slug": "the-case-for-static",
 				"status": "published",
+				"locale": "en",
 				"data": {
 					"title": "The Case for Static",
 					"excerpt": "Static sites aren't a step backwards. They're what you get when you take performance and simplicity seriously.",
@@ -503,9 +740,99 @@
 				}
 			},
 			{
+				"id": "post-2-zh",
+				"slug": "the-case-for-static",
+				"status": "published",
+				"locale": "zh",
+				"translationOf": "post-2",
+				"data": {
+					"title": "为静态正名",
+					"excerpt": "静态站点不是倒退。它是你认真对待性能与简洁之后得到的结果。",
+					"featured_image": {
+						"$media": {
+							"url": "https://images.unsplash.com/photo-1499750310107-5fef28a66643?w=1200&h=800&fit=crop",
+							"alt": "木桌上放着笔记本电脑和咖啡",
+							"filename": "case-for-static.jpg"
+						}
+					},
+					"content": [
+						{
+							"_type": "block",
+							"style": "normal",
+							"children": [
+								{
+									"_type": "span",
+									"text": "有点讽刺：Web 从静态开始，走向动态，如今又摆回静态。但今天的静态站点不是 1998 年手写的 HTML 页面。它们被生成、被优化，部署到边缘网络，以毫秒级的速度送达。",
+									"_key": "k1"
+								}
+							],
+							"_key": "k0"
+						},
+						{
+							"_type": "block",
+							"style": "normal",
+							"children": [
+								{
+									"_type": "span",
+									"text": "「一切都服务端渲染」的说法曾经很有说服力：动态内容、个性化、实时数据。但大多数站点在大多数时候并不需要其中的大多数。一篇博客文章不必在每次请求时重新渲染，一个商品页也不会每秒都变。",
+									"_key": "k3"
+								}
+							],
+							"_key": "k2"
+						},
+						{
+							"_type": "block",
+							"style": "h2",
+							"children": [
+								{
+									"_type": "span",
+									"text": "性能上的论据",
+									"_key": "k5"
+								}
+							],
+							"_key": "k4"
+						},
+						{
+							"_type": "block",
+							"style": "normal",
+							"children": [
+								{
+									"_type": "span",
+									"text": "从 CDN 送出的静态文件，已经是 Web 速度的上限。没有冷启动，没有数据库查询，没有服务端渲染的开销。首字节时间基本上就是到最近边缘节点的网络延迟。你赢不了物理定律。",
+									"_key": "k7"
+								}
+							],
+							"_key": "k6"
+						},
+						{
+							"_type": "block",
+							"style": "normal",
+							"children": [
+								{
+									"_type": "span",
+									"text": "而当你确实需要动态行为时，可以精准地加上去。在一片静态 HTML 的海洋里放一座交互的孤岛。两全其美，又不必时刻付出任何一方的代价。",
+									"_key": "k9"
+								}
+							],
+							"_key": "k8"
+						}
+					]
+				},
+				"bylines": [
+					{
+						"byline": "byline-editorial"
+					}
+				],
+				"taxonomies": {
+					"category": ["development"],
+					"tag": ["webdev", "opinion"]
+				}
+			},
+			{
 				"id": "post-3",
 				"slug": "learning-in-public",
 				"status": "published",
+				"locale": "en",
 				"data": {
 					"title": "Learning in Public",
 					"excerpt": "Writing about what you're learning is the fastest way to find out what you don't actually understand.",
@@ -585,9 +912,94 @@
 				}
 			},
 			{
+				"id": "post-3-zh",
+				"slug": "learning-in-public",
+				"status": "published",
+				"locale": "zh",
+				"translationOf": "post-3",
+				"data": {
+					"title": "公开地学习",
+					"excerpt": "把你正在学的东西写出来，是发现自己其实没搞懂的最快方式。",
+					"featured_image": {
+						"$media": {
+							"url": "https://images.unsplash.com/photo-1432821596592-e2c18b78144f?w=1200&h=800&fit=crop",
+							"alt": "桌上的笔记本和笔",
+							"filename": "learning-in-public.jpg"
+						}
+					},
+					"content": [
+						{
+							"_type": "block",
+							"style": "normal",
+							"children": [
+								{
+									"_type": "span",
+									"text": "我开始写自己在学的东西，不是因为我有什么原创见解，而是因为我老是忘记自己刚想明白的东西。这些文章是写给未来自己的笔记，公开发布更多是出于懒，而不是勇气。",
+									"_key": "k1"
+								}
+							],
+							"_key": "k0"
+						},
+						{
+							"_type": "block",
+							"style": "normal",
+							"children": [
+								{
+									"_type": "span",
+									"text": "我没料到的是，写作本身会大大加速学习。试着向别人解释一件事时，会产生一种特别的清晰感。那些藏在脑子里、你可以心安理得忽略的漏洞，一旦要写成句子，就变得刺眼地明显。",
+									"_key": "k3"
+								}
+							],
+							"_key": "k2"
+						},
+						{
+							"_type": "block",
+							"style": "h2",
+							"children": [
+								{
+									"_type": "span",
+									"text": "害怕出错",
+									"_key": "k5"
+								}
+							],
+							"_key": "k4"
+						},
+						{
+							"_type": "block",
+							"style": "normal",
+							"children": [
+								{
+									"_type": "span",
+									"text": "最大的障碍不是时间，也不是写作能力，而是害怕发布出后来被证明是错的东西。但问题在于：公开地犯错，是最高效的学习方式之一。会有人纠正你，通常还很友善，而你会永远记住那次纠正。",
+									"_key": "k7"
+								}
+							],
+							"_key": "k6"
+						},
+						{
+							"_type": "block",
+							"style": "normal",
+							"children": [
+								{
+									"_type": "span",
+									"text": "帮到我最多的文章，不是专家写的。它们是走在同一条路上、只比我早一步的人写的，用的还是没被打磨成抽象术语的语言。这类写作有它的位置，而且比大多数人意识到的更有价值。",
+									"_key": "k9"
+								}
+							],
+							"_key": "k8"
+						}
+					]
+				},
+				"taxonomies": {
+					"category": ["notes"],
+					"tag": ["opinion"]
+				}
+			},
+			{
 				"id": "post-4",
 				"slug": "small-tools-big-impact",
 				"status": "published",
+				"locale": "en",
 				"data": {
 					"title": "Small Tools, Big Impact",
 					"excerpt": "The best developer tools do one thing well and get out of your way. A love letter to focused software.",
@@ -667,9 +1079,94 @@
 				}
 			},
 			{
+				"id": "post-4-zh",
+				"slug": "small-tools-big-impact",
+				"status": "published",
+				"locale": "zh",
+				"translationOf": "post-4",
+				"data": {
+					"title": "小工具，大影响",
+					"excerpt": "最好的开发者工具只把一件事做好，然后让开。写给专注的软件的一封情书。",
+					"featured_image": {
+						"$media": {
+							"url": "https://images.unsplash.com/photo-1575026615908-666710ae5e47?w=1200&h=800&fit=crop",
+							"alt": "车间墙上挂着的扳手和手工工具",
+							"filename": "small-tools.jpg"
+						}
+					},
+					"content": [
+						{
+							"_type": "block",
+							"style": "normal",
+							"children": [
+								{
+									"_type": "span",
+									"text": "有一类软件得到的赞赏远远不够。不是框架，不是平台，也不是 IDE，而是那些小而锋利的工具——它们把一个问题解决得如此之好，以至于你不再想起它们。它们变得隐形，而这是你能给一个工具的最高赞誉。",
+									"_key": "k1"
+								}
+							],
+							"_key": "k0"
+						},
+						{
+							"_type": "block",
+							"style": "normal",
+							"children": [
+								{
+									"_type": "span",
+									"text": "我说的是 ripgrep 这样的东西：它搜索代码快到改变了我对「搜索」这件事的看法。或者是 jq，它让 JSON 在终端里像一等数据格式。又或者是 curl，几十年来一直默默支撑着互联网的管道。",
+									"_key": "k3"
+								}
+							],
+							"_key": "k2"
+						},
+						{
+							"_type": "block",
+							"style": "h2",
+							"children": [
+								{
+									"_type": "span",
+									"text": "重访 Unix 哲学",
+									"_key": "k5"
+								}
+							],
+							"_key": "k4"
+						},
+						{
+							"_type": "block",
+							"style": "normal",
+							"children": [
+								{
+									"_type": "span",
+									"text": "把一件事做好。这条建议老到成了陈词滥调，但最好的现代工具仍然遵循它。它们不试图成为平台，没有插件生态、配置语言或启动向导。它们做好自己的事，并和其他做好自己事的工具组合起来。",
+									"_key": "k7"
+								}
+							],
+							"_key": "k6"
+						},
+						{
+							"_type": "block",
+							"style": "normal",
+							"children": [
+								{
+									"_type": "span",
+									"text": "诱惑永远是多加一点。再加一个功能，再加一个选项，再加一个集成。但每一次增加，都是别人必须做的决定、必须维护的一条代码路径、可能出问题的一件事。最好的工具抵抗住了这种诱惑。它们保持小，而正因为小，它们保持可靠。",
+									"_key": "k9"
+								}
+							],
+							"_key": "k8"
+						}
+					]
+				},
+				"taxonomies": {
+					"category": ["development"],
+					"tag": ["tools"]
+				}
+			},
+			{
 				"id": "post-5",
 				"slug": "designing-with-constraints",
 				"status": "published",
+				"locale": "en",
 				"data": {
 					"title": "Designing with Constraints",
 					"excerpt": "Limitations aren't obstacles to creativity. They're the structure that makes creativity possible.",
@@ -749,9 +1246,94 @@
 				}
 			},
 			{
+				"id": "post-5-zh",
+				"slug": "designing-with-constraints",
+				"status": "published",
+				"locale": "zh",
+				"translationOf": "post-5",
+				"data": {
+					"title": "带着约束做设计",
+					"excerpt": "限制不是创造力的障碍，而是让创造力成为可能的结构。",
+					"featured_image": {
+						"$media": {
+							"url": "https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?w=1200&h=800&fit=crop",
+							"alt": "桌上的铅笔和设计工具",
+							"filename": "designing-with-constraints.jpg"
+						}
+					},
+					"content": [
+						{
+							"_type": "block",
+							"style": "normal",
+							"children": [
+								{
+									"_type": "span",
+									"text": "给设计师一块空白画布和无限的时间，他们往往做出平庸的东西。给他们一份严格的简报、一块小屏幕和一个截止日期，他们会让你惊讶。这不是悖论——创造力本来就是这样运作的。",
+									"_key": "k1"
+								}
+							],
+							"_key": "k0"
+						},
+						{
+							"_type": "block",
+							"style": "normal",
+							"children": [
+								{
+									"_type": "span",
+									"text": "约束逼你做决定。当字体不能超过两款时，你必须仔细选择。当页面必须在一秒内加载完时，每个元素都得证明自己的位置。当界面必须在 320px 的屏幕上可用时，你才发现什么是真正必要的。",
+									"_key": "k3"
+								}
+							],
+							"_key": "k2"
+						},
+						{
+							"_type": "block",
+							"style": "h2",
+							"children": [
+								{
+									"_type": "span",
+									"text": "拥抱那个盒子",
+									"_key": "k5"
+								}
+							],
+							"_key": "k4"
+						},
+						{
+							"_type": "block",
+							"style": "normal",
+							"children": [
+								{
+									"_type": "span",
+									"text": "Web 本身就是一种约束。HTML 单向流动，CSS 有盒模型，浏览器有视口尺寸和字体渲染的怪癖。你可以对抗这些约束，也可以与它们合作，而结果天差地别。",
+									"_key": "k7"
+								}
+							],
+							"_key": "k6"
+						},
+						{
+							"_type": "block",
+							"style": "normal",
+							"children": [
+								{
+									"_type": "span",
+									"text": "我最欣赏的设计，看起来不像是被硬塞进某个框架的。它们像是从媒介里自然生长出来的，顺着它的纹理，而不是逆着它。只有当你把约束当作创作伙伴而非敌人时，这一点才会发生。",
+									"_key": "k9"
+								}
+							],
+							"_key": "k8"
+						}
+					]
+				},
+				"taxonomies": {
+					"category": ["design"],
+					"tag": ["creativity"]
+				}
+			},
+			{
 				"id": "post-6",
 				"slug": "a-weekend-with-a-side-project",
 				"status": "published",
+				"locale": "en",
 				"data": {
 					"title": "A Weekend with a Side Project",
 					"excerpt": "No stakeholders, no deadlines, no Jira tickets. Just you and a dumb idea that might turn into something.",
@@ -831,9 +1413,94 @@
 				}
 			},
 			{
+				"id": "post-6-zh",
+				"slug": "a-weekend-with-a-side-project",
+				"status": "published",
+				"locale": "zh",
+				"translationOf": "post-6",
+				"data": {
+					"title": "一个周末，一个副项目",
+					"excerpt": "没有利益相关者，没有截止日期，没有 Jira 工单。只有你和一个可能变成点什么的傻点子。",
+					"featured_image": {
+						"$media": {
+							"url": "https://images.unsplash.com/photo-1542831371-29b0f74f9713?w=1200&h=800&fit=crop",
+							"alt": "暗色主题的屏幕上显示着代码",
+							"filename": "weekend-side-project.jpg"
+						}
+					},
+					"content": [
+						{
+							"_type": "block",
+							"style": "normal",
+							"children": [
+								{
+									"_type": "span",
+									"text": "周六早晨。咖啡煮好了，屋里很安静，我脑子里有个念叨了一周的点子。不一定是个好点子——只是挥之不去。一个小工具，用来做一件我一直手工在做的事。能有多难？",
+									"_key": "k1"
+								}
+							],
+							"_key": "k0"
+						},
+						{
+							"_type": "block",
+							"style": "normal",
+							"children": [
+								{
+									"_type": "span",
+									"text": "这是最好的一种编程。没有需求文档，没有冲刺计划，没有代码评审。只有文本编辑器和一个问题。可以自由地做出糟糕的架构决定，把所有东西重写两遍，去追那些最后发现是死胡同的岔路。",
+									"_key": "k3"
+								}
+							],
+							"_key": "k2"
+						},
+						{
+							"_type": "block",
+							"style": "h2",
+							"children": [
+								{
+									"_type": "span",
+									"text": "副项目为什么重要",
+									"_key": "k5"
+								}
+							],
+							"_key": "k4"
+						},
+						{
+							"_type": "block",
+							"style": "normal",
+							"children": [
+								{
+									"_type": "span",
+									"text": "副项目是你会学到日常工作永远不会教你的东西的地方。不是因为问题更难，而是因为你可以自由地冒险。试试一门从没用过的语言。不用框架做点东西。部署到一个你只读到过的平台。代价为零，所以收获最大。",
+									"_key": "k7"
+								}
+							],
+							"_key": "k6"
+						},
+						{
+							"_type": "block",
+							"style": "normal",
+							"children": [
+								{
+									"_type": "span",
+									"text": "到周日晚上，这东西勉强能跑了。很粗糙，错误处理基本没有，README 只有一句话。但它解决了我一开始想解决的问题，而我也学到了三件周五还不知道的事。不算糟的一个周末。",
+									"_key": "k9"
+								}
+							],
+							"_key": "k8"
+						}
+					]
+				},
+				"taxonomies": {
+					"category": ["development"],
+					"tag": ["creativity"]
+				}
+			},
+			{
 				"id": "post-7",
 				"slug": "notes-on-simplicity",
 				"status": "published",
+				"locale": "en",
 				"data": {
 					"title": "Notes on Simplicity",
 					"excerpt": "Simplicity isn't the absence of complexity. It's the result of understanding a problem well enough to solve it cleanly.",
@@ -913,9 +1580,94 @@
 				}
 			},
 			{
+				"id": "post-7-zh",
+				"slug": "notes-on-simplicity",
+				"status": "published",
+				"locale": "zh",
+				"translationOf": "post-7",
+				"data": {
+					"title": "关于简单的笔记",
+					"excerpt": "简单不是没有复杂。它是你把问题理解得足够透彻、从而干净地解决它之后的结果。",
+					"featured_image": {
+						"$media": {
+							"url": "https://images.unsplash.com/photo-1559051668-e1fa58f25786?w=1200&h=800&fit=crop",
+							"alt": "白纸上雕刻出的几何纹样",
+							"filename": "notes-on-simplicity.jpg"
+						}
+					},
+					"content": [
+						{
+							"_type": "block",
+							"style": "normal",
+							"children": [
+								{
+									"_type": "span",
+									"text": "每款软件一开始都很简单。几个文件，一个清晰的目的，一个小小的表面积。然后功能被加上，边界情况被处理，没过多久，你面对的东西就需要一张图才能看懂。这不是必然的，但防止它需要自律。",
+									"_key": "k1"
+								}
+							],
+							"_key": "k0"
+						},
+						{
+							"_type": "block",
+							"style": "normal",
+							"children": [
+								{
+									"_type": "span",
+									"text": "简单难的不是最初的设计，而是持续地抵抗复杂化。每一个功能请求、每一个 bug 修复、每一次重构，都是加入复杂度的机会。说「不」是最重要的设计技能，也是最不受称赞的。",
+									"_key": "k3"
+								}
+							],
+							"_key": "k2"
+						},
+						{
+							"_type": "block",
+							"style": "h2",
+							"children": [
+								{
+									"_type": "span",
+									"text": "把「移除」当作一个功能",
+									"_key": "k5"
+								}
+							],
+							"_key": "k4"
+						},
+						{
+							"_type": "block",
+							"style": "normal",
+							"children": [
+								{
+									"_type": "span",
+									"text": "一个产品最好的版本，功能往往比上一版更少。不是因为缺功能，而是因为有人有勇气移除那些不划算的东西。每个功能都有成本——维护成本、认知负担、界面的重量。",
+									"_key": "k7"
+								}
+							],
+							"_key": "k6"
+						},
+						{
+							"_type": "block",
+							"style": "normal",
+							"children": [
+								{
+									"_type": "span",
+									"text": "简单是一种实践，不是一个终点。你永远不会「到达」简单。你只是一直在问：这是必要的吗？这能更清楚吗？有没有办法通过移除而不是添加来解决问题？答案是「有」的次数，比你预想的多。",
+									"_key": "k9"
+								}
+							],
+							"_key": "k8"
+						}
+					]
+				},
+				"taxonomies": {
+					"category": ["notes"],
+					"tag": ["opinion"]
+				}
+			},
+			{
 				"id": "post-draft",
 				"slug": "work-in-progress",
 				"status": "draft",
+				"locale": "en",
 				"data": {
 					"title": "Work in Progress",
 					"excerpt": "This post is still being written.",
@@ -927,6 +1679,31 @@
 								{
 									"_type": "span",
 									"text": "This is a draft post that won't appear in the public listing.",
+									"_key": "k1"
+								}
+							],
+							"_key": "k0"
+						}
+					]
+				}
+			},
+			{
+				"id": "post-draft-zh",
+				"slug": "work-in-progress",
+				"status": "draft",
+				"locale": "zh",
+				"translationOf": "post-draft",
+				"data": {
+					"title": "进行中",
+					"excerpt": "这篇文章还在写。",
+					"content": [
+						{
+							"_type": "block",
+							"style": "normal",
+							"children": [
+								{
+									"_type": "span",
+									"text": "这是一篇草稿，不会出现在公开列表里。",
 									"_key": "k1"
 								}
 							],

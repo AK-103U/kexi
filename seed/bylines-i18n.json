@@ -1,0 +1,15 @@
+{
+	"$comment": "seed 建的 byline 只落一种语言，这里补齐其他语言的文案。key 是 byline slug，缺失的语言会复制同组已有行的 displayName/bio。",
+	"bylines": {
+		"emdash-editorial": {
+			"zh": {
+				"displayName": "EmDash 编辑部"
+			}
+		},
+		"guest-contributor": {
+			"zh": {
+				"displayName": "特约作者"
+			}
+		}
+	}
+}
