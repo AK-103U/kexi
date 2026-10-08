@@ -25,6 +25,24 @@
 */
 
 :root {
+	/*
+	 * 柑橘色主题 —— 借自 citrus-grid 的主色 #E86233。
+	 * 三件套必须一起改：brand 是链接/焦点环，brand-hover 是悬停态，
+	 * on-brand 是叠在 brand 底色之上的文字色。
+	 * 用 light-dark() 才能让两种模式各自取值；写普通颜色会同时改掉两边。
+	 */
+	--color-brand: light-dark(#e86233, #db7753);
+	--color-brand-hover: light-dark(#c94f22, #e28969);
+	--color-on-brand: white;
+	--color-brand-ring: color-mix(in srgb, var(--color-brand) 25%, transparent);
+
+	/* 圆角整体调大，卡片和搜索框会更柔和 */
+	--radius: 8px;
+	--radius-lg: 14px;
+
+	/* 标题减重：Inter 在 600 时已经很重，700 显得生硬 */
+	--font-weight-heading: 600;
+	--font-weight-display: 650;
 }
 
 /* Keep the signed-in Admin link separated from the primary navigation. */
