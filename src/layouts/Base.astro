@@ -1,19 +1,19 @@
 ---
 import { getMenuWithCacheHint, getSiteSettingsWithCacheHint } from "emdash";
-import {
-	WidgetArea,
-	EmDashHead,
-	EmDashBodyStart,
-	EmDashBodyEnd,
-} from "emdash/ui";
+import { EmDashHead, EmDashBodyStart, EmDashBodyEnd } from "emdash/ui";
 import { createPublicPageContext } from "emdash/page";
 import LiveSearch from "emdash/ui/search";
 import { Font } from "astro:assets";
+import LanguageSwitcher from "../components/LanguageSwitcher.astro";
+import { type Lang } from "../i18n/config";
+import { htmlLang, localePath, useTranslations } from "../i18n/ui";
 import { resolveBlogSiteIdentity } from "../utils/site-identity";
 import "../styles/tokens.css";
 import "../styles/theme.css";
 
 interface Props {
+	/** 当前页面的语言。所有公开页面必须显式传入。 */
+	lang: Lang;
 	title: string;
 	pageTitle?: string | null;
 	description?: string | null;
@@ -29,6 +29,7 @@ interface Props {
 }
 
 const {
+	lang,
 	title,
 	pageTitle,
 	description,
@@ -41,9 +42,10 @@ const {
 	author,
 	content,
 } = Astro.props;
+const t = useTranslations(lang);
 const [settingsResult, menuResult] = await Promise.all([
 	getSiteSettingsWithCacheHint(),
-	getMenuWithCacheHint("primary"),
+	getMenuWithCacheHint("primary", { locale: lang }),
 ]);
 if (Astro.cache?.enabled) {
 	Astro.cache.set(settingsResult.cacheHint);
@@ -60,6 +62,13 @@ const titleIncludesSiteName =
 const fullTitle = titleIncludesSiteName ? title : `${title} — ${siteTitle}`;
 
 const menu = menuResult.data;
+
+// 实时搜索结果链接默认拼成 /{collection}/{slug}，不带语言前缀。
+// 在非默认语言下必须显式给出带前缀的路由模板。
+const searchRouteMap = {
+	posts: localePath(lang, "/posts/:slug"),
+	pages: localePath(lang, "/pages/:slug"),
+};
 
 // Build public page context for plugin contributions
 // SEO data is passed here and rendered securely by EmDashHead
@@ -83,7 +92,7 @@ const isLoggedIn = !!Astro.locals.user;
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang={htmlLang(lang)}>
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -109,7 +118,7 @@ const isLoggedIn = !!Astro.locals.user;
 		<EmDashBodyStart page={pageCtx} />
 		<header class="site-header">
 			<nav class="nav">
-				<a href="/" class="site-title">
+				<a href={localePath(lang, "/")} class="site-title">
 					{
 						siteLogo ? (
 							<img
@@ -124,12 +133,15 @@ const isLoggedIn = !!Astro.locals.user;
 				</a>
 				<div class="nav-right">
 					<LiveSearch
-						placeholder="Search..."
+						placeholder={t("header.searchPlaceholder")}
+						locale={lang}
 						class="site-search"
 						inputClass="site-search-input"
 						resultsClass="site-search-results"
 						resultClass="site-search-result"
 						collections={["posts", "pages"]}
+						routeMap={searchRouteMap}
+						searchPage={localePath(lang, "/search")}
 					/>
 					<div class="nav-links">
 						{
@@ -146,11 +158,12 @@ const isLoggedIn = !!Astro.locals.user;
 							))
 						}
 					</div>
+					<LanguageSwitcher lang={lang} />
 				</div>
 				{
 					isLoggedIn && (
 						<a href="/_emdash/admin" class="nav-admin">
-							Admin
+							{t("header.admin")}
 						</a>
 					)
 				}
@@ -165,7 +178,7 @@ const isLoggedIn = !!Astro.locals.user;
 			<div class="footer-inner">
 				<div class="footer-grid">
 					<div class="footer-brand">
-						<a href="/" class="footer-logo">
+						<a href={localePath(lang, "/")} class="footer-logo">
 							{
 								siteLogo ? (
 									<img
@@ -181,7 +194,7 @@ const isLoggedIn = !!Astro.locals.user;
 						<p class="footer-tagline">{siteTagline}</p>
 					</div>
 					<div class="footer-nav">
-						<h2 class="footer-heading">Navigate</h2>
+						<h2 class="footer-heading">{t("footer.navigate")}</h2>
 						<ul class="footer-links">
 							{
 								menu?.items.map((item) => (
@@ -203,25 +216,26 @@ const isLoggedIn = !!Astro.locals.user;
 						</ul>
 					</div>
 					<div class="footer-nav">
-						<h2 class="footer-heading">Connect</h2>
+						<h2 class="footer-heading">{t("footer.connect")}</h2>
 						<ul class="footer-links">
-							<li><a href="/rss.xml">RSS Feed</a></li>
+							<li>
+								<a href={localePath(lang, "/rss.xml")}>{t("footer.rss")}</a>
+							</li>
 						</ul>
 					</div>
-					<div class="footer-widgets-section">
-						<WidgetArea name="footer" />
+					<div class="footer-nav">
+						<h2 class="footer-heading">{t("footer.aboutTitle")}</h2>
+						<p class="footer-about">{t("footer.about")}</p>
 					</div>
 				</div>
 				<div class="footer-bottom">
-					<p class="footer-copyright">
-						Powered by <a href="https://emdashcms.com">EmDash</a>
-					</p>
+					<p class="footer-copyright" set:html={t("footer.poweredBy")} />
 					<div class="theme-switcher">
 						<button
 							type="button"
 							class="theme-btn"
 							data-theme="light"
-							aria-label="Light mode"
+							aria-label={t("header.lightMode")}
 						>
 							<svg
 								width="16"
@@ -252,7 +266,7 @@ const isLoggedIn = !!Astro.locals.user;
 							type="button"
 							class="theme-btn"
 							data-theme="dark"
-							aria-label="Dark mode"
+							aria-label={t("header.darkMode")}
 						>
 							<svg
 								width="16"
@@ -271,7 +285,7 @@ const isLoggedIn = !!Astro.locals.user;
 							type="button"
 							class="theme-btn"
 							data-theme="system"
-							aria-label="System theme"
+							aria-label={t("header.systemMode")}
 						>
 							<svg
 								width="16"
@@ -718,24 +732,7 @@ const isLoggedIn = !!Astro.locals.user;
 				color: var(--color-text);
 			}
 
-			.footer-widgets-section :global(.widget-area) {
-				display: block;
-			}
-
-			.footer-widgets-section :global(.widget) {
-				color: var(--color-text-secondary);
-			}
-
-			.footer-widgets-section :global(.widget__title) {
-				font-size: var(--font-size-xs);
-				font-weight: 500;
-				text-transform: uppercase;
-				letter-spacing: var(--tracking-wider);
-				color: var(--color-muted);
-				margin-bottom: var(--spacing-4);
-			}
-
-			.footer-widgets-section :global(.widget__content) {
+			.footer-about {
 				color: var(--color-text-secondary);
 				font-size: var(--font-size-sm);
 				line-height: var(--leading-relaxed);

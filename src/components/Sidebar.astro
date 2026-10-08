@@ -1,0 +1,291 @@
+---
+/**
+ * 文章页侧边栏。
+ *
+ * 自建而非用 `<WidgetArea name="sidebar" />`：widget 的标题存在 seed 数据里，
+ * DB 没有 locale 列，无法按语言切换。这里用 UI 字典取标题，数据按 locale 查。
+ *
+ * 「归档」widget 未复刻 —— 主题没有归档路由，原 widget 的链接是死链。
+ */
+import { getEmDashCollection, getTaxonomyTermsWithCacheHint } from "emdash";
+import LiveSearch from "emdash/ui/search";
+import { localePath, formatDate, useTranslations, type Lang } from "../i18n/ui";
+
+interface Props {
+	lang: Lang;
+}
+
+const { lang } = Astro.props;
+const t = useTranslations(lang);
+
+const [categoriesResult, tagsResult, recentResult] = await Promise.all([
+	getTaxonomyTermsWithCacheHint("category", {
+		locale: lang,
+		includeCounts: true,
+	}),
+	getTaxonomyTermsWithCacheHint("tag", {
+		locale: lang,
+		includeCounts: true,
+	}),
+	getEmDashCollection("posts", {
+		locale: lang,
+		limit: 5,
+		orderBy: { published_at: "desc" },
+	}),
+]);
+
+if (Astro.cache?.enabled) {
+	Astro.cache.set(categoriesResult.cacheHint);
+	Astro.cache.set(tagsResult.cacheHint);
+	Astro.cache.set(recentResult.cacheHint);
+}
+
+const categories = categoriesResult.data.filter((term) => (term.count ?? 0) > 0);
+const tags = tagsResult.data.filter((term) => (term.count ?? 0) > 0);
+const recentPosts = recentResult.entries;
+
+const searchRouteMap = {
+	posts: localePath(lang, "/posts/:slug"),
+	pages: localePath(lang, "/pages/:slug"),
+};
+---
+
+<aside class="sidebar-widgets">
+	<section class="swidget">
+		<h2 class="swidget__title">{t("search.title")}</h2>
+		<LiveSearch
+			locale={lang}
+			placeholder={t("search.placeholder")}
+			collections={["posts", "pages"]}
+			class="swidget__search"
+			inputClass="swidget__search-input"
+			resultsClass="swidget__search-results"
+			resultClass="swidget__search-result"
+			routeMap={searchRouteMap}
+			searchPage={localePath(lang, "/search")}
+		/>
+	</section>
+
+	{
+		categories.length > 0 && (
+			<section class="swidget">
+				<h2 class="swidget__title">{t("category.label")}</h2>
+				<ul class="swidget__list">
+					{categories.map((term) => (
+						<li>
+							<a
+								href={localePath(lang, `/category/${term.slug}`)}
+								class="swidget__link"
+							>
+								{term.label}
+							</a>
+							<span class="swidget__count">{term.count}</span>
+						</li>
+					))}
+				</ul>
+			</section>
+		)
+	}
+
+	{
+		tags.length > 0 && (
+			<section class="swidget">
+				<h2 class="swidget__title">{t("tag.label")}</h2>
+				<ul class="swidget__cloud">
+					{tags.map((term) => (
+						<li>
+							<a href={localePath(lang, `/tag/${term.slug}`)} class="swidget__pill">
+								{term.label}
+							</a>
+						</li>
+					))}
+				</ul>
+			</section>
+		)
+	}
+
+	{
+		recentPosts.length > 0 && (
+			<section class="swidget">
+				<h2 class="swidget__title">{t("home.latest")}</h2>
+				<ul class="swidget__list swidget__list--posts">
+					{recentPosts.map((post) => (
+						<li>
+							<a
+								href={localePath(lang, `/posts/${post.data.slug ?? post.id}`)}
+								class="swidget__link"
+							>
+								{post.data.title ?? t("common.untitled")}
+							</a>
+							{post.data.publishedAt && (
+								<time>{formatDate(post.data.publishedAt, lang)}</time>
+							)}
+						</li>
+					))}
+				</ul>
+			</section>
+		)
+	}
+</aside>
+
+<style>
+	.sidebar-widgets {
+		display: flex;
+		flex-direction: column;
+		gap: var(--spacing-6);
+		font-size: var(--font-size-sm);
+	}
+
+	.swidget__title {
+		font-size: var(--font-size-xs);
+		font-weight: 500;
+		text-transform: uppercase;
+		letter-spacing: var(--tracking-wide);
+		color: var(--color-muted);
+		margin-bottom: var(--spacing-3);
+	}
+
+	.swidget__search {
+		position: relative;
+		width: 100%;
+		--emdash-search-border-focus: var(--color-brand);
+	}
+
+	:global(.swidget__search-input) {
+		width: 100%;
+		padding: var(--spacing-2) var(--spacing-3);
+		font-family: var(--font-body);
+		font-size: var(--font-size-sm);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius);
+		background: var(--color-bg);
+		color: var(--color-text);
+		transition:
+			border-color var(--transition-fast),
+			box-shadow var(--transition-fast);
+	}
+
+	:global(.swidget__search-input)::placeholder {
+		color: var(--color-muted);
+	}
+
+	:global(.swidget__search-input):focus,
+	:global(.swidget__search-input):focus-visible {
+		outline: none;
+		border-color: var(--color-brand);
+		box-shadow: 0 0 0 3px var(--color-brand-ring);
+	}
+
+	:global(.swidget__search-results) {
+		position: absolute;
+		top: 100%;
+		left: 0;
+		right: 0;
+		margin-top: var(--spacing-2);
+		background: var(--color-bg);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-lg);
+		box-shadow: var(--shadow-lg);
+		max-height: 400px;
+		overflow-y: auto;
+		z-index: 1000;
+	}
+
+	:global(.swidget__search-result) {
+		display: block;
+		padding: var(--spacing-3) var(--spacing-4);
+		text-decoration: none;
+		color: var(--color-text);
+		border-bottom: 1px solid var(--color-border-subtle);
+	}
+
+	:global(.swidget__search-result):last-child {
+		border-bottom: none;
+	}
+
+	:global(.swidget__search-result):hover,
+	:global(.swidget__search-result):focus,
+	:global(.swidget__search-result.focused) {
+		background: var(--color-surface);
+		outline: none;
+	}
+
+	.swidget__list {
+		list-style: none;
+		padding: 0;
+		margin: 0;
+	}
+
+	.swidget__list li {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: var(--spacing-2) 0;
+		border-bottom: 1px solid var(--color-border-subtle);
+	}
+
+	.swidget__list li:last-child {
+		border-bottom: none;
+	}
+
+	.swidget__list--posts li {
+		display: block;
+	}
+
+	.swidget__link {
+		color: var(--color-text-secondary);
+		text-decoration: none;
+		transition: color var(--transition-fast);
+	}
+
+	.swidget__link:hover {
+		color: var(--color-text);
+	}
+
+	.swidget__list--posts .swidget__link {
+		display: block;
+		line-height: var(--leading-snug);
+	}
+
+	.swidget__list--posts time {
+		display: block;
+		color: var(--color-muted);
+		font-size: var(--font-size-xs);
+		margin-block-start: var(--spacing-1);
+	}
+
+	.swidget__count {
+		font-size: var(--font-size-xs);
+		color: var(--color-muted);
+		background: var(--color-surface);
+		padding: var(--tag-padding-y) var(--spacing-2);
+		border-radius: var(--radius);
+	}
+
+	.swidget__cloud {
+		list-style: none;
+		padding: 0;
+		margin: 0;
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--spacing-2);
+	}
+
+	.swidget__pill {
+		display: inline-block;
+		padding: var(--tag-padding-y) var(--spacing-2);
+		font-size: var(--font-size-xs);
+		color: var(--color-text-secondary);
+		background: var(--color-surface);
+		border-radius: var(--radius);
+		text-decoration: none;
+		transition:
+			color var(--transition-fast),
+			background var(--transition-fast);
+	}
+
+	.swidget__pill:hover {
+		color: var(--color-text);
+		background: var(--color-border);
+	}
+</style>

@@ -3,6 +3,14 @@ export const prerender = false;
 
 import { search } from "emdash";
 import Base from "../layouts/Base.astro";
+import { localePath, pageLang, useTranslations } from "../i18n/ui";
+
+interface Props {
+	locale?: string;
+}
+
+const lang = pageLang(Astro.props, Astro);
+const t = useTranslations(lang);
 
 const query = Astro.url.searchParams.get("q")?.trim() || "";
 
@@ -11,39 +19,42 @@ const query = Astro.url.searchParams.get("q")?.trim() || "";
 // results, and handles tokenization/stemming. Templates that grep all
 // post bodies in JS quickly become unusable past a few hundred posts.
 const { items: results } = query
-	? await search(query, { collections: ["posts"], limit: 30 })
+	? await search(query, { collections: ["posts"], locale: lang, limit: 30 })
 	: { items: [] };
 ---
 
 <Base
-	title={query ? `Search: ${query}` : "Search"}
-	description="Search blog posts"
+	lang={lang}
+	title={query ? t("search.titleWithQuery", { query }) : t("search.title")}
+	description={t("search.description")}
 >
 	<section class="search-page">
-		<h1 class="search-title">Search</h1>
+		<h1 class="search-title">{t("search.title")}</h1>
 
-		<form method="get" action="/search" class="search-form">
+		<form method="get" action={localePath(lang, "/search")} class="search-form">
 			<label for="site-search-query" class="visually-hidden"
-				>Search blog posts</label
+				>{t("search.label")}</label
 			>
 			<input
 				id="site-search-query"
 				type="search"
 				name="q"
 				value={query}
-				placeholder="Search posts..."
+				placeholder={t("search.placeholder")}
 				class="search-input"
 				autofocus
 			/>
-			<button type="submit" class="search-button">Search</button>
+			<button type="submit" class="search-button">{t("search.button")}</button>
 		</form>
 
 		{
 			query && (
 				<p class="search-summary">
 					{results.length === 0
-						? `No results for "${query}"`
-						: `${results.length} result${results.length === 1 ? "" : "s"} for "${query}"`}
+						? t("search.noResults", { query })
+						: results.length === 1
+							? t("search.resultCountOne", { n: results.length, query })
+							: t("search.resultCount", { n: results.length, query })}
 				</p>
 			)
 		}
@@ -54,10 +65,15 @@ const { items: results } = query
 					{results.map((result) => (
 						<li class="search-result">
 							<a
-								href={`/posts/${result.slug ?? result.id}`}
+								href={localePath(
+									lang,
+									`/posts/${result.slug ?? result.id}`,
+								)}
 								class="result-link"
 							>
-								<h2 class="result-title">{result.title ?? "Untitled"}</h2>
+								<h2 class="result-title">
+									{result.title ?? t("common.untitled")}
+								</h2>
 								{result.snippet && (
 									<p class="result-snippet" set:html={result.snippet} />
 								)}
@@ -68,7 +84,7 @@ const { items: results } = query
 			)
 		}
 
-		{!query && <p class="search-hint">Enter a search term to find posts.</p>}
+		{!query && <p class="search-hint">{t("search.hint")}</p>}
 	</section>
 </Base>
 

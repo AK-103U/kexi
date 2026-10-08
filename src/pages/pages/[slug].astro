@@ -8,6 +8,14 @@ import {
 import { PortableText } from "emdash/ui";
 import Base from "../../layouts/Base.astro";
 import { resolveBlogSiteIdentity } from "../../utils/site-identity";
+import { siteConfig } from "../../i18n/config";
+import { pageLang } from "../../i18n/ui";
+
+interface Props {
+	locale?: string;
+}
+
+const lang = pageLang(Astro.props, Astro);
 
 const slug = decodeSlug(Astro.params.slug);
 
@@ -15,11 +23,23 @@ if (!slug) {
 	return Astro.redirect("/404");
 }
 
-const { entry: page, cacheHint } = await getEmDashEntry("pages", slug);
+// 同 posts/[slug]：默认语言缺翻译时手动回退到英文。
+const primary = await getEmDashEntry("pages", slug, { locale: lang });
+const secondary =
+	!primary.entry && lang === siteConfig.defaultLocale
+		? await getEmDashEntry("pages", slug, { locale: "en" })
+		: null;
+
+const page = primary.entry ?? secondary?.entry ?? null;
 
 if (!page) {
 	return Astro.redirect("/404");
 }
+
+const cacheHint =
+	page === primary.entry
+		? primary.cacheHint
+		: (secondary?.cacheHint ?? primary.cacheHint);
 
 if (Astro.cache?.enabled) Astro.cache.set(cacheHint);
 const { siteTitle } = resolveBlogSiteIdentity(await getSiteSettings());
@@ -31,6 +51,7 @@ const seo = getSeoMeta(page, {
 ---
 
 <Base
+	lang={lang}
 	title={seo.title}
 	pageTitle={seo.ogTitle}
 	description={seo.description}

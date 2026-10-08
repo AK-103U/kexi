@@ -1,0 +1,10 @@
+---
+// 非默认语言的文章详情薄壳。
+import PostPage from "../../posts/[slug].astro";
+import { isLang } from "../../../i18n/config";
+
+const { locale } = Astro.params;
+if (!isLang(locale)) return Astro.redirect("/404");
+---
+
+<PostPage locale={locale} />

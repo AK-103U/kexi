@@ -1,12 +1,17 @@
 ---
 import Base from "../layouts/Base.astro";
+import { getLang, localePath, useTranslations } from "../i18n/ui";
+
+// 404 页没有 [locale] 路由，语言从请求路径推断（/en/xxx → en）。
+const lang = getLang(Astro);
+const t = useTranslations(lang);
 ---
 
-<Base title="Page not found">
+<Base lang={lang} title={t("notFound.title")}>
 	<div class="not-found">
 		<h1>404</h1>
-		<p>The page you're looking for doesn't exist.</p>
-		<a href="/">Go back home</a>
+		<p>{t("notFound.description")}</p>
+		<a href={localePath(lang, "/")}>{t("notFound.backHome")}</a>
 	</div>
 </Base>
 

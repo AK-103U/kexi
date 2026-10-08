@@ -1,0 +1,10 @@
+---
+// 非默认语言的首页薄壳：校验 locale 后渲染主页面，并显式传入语言。
+import IndexPage from "../index.astro";
+import { isLang } from "../../i18n/config";
+
+const { locale } = Astro.params;
+if (!isLang(locale)) return Astro.redirect("/404");
+---
+
+<IndexPage locale={locale} />

@@ -1,0 +1,10 @@
+---
+// 非默认语言的标签归档薄壳。
+import TagPage from "../../tag/[slug].astro";
+import { isLang } from "../../../i18n/config";
+
+const { locale } = Astro.params;
+if (!isLang(locale)) return Astro.redirect("/404");
+---
+
+<TagPage locale={locale} />

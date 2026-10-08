@@ -8,9 +8,18 @@ import {
 import Base from "../../layouts/Base.astro";
 import PostCard from "../../components/PostCard.astro";
 import { getReadingTime } from "../../utils/reading-time";
+import { localePath, pageLang, useTranslations } from "../../i18n/ui";
+
+interface Props {
+	locale?: string;
+}
+
+const lang = pageLang(Astro.props, Astro);
+const t = useTranslations(lang);
 
 const slug = decodeSlug(Astro.params.slug);
 const termsResult = await getTaxonomyTermsWithCacheHint("category", {
+	locale: lang,
 	includeCounts: false,
 });
 const term = slug ? termsResult.data.find((item) => item.slug === slug) : null;
@@ -25,6 +34,7 @@ const {
 	cacheHint,
 	nextCursor,
 } = await getEmDashCollection("posts", {
+	locale: lang,
 	where: { category: term.slug },
 	orderBy: { published_at: "desc" },
 	limit: 20,
@@ -43,6 +53,7 @@ const tagsByEntry = await getTermsForEntries(
 	"posts",
 	posts.map((p) => p.data.id),
 	"tag",
+	{ locale: lang },
 );
 const filteredPosts = posts.map((post) => ({
 	post,
@@ -50,41 +61,52 @@ const filteredPosts = posts.map((post) => ({
 }));
 ---
 
-<Base title={`${term.label} posts`} description={`All posts in ${term.label}`}>
+<Base
+	lang={lang}
+	title={t("category.title", { name: term.label })}
+	description={t("category.description", { name: term.label })}
+>
 	<section class="archive-section">
 		<header class="archive-header">
-			<span class="archive-label">Category</span>
+			<span class="archive-label">{t("category.label")}</span>
 			<h1 class="archive-title">{term.label}</h1>
 		</header>
 
 		{
 			filteredPosts.length === 0 ? (
-				<p class="no-posts">No posts in this category yet.</p>
+				<p class="no-posts">{t("category.empty")}</p>
 			) : (
 				<div class="posts-grid">
 					{filteredPosts.map(({ post, tags }) => (
 						<PostCard
+							lang={lang}
 							title={post.data.title}
 							excerpt={post.data.excerpt}
 							featuredImage={post.data.featured_image}
-							href={`/posts/${post.id}`}
+							href={localePath(lang, `/posts/${post.data.slug}`)}
 							date={post.data.publishedAt ?? undefined}
 							readingTime={getReadingTime(post.data.content)}
-							tags={tags.map((t) => ({ slug: t.slug, label: t.label }))}
+							tags={tags.map((tag) => ({ slug: tag.slug, label: tag.label }))}
 							edit={post.edit}
 						/>
 					))}
 				</div>
 			)
 		}
-		<nav class="pagination" aria-label="Pagination">
-			{cursor && <a href={`/category/${term.slug}`}>First page</a>}
+		<nav class="pagination" aria-label={t("common.pagination")}>
+			{
+				cursor && (
+					<a href={localePath(lang, `/category/${term.slug}`)}>
+						{t("posts.firstPage")}
+					</a>
+				)
+			}
 			{
 				nextCursor && (
 					<a
-						href={`/category/${term.slug}?cursor=${encodeURIComponent(nextCursor)}`}
+						href={`${localePath(lang, `/category/${term.slug}`)}?cursor=${encodeURIComponent(nextCursor)}`}
 					>
-						Next page
+						{t("posts.nextPage")}
 					</a>
 				)
 			}

@@ -1,0 +1,65 @@
+---
+/**
+ * 语言切换器。
+ *
+ * 各语言共用 slug，所以切换语言 = 换 URL 前缀，不需要查翻译组。
+ * 查询串（如 /search?q=…）原样保留。
+ */
+import { siteConfig, type Lang } from "../i18n/config";
+import { localePath, stripLocale, useTranslations } from "../i18n/ui";
+
+interface Props {
+	lang: Lang;
+}
+
+const { lang } = Astro.props;
+const t = useTranslations(lang);
+
+const path = stripLocale(Astro.url.pathname);
+const search = Astro.url.search;
+---
+
+<nav class="lang-switcher" aria-label={t("header.language")}>
+	{
+		siteConfig.locales.map((l) => (
+			<a
+				href={`${localePath(l, path)}${search}`}
+				hreflang={l}
+				lang={l}
+				class:list={["lang-link", { "lang-link--active": l === lang }]}
+				aria-current={l === lang ? "true" : undefined}
+			>
+				{siteConfig.localeLabels[l]}
+			</a>
+		))
+	}
+</nav>
+
+<style>
+	.lang-switcher {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-1);
+		font-size: var(--font-size-sm);
+	}
+
+	.lang-link {
+		padding: 2px var(--spacing-2);
+		border-radius: var(--radius);
+		color: var(--color-text-secondary);
+		text-decoration: none;
+		transition:
+			color var(--transition-fast),
+			background var(--transition-fast);
+	}
+
+	.lang-link:hover {
+		color: var(--color-text);
+	}
+
+	.lang-link--active {
+		color: var(--color-text);
+		font-weight: 600;
+		background: var(--color-surface);
+	}
+</style>

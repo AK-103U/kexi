@@ -1,0 +1,10 @@
+---
+// 非默认语言的分类归档薄壳。
+import CategoryPage from "../../category/[slug].astro";
+import { isLang } from "../../../i18n/config";
+
+const { locale } = Astro.params;
+if (!isLang(locale)) return Astro.redirect("/404");
+---
+
+<CategoryPage locale={locale} />

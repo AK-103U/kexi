@@ -1,0 +1,10 @@
+---
+// 非默认语言的静态页面薄壳。
+import PagePage from "../../pages/[slug].astro";
+import { isLang } from "../../../i18n/config";
+
+const { locale } = Astro.params;
+if (!isLang(locale)) return Astro.redirect("/404");
+---
+
+<PagePage locale={locale} />

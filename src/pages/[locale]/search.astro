@@ -1,0 +1,10 @@
+---
+// 非默认语言的搜索页薄壳。
+import SearchPage from "../search.astro";
+import { isLang } from "../../i18n/config";
+
+const { locale } = Astro.params;
+if (!isLang(locale)) return Astro.redirect("/404");
+---
+
+<SearchPage locale={locale} />

@@ -9,6 +9,15 @@ import Base from "../layouts/Base.astro";
 import PostCard from "../components/PostCard.astro";
 import { getReadingTime } from "../utils/reading-time";
 import { resolveBlogSiteIdentity } from "../utils/site-identity";
+import { formatDate, localePath, pageLang, useTranslations } from "../i18n/ui";
+
+interface Props {
+	/** 由 [locale] 薄壳传入；直接访问（默认语言）时缺省。 */
+	locale?: string;
+}
+
+const lang = pageLang(Astro.props, Astro);
+const t = useTranslations(lang);
 
 // Limit to what we render (1 featured + 6 grid). The DB does the slicing
 // instead of fetching every post and discarding the tail in JS.
@@ -16,6 +25,7 @@ const POSTS_PER_PAGE = 7;
 
 const [{ entries: posts, cacheHint }, settings] = await Promise.all([
 	getEmDashCollection("posts", {
+		locale: lang,
 		orderBy: { published_at: "desc" },
 		limit: POSTS_PER_PAGE + 1, // +1 to detect "view all" need
 	}),
@@ -45,7 +55,9 @@ const tagEntryIds = [
 	...(featuredPost ? [featuredPost.data.id] : []),
 	...gridPosts.map((p) => p.data.id),
 ];
-const tagsByEntry = await getTermsForEntries("posts", tagEntryIds, "tag");
+const tagsByEntry = await getTermsForEntries("posts", tagEntryIds, "tag", {
+	locale: lang,
+});
 
 const featuredTags = featuredPost
 	? (tagsByEntry.get(featuredPost.data.id) ?? []).map((t) => ({
@@ -63,26 +75,16 @@ const gridPostsWithTags = gridPosts.map((post) => ({
 	})),
 	bylines: post.data.bylines ?? [],
 }));
-
-// Format date helper
-function formatDate(date: Date | null | undefined) {
-	if (!date) return null;
-	return date.toLocaleDateString("en-US", {
-		year: "numeric",
-		month: "long",
-		day: "numeric",
-	});
-}
 ---
 
-<Base title={siteTitle} description={siteTagline}>
+<Base lang={lang} title={siteTitle} description={siteTagline}>
 	{
 		posts.length === 0 ? (
 			<section class="empty-state">
-				<h1>No posts yet</h1>
-				<p>Create your first post in the admin panel.</p>
+				<h1>{t("home.noPosts")}</h1>
+				<p>{t("home.noPostsHint")}</p>
 				<a href="/_emdash/admin/content/posts/new" class="btn">
-					Create a post
+					{t("home.createPost")}
 				</a>
 			</section>
 		) : (
@@ -91,7 +93,10 @@ function formatDate(date: Date | null | undefined) {
 				{featuredPost && (
 					<section class="featured-section">
 						<div class="featured-grid">
-							<a href={`/posts/${featuredPost.id}`} class="featured-image-link">
+							<a
+								href={localePath(lang, `/posts/${featuredPost.data.slug}`)}
+								class="featured-image-link"
+							>
 								<div class="featured-image" {...featuredPost.edit.featured_image}>
 									<Image image={featuredPost.data.featured_image} />
 								</div>
@@ -127,16 +132,20 @@ function formatDate(date: Date | null | undefined) {
 											<span class="meta-dot" />
 										</>
 									)}
-									{formatDate(featuredPost.data.publishedAt) && (
-										<time>{formatDate(featuredPost.data.publishedAt)}</time>
+									{featuredPost.data.publishedAt && (
+										<time>
+											{formatDate(featuredPost.data.publishedAt, lang, "long")}
+										</time>
 									)}
 									<span class="meta-dot" />
 									<span>
-										{getReadingTime(featuredPost.data.content)} min read
+										{t("post.minRead", {
+											n: getReadingTime(featuredPost.data.content),
+										})}
 									</span>
 								</div>
 								<a
-									href={`/posts/${featuredPost.id}`}
+									href={localePath(lang, `/posts/${featuredPost.data.slug}`)}
 									class="featured-title-link"
 								>
 									<h1 class="featured-title" {...featuredPost.edit.title}>{featuredPost.data.title}</h1>
@@ -147,7 +156,10 @@ function formatDate(date: Date | null | undefined) {
 								{featuredTags.length > 0 && (
 									<div class="featured-tags">
 										{featuredTags.map((tag) => (
-											<a href={`/tag/${tag.slug}`} class="featured-tag">
+											<a
+												href={localePath(lang, `/tag/${tag.slug}`)}
+												class="featured-tag"
+											>
 												{tag.label}
 											</a>
 										))}
@@ -162,20 +174,21 @@ function formatDate(date: Date | null | undefined) {
 				{gridPostsWithTags.length > 0 && (
 					<section class="posts-section">
 						<header class="section-header">
-							<h2 class="section-title">Latest</h2>
+							<h2 class="section-title">{t("home.latest")}</h2>
 							{hasMorePosts && (
-								<a href="/posts" class="section-link">
-									View all
+								<a href={localePath(lang, "/posts")} class="section-link">
+									{t("home.viewAll")}
 								</a>
 							)}
 						</header>
 						<div class="posts-grid">
 							{gridPostsWithTags.map(({ post, tags, bylines }) => (
 								<PostCard
-									title={post.data.title ?? "Untitled"}
+									lang={lang}
+									title={post.data.title ?? t("common.untitled")}
 									excerpt={post.data.excerpt}
 									featuredImage={post.data.featured_image}
-									href={`/posts/${post.id}`}
+									href={localePath(lang, `/posts/${post.data.slug}`)}
 									date={post.data.publishedAt ?? undefined}
 									readingTime={getReadingTime(post.data.content)}
 									tags={tags}

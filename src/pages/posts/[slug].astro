@@ -7,12 +7,22 @@ import {
 	decodeSlug,
 	getSiteSettings,
 } from "emdash";
-import { Image, PortableText, WidgetArea } from "emdash/ui";
+import { Image, PortableText } from "emdash/ui";
 import { Comments, CommentForm } from "emdash/ui/comments";
 import Base from "../../layouts/Base.astro";
 import PostCard from "../../components/PostCard.astro";
+import Sidebar from "../../components/Sidebar.astro";
 import { getReadingTime } from "../../utils/reading-time";
 import { resolveBlogSiteIdentity } from "../../utils/site-identity";
+import { siteConfig } from "../../i18n/config";
+import { formatDate, localePath, pageLang, useTranslations } from "../../i18n/ui";
+
+interface Props {
+	locale?: string;
+}
+
+const lang = pageLang(Astro.props, Astro);
+const t = useTranslations(lang);
 
 const slug = decodeSlug(Astro.params.slug);
 
@@ -20,11 +30,27 @@ if (!slug) {
 	return Astro.redirect("/404");
 }
 
-const { entry: post, cacheHint } = await getEmDashEntry("posts", slug);
+// 详情页回退：EmDash 的 fallback 配置不允许把默认语言当 key，
+// 所以 en → zh 由 getEmDashEntry 自动完成；zh → en 需要在这里手动补一次查询。
+const primary = await getEmDashEntry("posts", slug, { locale: lang });
+const needsManualFallback = !primary.entry && lang === siteConfig.defaultLocale;
+const secondary = needsManualFallback
+	? await getEmDashEntry("posts", slug, { locale: "en" })
+	: null;
+
+const post = primary.entry ?? secondary?.entry ?? null;
 
 if (!post) {
 	return Astro.redirect("/404");
 }
+
+const cacheHint =
+	post === primary.entry
+		? primary.cacheHint
+		: (secondary?.cacheHint ?? primary.cacheHint);
+/** 非空表示当前显示的是另一语言的内容，用于渲染提示条。 */
+const fallbackLocale =
+	post === primary.entry ? primary.fallbackLocale : "en";
 
 if (Astro.cache?.enabled) Astro.cache.set(cacheHint);
 
@@ -74,8 +100,9 @@ const tags = post.data.terms?.tag ?? [];
 const { entries: recentPosts, cacheHint: recentPostsCacheHint } = await getEmDashCollection(
 	"posts",
 	{
-	orderBy: { published_at: "desc" },
-	limit: 4,
+		locale: lang,
+		orderBy: { published_at: "desc" },
+		limit: 4,
 	},
 );
 if (Astro.cache?.enabled) Astro.cache.set(recentPostsCacheHint);
@@ -87,6 +114,7 @@ const otherTagsByEntry = await getTermsForEntries(
 	"posts",
 	otherPosts.map((p) => p.data.id),
 	"tag",
+	{ locale: lang },
 );
 const otherPostsWithTags = otherPosts.map((p) => ({
 	post: p,
@@ -94,15 +122,35 @@ const otherPostsWithTags = otherPosts.map((p) => ({
 	bylines: p.data.bylines ?? [],
 }));
 
-const publishDate =
-	post.data.publishedAt?.toLocaleDateString("en-US", {
-		year: "numeric",
-		month: "long",
-		day: "numeric",
-	}) ?? null;
+const publishDate = post.data.publishedAt
+	? formatDate(post.data.publishedAt, lang, "long")
+	: null;
+
+const commentsLabels = {
+	heading: (count: number) =>
+		count === 0
+			? t("comments.headingNone")
+			: count === 1
+				? t("comments.headingOne", { n: count })
+				: t("comments.heading", { n: count }),
+	member: t("comments.member"),
+	like: t("comments.like"),
+};
+
+const commentFormLabels = {
+	name: t("comments.name"),
+	email: t("comments.email"),
+	comment: t("comments.comment"),
+	submit: t("comments.submit"),
+	submitting: t("comments.submitting"),
+	published: t("comments.published"),
+	pending: t("comments.pending"),
+	networkError: t("comments.networkError"),
+};
 ---
 
 <Base
+	lang={lang}
 	title={seo.title}
 	pageTitle={seo.ogTitle}
 	description={seo.description}
@@ -133,7 +181,7 @@ const publishDate =
 						bylines.length > 0 && (
 							<div class="meta-block byline-block">
 								<span class="meta-label">
-									{bylines.length === 1 ? "Author" : "Authors"}
+									{bylines.length === 1 ? t("post.author") : t("post.authors")}
 								</span>
 								<div class="bylines">
 									{bylines.map((credit) => (
@@ -162,23 +210,26 @@ const publishDate =
 					{
 						publishDate && (
 							<div class="meta-block">
-								<span class="meta-label">Published</span>
+								<span class="meta-label">{t("post.published")}</span>
 								<time class="meta-value">{publishDate}</time>
 							</div>
 						)
 					}
 					<div class="meta-block">
-						<span class="meta-label">Reading time</span>
-						<span class="meta-value">{readingTime} min</span>
+						<span class="meta-label">{t("post.readingTime")}</span>
+						<span class="meta-value">{t("post.min", { n: readingTime })}</span>
 					</div>
 					{
 						tags.length > 0 && (
 							<div class="meta-block">
-								<span class="meta-label">Tags</span>
+								<span class="meta-label">{t("post.tags")}</span>
 								<div class="meta-tags">
-									{tags.map((t) => (
-										<a href={`/tag/${t.slug}`} class="meta-tag">
-											{t.label}
+									{tags.map((tag) => (
+										<a
+											href={localePath(lang, `/tag/${tag.slug}`)}
+											class="meta-tag"
+										>
+											{tag.label}
 										</a>
 									))}
 								</div>
@@ -215,9 +266,14 @@ const publishDate =
 								</>
 							)
 						}
-						<span>{readingTime} min read</span>
+						<span>{t("post.minRead", { n: readingTime })}</span>
 					</div>
 					<h1 class="article-title" {...post.edit.title}>{post.data.title}</h1>
+					{
+						fallbackLocale && (
+							<p class="article-fallback-notice">{t("post.translatedNotice")}</p>
+						)
+					}
 					{
 						post.data.excerpt && (
 							<p class="article-excerpt" {...post.edit.excerpt}>
@@ -232,23 +288,31 @@ const publishDate =
 				</div>
 
 				<div class="article-comments">
-					<Comments collection="posts" contentId={post.data.id} threaded />
-					<CommentForm collection="posts" contentId={post.data.id} />
+					<Comments
+						collection="posts"
+						contentId={post.data.id}
+						threaded
+						locale={lang}
+						labels={commentsLabels}
+					/>
+					<CommentForm
+						collection="posts"
+						contentId={post.data.id}
+						labels={commentFormLabels}
+					/>
 				</div>
 			</div>
 
 			{/* Right gutter: TOC + Sidebar widgets */}
 			<aside class="article-sidebar">
 				<div class="sidebar-sticky">
-					<nav class="toc" aria-label="Table of contents">
-						<h2 class="toc-title">On this page</h2>
+					<nav class="toc" aria-label={t("post.toc")}>
+						<h2 class="toc-title">{t("post.onThisPage")}</h2>
 						<div class="toc-content" id="toc-content">
 							<!-- Populated by JS -->
 						</div>
 					</nav>
-					<div class="sidebar-widgets">
-						<WidgetArea name="sidebar" />
-					</div>
+					<Sidebar lang={lang} />
 				</div>
 			</aside>
 		</div>
@@ -258,18 +322,22 @@ const publishDate =
 		otherPostsWithTags.length > 0 && (
 			<section class="more-posts">
 				<div class="more-inner">
-					<h2 class="more-title">Continue reading</h2>
+					<h2 class="more-title">{t("post.continueReading")}</h2>
 					<div class="more-grid">
 						{otherPostsWithTags.map(
 							({ post: p, tags: postTags, bylines: postBylines }) => (
 								<PostCard
+									lang={lang}
 									title={p.data.title}
 									excerpt={p.data.excerpt}
 									featuredImage={p.data.featured_image}
-									href={`/posts/${p.id}`}
+									href={localePath(lang, `/posts/${p.data.slug}`)}
 									date={p.data.publishedAt ?? undefined}
 									readingTime={getReadingTime(p.data.content)}
-									tags={postTags.map((t) => ({ slug: t.slug, label: t.label }))}
+									tags={postTags.map((tag) => ({
+										slug: tag.slug,
+										label: tag.label,
+									}))}
 									bylines={postBylines}
 									edit={p.edit}
 								/>
@@ -507,6 +575,17 @@ const publishDate =
 		font-size: var(--font-size-xl);
 		line-height: var(--leading-relaxed);
 		color: var(--color-text-secondary);
+	}
+
+	/* 当前显示的是回退语言的原文时，给出提示 */
+	.article-fallback-notice {
+		margin-top: var(--spacing-4);
+		padding: var(--spacing-3) var(--spacing-4);
+		border-left: 3px solid var(--color-brand);
+		background: var(--color-bg-subtle);
+		border-radius: 0 var(--radius) var(--radius) 0;
+		font-size: var(--font-size-sm);
+		color: var(--color-muted);
 	}
 
 	/* Article content typography */
