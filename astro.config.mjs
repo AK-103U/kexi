@@ -3,6 +3,7 @@ import react from "@astrojs/react";
 import { defineConfig, fontProviders } from "astro/config";
 import emdash, { local } from "emdash/astro";
 import { sqlite } from "emdash/db";
+import { mathPlugin } from "emdash-plugin-math";
 
 export default defineConfig({
 	output: "server",
@@ -21,6 +22,7 @@ export default defineConfig({
 				directory: "./uploads",
 				baseUrl: "/_emdash/api/media/file",
 			}),
+			plugins: [mathPlugin()],
 		}),
 	],
 	fonts: [
