@@ -53,3 +53,16 @@
 .nav-admin {
 	margin-inline-start: var(--spacing-5);
 }
+
+/*
+ * math 插件的主题接口。插件把颜色、内边距、圆角都暴露成
+ * --emdash-math-* 自定义属性，主题在这里覆盖即可，不用碰插件源码，
+ * 也不用 !important。
+ *
+ * 只覆盖 accent 一种色调，其余四种（note/warn/ink/none）保持插件默认 ——
+ * 这正好验证了「按色调定制」这个粒度是成立的。
+ */
+.emdash-math[data-tone="accent"] {
+	--emdash-math-bg: light-dark(#fdf0ea, #2a1a12);
+	--emdash-math-border: light-dark(#f3c4ae, #6b3a22);
+}
