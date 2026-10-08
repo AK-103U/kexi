@@ -1,0 +1,15 @@
+node_modules
+dist
+.astro
+.emdash/migrations.json
+uploads
+data.db
+data.db-*
+
+# 截图产物，用 `node scripts/shots.mjs` 重新生成
+shots/
+
+# Environment
+.env
+.env.*
+!.env.example
