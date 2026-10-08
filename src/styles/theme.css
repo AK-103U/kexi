@@ -40,9 +40,13 @@
 	--radius: 8px;
 	--radius-lg: 14px;
 
-	/* 标题减重：Inter 在 600 时已经很重，700 显得生硬 */
+	/*
+	 * 标题字重。只加载了 400/500/600/700 四个离散字重（见 astro.config.mjs
+	 * 的 fonts.weights），所以这里只能用这四个值之一 —— 写 650 不会报错，
+	 * 但浏览器会就近取整，等于白写。
+	 */
 	--font-weight-heading: 600;
-	--font-weight-display: 650;
+	--font-weight-display: 600;
 }
 
 /* Keep the signed-in Admin link separated from the primary navigation. */
