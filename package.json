@@ -19,7 +19,7 @@
     "@astrojs/react": "^6.0.5",
     "astro": "^7.3.2",
     "emdash": "^1.0.1",
-    "emdash-plugin-math": "file:..\\emdash-plugin-math",
+    "@ak-103u/emdash-plugin-math": "file:..\\emdash-plugin-math",
     "react": "19.2.4",
     "react-dom": "19.2.4"
   },

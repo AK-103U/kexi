@@ -1,0 +1,95 @@
+{
+	"common": {
+		"untitled": "Untitled",
+		"pagination": "Pagination"
+	},
+	"header": {
+		"searchPlaceholder": "Search…",
+		"admin": "Admin",
+		"language": "Language",
+		"lightMode": "Switch to light mode",
+		"darkMode": "Switch to dark mode",
+		"systemMode": "System theme"
+	},
+	"footer": {
+		"navigate": "Navigate",
+		"connect": "Connect",
+		"rss": "RSS Feed",
+		"aboutTitle": "About",
+		"about": "A blog about software, design, and the occasional stray thought.",
+		"poweredBy": "Powered by <a href=\"https://emdashcms.com\">EmDash</a>"
+	},
+	"home": {
+		"latest": "Latest",
+		"viewAll": "View all",
+		"noPosts": "No posts yet",
+		"noPostsHint": "Create your first post in the admin panel.",
+		"createPost": "Create a post"
+	},
+	"posts": {
+		"title": "All Posts",
+		"description": "Browse all blog posts",
+		"count": "{n} articles",
+		"countOne": "{n} article",
+		"empty": "No posts yet.",
+		"firstPage": "First page",
+		"nextPage": "Next page"
+	},
+	"post": {
+		"author": "Author",
+		"authors": "Authors",
+		"published": "Published",
+		"readingTime": "Reading time",
+		"min": "{n} min",
+		"minRead": "{n} min read",
+		"tags": "Tags",
+		"toc": "Table of contents",
+		"onThisPage": "On this page",
+		"continueReading": "Continue reading",
+		"translatedNotice": "This article is not yet available in English. Showing the Chinese original."
+	},
+	"category": {
+		"label": "Category",
+		"title": "{name} posts",
+		"description": "All posts in {name}",
+		"empty": "No posts in this category yet."
+	},
+	"tag": {
+		"label": "Tag",
+		"title": "Posts tagged \"{name}\"",
+		"description": "All posts tagged with {name}",
+		"empty": "No posts with this tag yet."
+	},
+	"search": {
+		"title": "Search",
+		"titleWithQuery": "Search: {query}",
+		"description": "Search blog posts",
+		"label": "Search blog posts",
+		"placeholder": "Search posts…",
+		"button": "Search",
+		"noResults": "No results for \"{query}\"",
+		"resultCount": "{n} results for \"{query}\"",
+		"resultCountOne": "{n} result for \"{query}\"",
+		"hint": "Enter a search term to find posts."
+	},
+	"comments": {
+		"headingNone": "No comments yet",
+		"headingOne": "{n} Comment",
+		"heading": "{n} Comments",
+		"member": "Site member",
+		"like": "Like",
+		"name": "Name",
+		"email": "Email",
+		"comment": "Comment",
+		"submit": "Post Comment",
+		"submitting": "Submitting…",
+		"published": "Comment published",
+		"pending": "Comment submitted for review",
+		"networkError": "Network error. Please try again."
+	},
+	"notFound": {
+		"title": "Page not found",
+		"description": "The page you're looking for doesn't exist.",
+		"backHome": "Go back home"
+	}
+}
