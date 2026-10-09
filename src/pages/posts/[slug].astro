@@ -8,7 +8,6 @@ import {
 import { Image, PortableText } from "emdash/ui";
 import { Comments, CommentForm } from "emdash/ui/comments";
 import Base from "../../layouts/Base.astro";
-import Sidebar from "../../components/Sidebar.astro";
 import { getReadingTime } from "../../utils/reading-time";
 import { resolveBlogSiteIdentity } from "../../utils/site-identity";
 import { siteConfig } from "../../i18n/config";
@@ -143,103 +142,102 @@ const commentFormLabels = {
 			)
 		}
 
-		{/* Three-column layout */}
+		{/* Two-column layout */}
 		<div class="article-grid">
-			{/* Left gutter: Meta information */}
-			<aside class="article-meta-col">
-				<div class="meta-sticky">
-					{
-						bylines.length > 0 && (
-							<div class="meta-block byline-block">
-								<span class="meta-label">
-									{bylines.length === 1 ? t("post.author") : t("post.authors")}
-								</span>
-								<div class="bylines">
-									{bylines.map((credit) => (
-										<div class="byline">
-											{credit.byline.avatarMediaId && (
-												<img
-													src={`/_emdash/api/media/file/${credit.byline.avatarMediaId}`}
-													alt={credit.byline.displayName}
-													class="byline-avatar"
-												/>
-											)}
-											<div class="byline-info">
-												<span class="byline-name">
-													{credit.byline.displayName}
-												</span>
-												{credit.roleLabel && (
-													<span class="byline-role">{credit.roleLabel}</span>
-												)}
-											</div>
-										</div>
-									))}
-								</div>
-							</div>
-						)
-					}
-					{
-						publishDate && (
-							<div class="meta-block">
-								<span class="meta-label">{t("post.published")}</span>
-								<time class="meta-value">{publishDate}</time>
-							</div>
-						)
-					}
-					<div class="meta-block">
-						<span class="meta-label">{t("post.readingTime")}</span>
-						<span class="meta-value">{t("post.min", { n: readingTime })}</span>
-					</div>
-					{
-						tags.length > 0 && (
-							<div class="meta-block">
-								<span class="meta-label">{t("post.tags")}</span>
-								<div class="meta-tags">
-									{tags.map((tag) => (
-										<a
-											href={localePath(lang, `/tag/${tag.slug}`)}
-											class="meta-tag"
-										>
-											{tag.label}
-										</a>
-									))}
-								</div>
-							</div>
-						)
-					}
-				</div>
-			</aside>
-
 			{/* Main content */}
 			<div class="article-main">
 				<header class="article-header">
-					<div class="article-meta">
+					<h1 class="article-title" {...post.edit.title}>{post.data.title}</h1>
+
+					{/* 标题下方一行 meta：作者、日期、时长、标签 */}
+					<div class="meta-sticky">
 						{
 							bylines.length > 0 && (
-								<>
-									<span class="article-meta-byline">
-										{bylines.map((credit, i) => (
-											<>
-												{i > 0 && ", "}
-												{credit.byline.displayName}
-											</>
+								<div class="meta-block byline-block">
+									<div class="bylines">
+										{bylines.map((credit) => (
+											<div class="byline">
+												{credit.byline.avatarMediaId && (
+													<img
+														src={`/_emdash/api/media/file/${credit.byline.avatarMediaId}`}
+														alt={credit.byline.displayName}
+														class="byline-avatar"
+													/>
+												)}
+												<div class="byline-info">
+													<span class="byline-name">
+														{credit.byline.displayName}
+													</span>
+													{credit.roleLabel && (
+														<span class="byline-role">{credit.roleLabel}</span>
+													)}
+												</div>
+											</div>
 										))}
-									</span>
-									<span class="meta-dot" />
-								</>
+									</div>
+								</div>
 							)
 						}
 						{
 							publishDate && (
-								<>
-									<time>{publishDate}</time>
-									<span class="meta-dot" />
-								</>
+								<div class="meta-block">
+									{/* Tabler Icons `calendar-time`（MIT），内联以免引依赖 */}
+									<svg
+										class="meta-icon"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										aria-hidden="true"
+									>
+										<path d="M11.795 21h-6.795a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v4"
+										></path>
+										<path d="M14 18a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"></path>
+										<path d="M15 3v4"></path>
+										<path d="M7 3v4"></path>
+										<path d="M3 11h16"></path>
+										<path d="M18 16.496v1.504l1 1"></path>
+									</svg>
+									<time class="meta-value">{publishDate}</time>
+								</div>
 							)
 						}
-						<span>{t("post.minRead", { n: readingTime })}</span>
+						<div class="meta-block">
+							{/* Tabler Icons `clock`（MIT） */}
+							<svg
+								class="meta-icon"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								aria-hidden="true"
+							>
+								<path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0"></path>
+								<path d="M12 7v5l3 3"></path>
+							</svg>
+							<span class="meta-value">{t("post.min", { n: readingTime })}</span>
+						</div>
+						{
+							tags.length > 0 && (
+								<div class="meta-block">
+									<div class="meta-tags">
+										{tags.map((tag) => (
+											<a
+												href={localePath(lang, `/tag/${tag.slug}`)}
+												class="meta-tag"
+											>
+												{tag.label}
+											</a>
+										))}
+									</div>
+								</div>
+							)
+						}
 					</div>
-					<h1 class="article-title" {...post.edit.title}>{post.data.title}</h1>
 					{
 						fallbackLocale && (
 							<p class="article-fallback-notice">{t("post.translatedNotice")}</p>
@@ -274,7 +272,7 @@ const commentFormLabels = {
 				</div>
 			</div>
 
-			{/* Right gutter: TOC + Sidebar widgets */}
+			{/* Right gutter: TOC */}
 			<aside class="article-sidebar">
 				<div class="sidebar-sticky">
 					<nav class="toc" aria-label={t("post.toc")}>
@@ -283,7 +281,6 @@ const commentFormLabels = {
 							<!-- Populated by JS -->
 						</div>
 					</nav>
-					<Sidebar lang={lang} />
 				</div>
 			</aside>
 		</div>
@@ -376,44 +373,44 @@ const commentFormLabels = {
 		object-fit: cover;
 	}
 
-	/* Three-column grid */
+	/* Two-column grid：正文 + 右侧 TOC */
 	.article-grid {
 		display: grid;
-		grid-template-columns:
-			var(--meta-col-width) minmax(0, var(--content-width))
-			var(--gutter-width);
+		grid-template-columns: minmax(0, var(--content-width)) var(--gutter-width);
 		gap: var(--spacing-10);
 		justify-content: center;
 		padding: 0 var(--spacing-6);
 		margin: var(--spacing-16) 0;
 	}
 
-	/* Left column: Meta */
-	.article-meta-col {
-		display: block;
-	}
-
+	/*
+	 * 标题下方的一行 meta。名字沿用原来的，但已经不在侧栏了，
+	 * 所以没有 sticky，改成横向排列。
+	 */
 	.meta-sticky {
-		position: sticky;
-		top: calc(var(--nav-height) + var(--spacing-8));
-	}
-
-	.meta-block {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		column-gap: var(--spacing-4);
+		row-gap: var(--spacing-2);
 		margin-bottom: var(--spacing-6);
 	}
 
-	.meta-label {
-		display: block;
-		font-size: var(--font-size-xs);
-		font-weight: 500;
-		text-transform: uppercase;
-		letter-spacing: var(--tracking-wide);
+	.meta-block {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-2);
+		min-width: 0;
+	}
+
+	.meta-icon {
+		width: 15px;
+		height: 15px;
+		flex-shrink: 0;
 		color: var(--color-muted);
-		margin-bottom: var(--spacing-1);
 	}
 
 	.meta-value {
-		display: block;
 		font-size: var(--font-size-sm);
 		color: var(--color-text-secondary);
 	}
@@ -442,11 +439,12 @@ const commentFormLabels = {
 		background: var(--color-border);
 	}
 
-	/* Byline styles */
+	/* Byline styles —— meta 行里是横排，不再是从前左栏的竖排 */
 	.bylines {
 		display: flex;
-		flex-direction: column;
-		gap: var(--spacing-1);
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--spacing-3);
 	}
 
 	.byline {
@@ -456,21 +454,22 @@ const commentFormLabels = {
 	}
 
 	.byline-avatar {
-		width: var(--avatar-size-lg);
-		height: var(--avatar-size-lg);
+		width: var(--avatar-size-sm);
+		height: var(--avatar-size-sm);
 		border-radius: 50%;
 		object-fit: cover;
 	}
 
 	.byline-info {
 		display: flex;
-		flex-direction: column;
+		align-items: baseline;
+		gap: var(--spacing-1);
 	}
 
 	.byline-name {
 		font-size: var(--font-size-sm);
 		font-weight: 500;
-		color: var(--color-text);
+		color: var(--color-text-secondary);
 	}
 
 	.byline-role {
@@ -485,22 +484,6 @@ const commentFormLabels = {
 
 	.article-header {
 		margin-bottom: var(--spacing-10);
-	}
-
-	.article-header .article-meta {
-		display: none;
-		align-items: center;
-		flex-wrap: wrap;
-		column-gap: var(--spacing-3);
-		row-gap: var(--spacing-1);
-		font-size: var(--font-size-sm);
-		color: var(--color-muted);
-		margin-bottom: var(--spacing-4);
-	}
-
-	.article-meta-byline {
-		font-weight: 500;
-		color: var(--color-text-secondary);
 	}
 
 	.article-title {
@@ -619,7 +602,7 @@ const commentFormLabels = {
 		text-decoration-thickness: 2px;
 	}
 
-	/* Right column: TOC + Sidebar */
+	/* Right column: TOC */
 	.article-sidebar {
 		display: block;
 	}
@@ -627,12 +610,6 @@ const commentFormLabels = {
 	.sidebar-sticky {
 		position: sticky;
 		top: calc(var(--nav-height) + var(--spacing-8));
-	}
-
-	.toc {
-		margin-bottom: var(--spacing-8);
-		padding-bottom: var(--spacing-6);
-		border-bottom: 1px solid var(--color-border-subtle);
 	}
 
 	.toc-title {
@@ -671,213 +648,6 @@ const commentFormLabels = {
 	.toc-content :global(.toc-link:hover),
 	.toc-content :global(.toc-link.active) {
 		color: var(--color-text);
-	}
-
-	/* Sidebar widgets */
-	.sidebar-widgets :global(.widget-area) {
-		display: flex;
-		flex-direction: column;
-		gap: var(--spacing-6);
-	}
-
-	.sidebar-widgets :global(.widget) {
-		font-size: var(--font-size-sm);
-	}
-
-	.sidebar-widgets :global(.widget__title) {
-		font-size: var(--font-size-xs);
-		font-weight: 500;
-		text-transform: uppercase;
-		letter-spacing: var(--tracking-wide);
-		color: var(--color-muted);
-		margin-bottom: var(--spacing-3);
-	}
-
-	.sidebar-widgets :global(.widget__content) {
-		color: var(--color-text-secondary);
-		line-height: var(--leading-relaxed);
-	}
-
-	/* Sidebar search widget */
-	.sidebar-widgets :global(.widget-search) {
-		display: flex;
-		flex-direction: column;
-		gap: var(--spacing-2);
-	}
-
-	.sidebar-widgets :global(.widget-search__input) {
-		width: 100%;
-		padding: var(--spacing-2) var(--spacing-3);
-		font-family: var(--font-body);
-		font-size: var(--font-size-sm);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius);
-		background: var(--color-bg);
-		color: var(--color-text);
-		transition:
-			border-color var(--transition-fast),
-			box-shadow var(--transition-fast);
-	}
-
-	.sidebar-widgets :global(.widget-search__input)::placeholder {
-		color: var(--color-muted);
-	}
-
-	.sidebar-widgets :global(.widget-search__input):focus,
-	.sidebar-widgets :global(.widget-search__input):focus-visible {
-		outline: none;
-		border-color: var(--color-brand);
-		box-shadow: 0 0 0 3px var(--color-brand-ring);
-	}
-
-	.sidebar-widgets :global(.widget-search__button) {
-		display: none;
-	}
-
-	/* Sidebar categories widget */
-	.sidebar-widgets :global(.widget-categories) {
-		list-style: none;
-		padding: 0;
-		margin: 0;
-	}
-
-	.sidebar-widgets :global(.widget-categories li) {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		padding: var(--spacing-2) 0;
-		border-bottom: 1px solid var(--color-border-subtle);
-	}
-
-	.sidebar-widgets :global(.widget-categories li:last-child) {
-		border-bottom: none;
-	}
-
-	.sidebar-widgets :global(.widget-categories__link) {
-		color: var(--color-text-secondary);
-		text-decoration: none;
-		transition: color var(--transition-fast);
-	}
-
-	.sidebar-widgets :global(.widget-categories__link:hover) {
-		color: var(--color-text);
-	}
-
-	.sidebar-widgets :global(.widget-categories__count) {
-		font-size: var(--font-size-xs);
-		color: var(--color-muted);
-		background: var(--color-surface);
-		padding: var(--tag-padding-y) var(--spacing-2);
-		border-radius: var(--radius);
-	}
-
-	/* Sidebar tags widget - pill style */
-	.sidebar-widgets :global(.widget-tags__cloud) {
-		list-style: none;
-		padding: 0;
-		margin: 0;
-		display: flex;
-		flex-wrap: wrap;
-		gap: var(--spacing-2);
-	}
-
-	.sidebar-widgets :global(.widget-tags__cloud li) {
-		margin: 0;
-	}
-
-	.sidebar-widgets :global(.widget-tags__link) {
-		display: inline-block;
-		padding: var(--tag-padding-y) var(--spacing-2);
-		font-size: var(--font-size-xs);
-		color: var(--color-text-secondary);
-		background: var(--color-surface);
-		border-radius: var(--radius);
-		text-decoration: none;
-		transition:
-			color var(--transition-fast),
-			background var(--transition-fast);
-	}
-
-	.sidebar-widgets :global(.widget-tags__link:hover) {
-		color: var(--color-text);
-		background: var(--color-border);
-	}
-
-	.sidebar-widgets :global(.widget-tags__count) {
-		display: none;
-	}
-
-	/* Sidebar recent posts widget */
-	.sidebar-widgets :global(.widget-recent-posts) {
-		list-style: none;
-		padding: 0;
-		margin: 0;
-	}
-
-	.sidebar-widgets :global(.widget-recent-posts li) {
-		padding: var(--spacing-2) 0;
-		border-bottom: 1px solid var(--color-border-subtle);
-	}
-
-	.sidebar-widgets :global(.widget-recent-posts li:last-child) {
-		border-bottom: none;
-	}
-
-	.sidebar-widgets :global(.widget-recent-posts a) {
-		/* 内置 widget 把链接和 <time> 输出为相邻行内元素，不加这条会连成一行 */
-		display: block;
-		color: var(--color-text-secondary);
-		text-decoration: none;
-		transition: color var(--transition-fast);
-		line-height: var(--leading-snug);
-	}
-
-	.sidebar-widgets :global(.widget-recent-posts a:hover) {
-		color: var(--color-text);
-	}
-
-	.sidebar-widgets :global(.widget-recent-posts time) {
-		display: block;
-		color: var(--color-muted);
-		font-size: var(--font-size-xs);
-		margin-block-start: var(--spacing-1);
-	}
-
-	/* Sidebar archives widget */
-	.sidebar-widgets :global(.widget-archives) {
-		list-style: none;
-		padding: 0;
-		margin: 0;
-	}
-
-	.sidebar-widgets :global(.widget-archives li) {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		padding: var(--spacing-2) 0;
-		border-bottom: 1px solid var(--color-border-subtle);
-	}
-
-	.sidebar-widgets :global(.widget-archives li:last-child) {
-		border-bottom: none;
-	}
-
-	.sidebar-widgets :global(.widget-archives__link) {
-		color: var(--color-text-secondary);
-		text-decoration: none;
-		transition: color var(--transition-fast);
-	}
-
-	.sidebar-widgets :global(.widget-archives__link:hover) {
-		color: var(--color-text);
-	}
-
-	.sidebar-widgets :global(.widget-archives__count) {
-		font-size: var(--font-size-xs);
-		color: var(--color-muted);
-		background: var(--color-surface);
-		padding: var(--tag-padding-y) var(--spacing-2);
-		border-radius: var(--radius);
 	}
 
 	/* Comments section */
@@ -934,13 +704,8 @@ const commentFormLabels = {
 			gap: 0;
 		}
 
-		.article-meta-col,
 		.article-sidebar {
 			display: none;
-		}
-
-		.article-header .article-meta {
-			display: flex;
 		}
 	}
 

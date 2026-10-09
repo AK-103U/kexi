@@ -33,13 +33,8 @@
 		"nextPage": "Next page"
 	},
 	"post": {
-		"author": "Author",
-		"authors": "Authors",
-		"published": "Published",
-		"readingTime": "Reading time",
 		"min": "{n} min",
 		"minRead": "{n} min read",
-		"tags": "Tags",
 		"toc": "Table of contents",
 		"onThisPage": "On this page",
 		"translatedNotice": "This article is not yet available in English. Showing the Chinese original."
