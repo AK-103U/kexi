@@ -12,11 +12,6 @@
 		"systemMode": "System theme"
 	},
 	"footer": {
-		"navigate": "Navigate",
-		"connect": "Connect",
-		"rss": "RSS Feed",
-		"aboutTitle": "About",
-		"about": "A blog about software, design, and the occasional stray thought.",
 		"poweredBy": "Powered by <a href=\"https://emdashcms.com\">EmDash</a>"
 	},
 	"home": {

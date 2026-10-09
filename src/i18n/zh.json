@@ -12,11 +12,6 @@
 		"systemMode": "跟随系统"
 	},
 	"footer": {
-		"navigate": "导航",
-		"connect": "连接",
-		"rss": "RSS 订阅",
-		"aboutTitle": "关于",
-		"about": "一个写软件、设计和偶尔冒出来的杂念的博客。",
 		"poweredBy": "由 <a href=\"https://emdashcms.com\">EmDash</a> 驱动"
 	},
 	"home": {
