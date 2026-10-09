@@ -7,6 +7,7 @@ import { Font } from "astro:assets";
 import { ClientRouter } from "astro:transitions";
 import LanguageSwitcher from "../components/LanguageSwitcher.astro";
 import ThemeSwitcher from "../components/ThemeSwitcher.astro";
+import SiteIdentity from "../components/SiteIdentity.astro";
 import SiteRail from "../components/SiteRail.astro";
 import { type Lang } from "../i18n/config";
 import { htmlLang, localePath, useTranslations } from "../i18n/ui";
@@ -150,6 +151,27 @@ const isLoggedIn = !!Astro.locals.user;
 						<line x1="4" y1="18" x2="20" y2="18"></line>
 					</svg>
 				</button>
+
+				{/*
+					站主身份在页头左侧，与左栏共用同一条中轴 —— 靠的是
+					`.nav` 与 `.shell` 用同一套列几何（第 1 列就是左栏那一列），
+					而不是任何手算偏移。见下方 `.nav` 的注释。
+					外面这层 div 是必要的：SiteIdentity 根节点上带的 class 是
+					**子组件的** scope 属性，父组件的 .nav-left 之类规则够不着它。
+				*/}
+				<div class="nav-left">
+					{
+						ownerByline && (
+							<SiteIdentity
+								displayName={ownerByline.displayName}
+								avatarStorageKey={ownerByline.avatarStorageKey}
+								avatarAlt={ownerByline.avatarAlt}
+								href={localePath(lang, "/")}
+							/>
+						)
+					}
+				</div>
+
 				<div class="nav-right">
 					<LiveSearch
 						placeholder={t("header.searchPlaceholder")}
@@ -202,17 +224,7 @@ const isLoggedIn = !!Astro.locals.user;
 		*/}
 		<div class="shell">
 			<aside class="rail rail--left">
-				{
-					ownerByline && (
-						<SiteRail
-							displayName={ownerByline.displayName}
-							avatarStorageKey={ownerByline.avatarStorageKey}
-							avatarAlt={ownerByline.avatarAlt}
-							items={menu?.items ?? []}
-							pathname={Astro.url.pathname}
-						/>
-					)
-				}
+				<SiteRail items={menu?.items ?? []} pathname={Astro.url.pathname} />
 			</aside>
 
 			<main class="shell-main">
@@ -461,18 +473,21 @@ const isLoggedIn = !!Astro.locals.user;
 			.nav {
 				display: grid;
 				/*
-				 * 左右两列等宽（minmax(0,1fr)），中间按内容宽 —— 中列因此恒定
-				 * 落在页面中垂线上，与两侧有没有东西（汉堡、管理链接）无关。
-				 * 用 minmax(0,…) 而不是裸 1fr：裸 1fr 的下限是 min-content，
-				 * 侧边内容一宽就会把中列挤偏。
+				 * 与 .shell 共用同一套列几何 —— 列宽、gap、水平内边距完全一致，
+				 * 于是页头第 1 列就是左栏那一列：把头像在这一列里居中，它自然
+				 * 落在左栏的中垂线上，不需要任何手算偏移，改 --rail-width /
+				 * --content-width 时两边也不会脱节。
 				 */
-				grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+				grid-template-columns:
+					var(--rail-width) minmax(0, var(--content-width))
+					var(--rail-width);
+				gap: var(--spacing-6);
+				justify-content: center;
+				/* 横向中线对齐：不同高度的控件（38px 图标钮、32px 主题钮、
+					搜索框）都以自身中线为准，落在同一条水平线上。 */
 				align-items: center;
-				gap: var(--spacing-4);
-				max-width: var(--wide-width);
-				margin: 0 auto;
-				padding: var(--spacing-4) var(--spacing-6);
 				height: var(--nav-height);
+				padding: 0 var(--spacing-6);
 			}
 
 			/* 汉堡按钮：只在 <1000px 出现（左栏隐藏时）。 */
@@ -489,7 +504,6 @@ const isLoggedIn = !!Astro.locals.user;
 				cursor: pointer;
 				border-radius: var(--radius);
 			}
-
 			.nav-burger svg {
 				width: 22px;
 				height: 22px;
@@ -562,18 +576,35 @@ const isLoggedIn = !!Astro.locals.user;
 				min-width: 0;
 			}
 
-			.nav-right {
-				grid-column: 2;
+			/*
+			 * 页头左列 = 左栏那一列。头像在这一列里居中，于是它落在左栏的
+			 * 中垂线上，与下方的导航链接共轴。
+			 */
+			.nav-left {
+				grid-column: 1;
 				display: flex;
 				align-items: center;
-				gap: var(--spacing-6);
+				justify-content: center;
+				min-width: 0;
+			}
+
+			.nav-right {
+				grid-column: 2;
+				/* 列宽是 680px 而内容只有 ~282px：不写 center 会被 stretch
+					撑满整列，搜索框就贴到列左边去了 */
+				justify-self: center;
+				display: flex;
+				align-items: center;
+				/* 搜索框与图标组之间 16px */
+				gap: var(--spacing-4);
 			}
 
 			/* 语言与主题切换挨在一起，任何断点下都并排。 */
 			.nav-toggles {
 				display: flex;
 				align-items: center;
-				gap: var(--spacing-2);
+				/* 图标之间 12–16px */
+				gap: var(--spacing-3);
 			}
 
 			.nav-admin {
@@ -591,28 +622,43 @@ const isLoggedIn = !!Astro.locals.user;
 
 			/*
 			 * Search styling。
-			 * `.site-search` 是传给 LiveSearch 的 class，节点上带的是**子组件的**
-			 * scope 属性，所以这里必须用 :global() —— 否则规则一条都不生效
-			 * （搜索结果下拉的定位就靠这里的 position: relative）。
+			 *
+			 * 两条坑叠在一起，改这里之前先读这段：
+			 *
+			 * 1. `.site-search*` 是传给 LiveSearch 的 class，节点上带的是**子组件
+			 *    的** scope 属性，所以必须 :global()，否则规则一条都不生效
+			 *    （搜索结果下拉的定位就靠这里的 position: relative）。
+			 *
+			 * 2. 组件自带的 `.emdash-live-search-input` 规则带 [data-astro-cid-*]，
+			 *    特异性 (0,2,0) 高于 :global(.class) 的 (0,1,0)。实测下来
+			 *    padding / font-size / border-radius 三条全被组件赢走（组件值
+			 *    分别是 0.5rem 1rem / 1rem / 0.25rem）—— 不写 !important 的话
+			 *    这几行是**死代码**。下面只在「必须赢」的属性上加 !important，
+			 *    其余照常写。
 			 */
 			:global(.site-search) {
 				position: relative;
 				width: var(--search-input-width);
-				--emdash-search-border-focus: var(--color-brand);
 			}
 
 			:global(.site-search-input) {
+				/*
+				 * 底色走组件自己的主题变量：组件把 background 写在它自己的规则里
+				 * （带 [data-astro-cid-*]，特异性 (0,2,0) 压过这里的 (0,1,0)），
+				 * 但它读的是 --emdash-search-bg —— 自定义属性在元素上直接赋值
+				 * 就生效，不参与特异性比较，所以这一条不需要 !important。
+				 */
+				--emdash-search-bg: var(--color-surface);
 				width: var(--search-input-width);
-				padding: var(--spacing-2) var(--spacing-3);
+				/* 剩下几条组件硬编码了值（0.5rem 1rem / 1rem / 0.25rem），
+				   只能 !important 压过 */
+				border: 0 !important;
+				border-radius: var(--radius) !important;
+				padding: var(--spacing-2) var(--spacing-3) !important;
+				font-size: var(--font-size-sm) !important;
 				font-family: var(--font-body);
-				font-size: var(--font-size-sm);
-				border: 1px solid var(--color-border);
-				border-radius: var(--radius);
-				background: var(--color-bg);
 				color: var(--color-text);
-				transition:
-					border-color var(--transition-fast),
-					box-shadow var(--transition-fast);
+				transition: box-shadow var(--transition-fast);
 			}
 
 			:global(.site-search-input)::placeholder {
@@ -622,8 +668,8 @@ const isLoggedIn = !!Astro.locals.user;
 			:global(.site-search-input):focus,
 			:global(.site-search-input):focus-visible {
 				outline: none;
-				border-color: var(--color-brand) !important;
-				box-shadow: 0 0 0 3px var(--color-brand-ring);
+				/* 没有边框了，焦点态就靠这圈 2px 的环 */
+				box-shadow: 0 0 0 2px var(--color-brand);
 			}
 
 			:global(.site-search-results) {
@@ -745,6 +791,7 @@ const isLoggedIn = !!Astro.locals.user;
 			/*
 			 * 三栏 → 两栏：视口装不下 200+680+200+gap+padding 时先收右栏。
 			 * 左栏还在，中栏位置不变 —— 这正是「右栏留空不渲染」的延伸。
+			 * .nav 跟着改成两列，否则它的第 1 列与左栏不再同一条轴上。
 			 */
 			@media (max-width: 1199px) {
 				.shell {
@@ -754,9 +801,24 @@ const isLoggedIn = !!Astro.locals.user;
 				.rail--right {
 					display: none;
 				}
+
+				.nav {
+					grid-template-columns: var(--rail-width) minmax(0, var(--content-width));
+				}
+
+				/* 第 3 列没了，管理链接挪进中列右端 */
+				.nav-admin {
+					grid-column: 2;
+					justify-self: end;
+				}
 			}
 
-			/* 两栏也装不下 → 单栏，左栏收进页头的汉堡抽屉。 */
+			/*
+			 * 两栏也装不下 → 单栏，左栏收进页头的汉堡抽屉。
+			 * 页头左侧的头像与名字跟着左栏一起消失 —— 用户既定：窄屏不显示
+			 * 头像与名字，导航改走抽屉（抽屉里同样只有链接）。此时第 1 列让给
+			 * 汉堡，也就没有「与左栏共轴」这回事了。
+			 */
 			@media (max-width: 999px) {
 				.shell {
 					grid-template-columns: minmax(0, var(--content-width));
@@ -769,32 +831,43 @@ const isLoggedIn = !!Astro.locals.user;
 					display: none;
 				}
 
+				/*
+				 * 页头回到「等宽侧列 + 内容宽中列」：汉堡在左、图标组在中、
+				 * 管理链接在右。侧列必须等宽（minmax(0,1fr)），汉堡占的 auto
+				 * 轨道会把中列推偏 —— 实测偏 15px。
+				 */
+				.nav {
+					grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+				}
+
+				.nav-left {
+					display: none;
+				}
+
 				.nav-burger {
 					display: inline-flex;
+				}
+
+				/* 第 3 列回来了，管理链接挪回去 */
+				.nav-admin {
+					grid-column: 3;
+					justify-self: end;
 				}
 			}
 
 			@media (max-width: 640px) {
 				.nav {
-					display: grid;
 					grid-template-columns: auto minmax(0, 1fr) auto;
-					align-items: center;
 					height: auto;
 					column-gap: var(--spacing-3);
 					padding: var(--spacing-3) var(--spacing-4);
-				}
-
-				.nav-burger {
-					grid-column: 1;
-					grid-row: 1;
 				}
 
 				/* 移动端：搜索框占满剩余宽度，不再追求中垂线居中。 */
 				.nav-right {
 					grid-column: 2;
 					grid-row: 1;
-					display: flex;
-					align-items: center;
+					justify-self: stretch;
 					gap: var(--spacing-3);
 				}
 

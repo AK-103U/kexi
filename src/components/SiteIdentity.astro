@@ -1,0 +1,99 @@
+---
+/**
+ * 站主身份：头像 + 名字，一个整块，放在页头左侧。
+ *
+ * 对齐的关键是「以头像为锚」：根节点宽度锁死为头像宽，外层只要把这一块
+ * 居中，**头像**就落在容器的中垂线上；名字绝对定位挂在它右边、不参与布局，
+ * 所以名字多长都不会把头像推偏。页头第 1 列就是左栏那一列（见 `Base.astro`
+ * 的 `.nav`），于是头像与左栏内容天然共轴，不需要任何手算偏移。
+ *
+ * 没有头像时退化成「只有名字」的一行，不锁宽、不占位，也不做首字母占位。
+ */
+import { avatarUrl } from "../utils/media";
+
+interface Props {
+	displayName: string;
+	avatarStorageKey?: string | null;
+	avatarAlt?: string | null;
+	/** 点击去向，通常是本站首页。 */
+	href: string;
+	class?: string;
+}
+
+const { displayName, avatarStorageKey, avatarAlt, href, class: className } = Astro.props;
+
+const avatarSrc = avatarStorageKey ? avatarUrl(avatarStorageKey, 96) : null;
+---
+
+<a class:list={["site-identity", className, { "is-text-only": !avatarSrc }]} href={href}>
+	{
+		avatarSrc && (
+			<img
+				class="site-identity-avatar"
+				src={avatarSrc}
+				alt={avatarAlt || displayName}
+				width="32"
+				height="32"
+				loading="eager"
+			/>
+		)
+	}
+	<span class="site-identity-name">{displayName}</span>
+</a>
+
+<style>
+	.site-identity {
+		position: relative;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		/* 宽度 = 头像宽：外层把它居中，居中的就是头像本身 */
+		width: var(--avatar-size-lg);
+		height: var(--avatar-size-lg);
+		color: var(--color-text);
+		text-decoration: none;
+	}
+
+	/* 没有头像时不再锁宽，名字回到正常流里 */
+	.site-identity.is-text-only {
+		width: auto;
+	}
+
+	.site-identity-avatar {
+		width: var(--avatar-size-lg);
+		height: var(--avatar-size-lg);
+		border-radius: 50%;
+		object-fit: cover;
+		flex-shrink: 0;
+		background: var(--color-surface);
+	}
+
+	/*
+	 * 名字挂在头像右侧。绝对定位是这里唯一可行的写法 —— 参与布局的话
+	 * 名字的宽度会把头像从中轴上挤走，而「头像在中轴上」正是这个组件的
+	 * 存在意义。超长名字截断，免得伸进搜索框。
+	 */
+	.site-identity-name {
+		position: absolute;
+		left: calc(100% + var(--spacing-2));
+		top: 50%;
+		transform: translateY(-50%);
+		max-width: var(--rail-width);
+		overflow: hidden;
+		text-overflow: ellipsis;
+		font-size: var(--font-size-sm);
+		font-weight: 600;
+		letter-spacing: var(--tracking-snug);
+		line-height: var(--leading-snug);
+		white-space: nowrap;
+	}
+
+	.site-identity.is-text-only .site-identity-name {
+		position: static;
+		transform: none;
+	}
+
+	.site-identity:hover .site-identity-name {
+		color: var(--color-brand);
+	}
+</style>

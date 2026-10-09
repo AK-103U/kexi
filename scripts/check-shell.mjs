@@ -97,7 +97,7 @@ for (const w of [1440, 1200, 1199, 1000, 999, 640, 390]) {
 console.log("\n=== 头像 ===");
 const p2 = await browser.newPage({ viewport: { width: 1440, height: 900 } });
 await p2.goto(BASE + "/", { waitUntil: "networkidle" });
-const av = p2.locator(".rail-avatar").first();
+const av = p2.locator(".site-identity-avatar").first();
 if (await av.count()) {
 	const box = await av.boundingBox();
 	const radius = await av.evaluate((e) => getComputedStyle(e).borderRadius);
@@ -105,11 +105,11 @@ if (await av.count()) {
 	const src = await av.getAttribute("src");
 	check("头像存在", true);
 	check("圆形", radius === "50%", radius);
-	check("渲染 40px", Math.abs(box.width - 40) < 1, `${box.width.toFixed(0)}px`);
+	check("渲染 32px", Math.abs(box.width - 32) < 1, `${box.width.toFixed(0)}px`);
 	check("服务端裁剪（naturalWidth ≥ 96）", natural >= 96, `naturalWidth=${natural}`);
 	check("走 /_image 端点", src?.startsWith("/_image?") ?? false, src?.slice(0, 60));
 } else {
-	check("头像存在", false, "左栏没有 .rail-avatar");
+	check("头像存在", false, "页头没有 .site-identity-avatar");
 }
 await p2.close();
 
@@ -121,8 +121,8 @@ for (const [name, url, expect] of [
 ]) {
 	const p = await browser.newPage({ viewport: { width: 1440, height: 900 } });
 	await p.goto(BASE + url, { waitUntil: "networkidle" });
-	const actual = (await p.locator(".rail-name").first().textContent())?.trim();
-	check(`${name} 左栏名字`, actual === expect, `"${actual}"（期望 "${expect}"）`);
+	const actual = (await p.locator(".site-identity-name").first().textContent())?.trim();
+	check(`${name} 页头名字`, actual === expect, `"${actual}"（期望 "${expect}"）`);
 	await p.close();
 }
 
@@ -142,6 +142,11 @@ for (const [name, url, expectLabel] of [
 await p3.close();
 
 // ---------- 6. 对齐 ----------
+//
+// 这一段的轴换了：站主身份（头像 + 名字）从左栏搬到了页头左侧，于是
+// 「头像与左栏内容共轴」成了跨区域的对齐 —— 靠的是 .nav 与 .shell 共用
+// 同一套列几何（第 1 列都是 --rail-width，两侧 gap / padding 一致），
+// 而不是任何手算偏移。断言因此量的是页头头像 cx 与左栏导航 cx 之差。
 console.log("\n=== 对齐 ===");
 const p4 = await browser.newPage({ viewport: { width: 1440, height: 900 } });
 await p4.goto(BASE + "/posts/building-for-the-long-term", { waitUntil: "networkidle" });
@@ -151,54 +156,149 @@ const align = await p4.evaluate(() => {
 		const b = el.getBoundingClientRect();
 		return b.x + b.width / 2;
 	};
-	const wrap = document.querySelector(".rail-identity-wrap");
+	const wrap = document.querySelector(".rail-content");
 	const wrapC = center(wrap);
-	const kids = {
-		avatar: center(document.querySelector(".rail-avatar")),
-		name: center(document.querySelector(".rail-name")),
-		nav: center(document.querySelector(".rail-nav-list")),
-	};
-	// 全部导航链接都要在同一轴上，而不只是第一个
+	// 左栏里的一切都要在同一轴上，而不只是第一个
 	const links = [...document.querySelectorAll(".rail-nav-link")];
 	const linkMax = Math.max(...links.map((l) => Math.abs(center(l) - wrapC)));
 
-	const ab = document.querySelector(".rail-avatar").getBoundingClientRect();
-	const nb = document.querySelector(".rail-name").getBoundingClientRect();
-
+	const avatar = document.querySelector(".site-identity-avatar");
+	const name = document.querySelector(".site-identity-name");
+	const navList = document.querySelector(".rail-nav-list");
 	return {
 		wrapC,
+		avatarC: center(avatar),
+		nameC: center(name),
+		navC: center(navList),
 		dev: {
-			avatar: Math.abs(kids.avatar - wrapC),
-			name: Math.abs(kids.name - wrapC),
-			nav: Math.abs(kids.nav - wrapC),
+			nav: Math.abs(center(navList) - wrapC),
 			links: linkMax,
 		},
-		avatarAboveName: ab.bottom <= nb.top + 1,
+		// 头像与名字是水平相邻的（名字绝对定位挂在头像右侧），不再上下排
+		avatarLeftOfName:
+			avatar.getBoundingClientRect().right <= name.getBoundingClientRect().left + 1,
 	};
 });
 
+check(
+	"页头头像与左栏内容共轴（<0.5px）",
+	Math.abs(align.avatarC - align.navC) < 0.5,
+	`头像 cx=${align.avatarC.toFixed(1)} / 左栏导航 cx=${align.navC.toFixed(1)}`,
+);
 for (const [label, d] of Object.entries(align.dev)) {
 	check(`左栏「${label}」在中垂线上`, d < 0.5, `偏差 ${d.toFixed(2)}px`);
 }
-check("头像在名字上方", align.avatarAboveName, `头像底 ≤ 名字顶`);
+check(
+	"头像在名字左侧",
+	align.avatarLeftOfName,
+	`头像 cx=${align.avatarC.toFixed(1)} 名字 cx=${align.nameC.toFixed(1)}`,
+);
 
-// nav-right 在各桌面断点都落在页面中垂线（移动端搜索框占满剩余宽度，不参与）
+// 共轴要在每个桌面断点都成立（<1000px 页头身份整块隐藏，不参与）
+const alignDev = [];
+for (const w of [1440, 1280, 1200, 1199, 1100, 1000]) {
+	await p4.setViewportSize({ width: w, height: 900 });
+	await p4.waitForTimeout(150);
+	const d = await p4.evaluate(() => {
+		const c = (s) => {
+			const el = document.querySelector(s);
+			const b = el.getBoundingClientRect();
+			return b.x + b.width / 2;
+		};
+		return c(".site-identity-avatar") - c(".rail-nav-list");
+	});
+	alignDev.push(`${w}:${d.toFixed(1)}`);
+}
+check(
+	"头像与左栏共轴在各桌面断点成立（±0.5px）",
+	alignDev.every((s) => Math.abs(Number(s.split(":")[1])) < 0.5),
+	alignDev.join(" "),
+);
+
+// nav-right 落在中栏中垂线（.nav 与 .shell 同几何，所以中栏中轴 = 页面中轴）。
+// 移动端搜索框占满剩余宽度，不参与。
 const navDev = [];
 for (const w of [1440, 1280, 1200, 1199, 1100, 1000, 999, 800]) {
 	await p4.setViewportSize({ width: w, height: 900 });
 	await p4.waitForTimeout(120);
 	const d = await p4.evaluate(() => {
 		const el = document.querySelector(".nav-right");
-		const b = el.getBoundingClientRect();
-		return b.x + b.width / 2 - document.documentElement.clientWidth / 2;
+		const main = document.querySelector(".shell-main");
+		const a = el.getBoundingClientRect();
+		const b = main.getBoundingClientRect();
+		return a.x + a.width / 2 - (b.x + b.width / 2);
 	});
 	navDev.push(`${w}:${d.toFixed(1)}`);
-	if (Math.abs(d) >= 1) check(`nav-right 在 ${w}px 居中`, false, `偏差 ${d.toFixed(1)}px`);
+	if (Math.abs(d) >= 1) check(`nav-right 在 ${w}px 对齐中栏中轴`, false, `偏差 ${d.toFixed(1)}px`);
 }
 check(
-	"nav-right 在各桌面断点居中（±1px）",
+	"nav-right 在各桌面断点对齐中栏中轴（±1px）",
 	navDev.every((s) => Math.abs(Number(s.split(":")[1])) < 1),
 	navDev.join(" "),
+);
+
+// 页头各元素横向中线对齐（不同高度的控件落在同一条水平线上）
+await p4.setViewportSize({ width: 1440, height: 900 });
+await p4.waitForTimeout(150);
+const cys = await p4.evaluate(() => {
+	const cy = (s) => {
+		const b = document.querySelector(s).getBoundingClientRect();
+		return b.y + b.height / 2;
+	};
+	return {
+		search: cy(".site-search-input"),
+		lang: cy(".lang-toggle"),
+		theme: cy(".theme-btn"),
+		avatar: cy(".site-identity-avatar"),
+		header: (() => {
+			const b = document.querySelector(".site-header").getBoundingClientRect();
+			return b.y + b.height / 2;
+		})(),
+	};
+});
+const cyVals = [cys.search, cys.lang, cys.theme, cys.avatar];
+check(
+	"页头元素横向中线对齐（±1px）",
+	Math.max(...cyVals) - Math.min(...cyVals) < 1,
+	`搜索=${cys.search.toFixed(1)} 语言=${cys.lang.toFixed(1)} 主题=${cys.theme.toFixed(1)} 头像=${cys.avatar.toFixed(1)}`,
+);
+check(
+	"中线 = 页头几何中线",
+	Math.abs(cys.search - cys.header) < 1.5,
+	`元素 ${cys.search.toFixed(1)} / 页头 ${cys.header.toFixed(1)}`,
+);
+
+/*
+ * 搜索框：无边框 + 浅灰底。
+ *
+ * 这一条差点漏掉 —— 注入「底色改回 --color-bg（白）」的破坏时全绿通过，
+ * 因为当时没有任何断言盯着计算样式。LiveSearch 是第三方组件，它自带的
+ * `.emdash-live-search-input[data-astro-cid-*]` 特异性 (0,2,0) 压过主题的
+ * :global(.class) (0,1,0)，主题里那几行很容易变成静默失效的死代码，所以
+ * 必须量计算值而不是读 CSS 源。
+ */
+const searchStyle = await p4.evaluate(() => {
+	const cs = getComputedStyle(document.querySelector(".site-search-input"));
+	const navRight = getComputedStyle(document.querySelector(".nav-right"));
+	const toggles = getComputedStyle(document.querySelector(".nav-toggles"));
+	return {
+		borderWidth: cs.borderTopWidth,
+		background: cs.backgroundColor,
+		navRightGap: navRight.columnGap,
+		togglesGap: toggles.columnGap,
+	};
+});
+check("搜索框无边框", searchStyle.borderWidth === "0px", searchStyle.borderWidth);
+check(
+	"搜索框浅灰底（--color-surface）",
+	searchStyle.background === "rgb(247, 247, 247)",
+	searchStyle.background,
+);
+check("图标与搜索框间距 16px", searchStyle.navRightGap === "16px", searchStyle.navRightGap);
+check(
+	"图标之间间距 12–16px",
+	["12px", "14px", "16px"].includes(searchStyle.togglesGap),
+	searchStyle.togglesGap,
 );
 
 // 汉堡出现时也不该把中列挤偏（这是 minmax(0,1fr) 而非裸 1fr 的理由）
@@ -230,6 +330,8 @@ const geom = () =>
 			main: box(".shell-main"),
 			railL: box(".rail--left"),
 			shell: box(".shell"),
+			header: box(".site-header"),
+			headerAvatar: box(".site-identity-avatar"),
 			scrollY: Math.round(window.scrollY),
 		};
 	});
@@ -253,6 +355,17 @@ check(
 	"切到 /pages/about 左栏不横移",
 	Math.abs(afterAbout.railL.x - rest.railL.x) < 1,
 	`x ${rest.railL.x} → ${afterAbout.railL.x}`,
+);
+// 页头与页脚是「静态范围」：不随页面高度变化，切页时一动不动
+check(
+	"切到 /pages/about 页头不横移",
+	Math.abs(afterAbout.header.x - rest.header.x) < 1,
+	`x ${rest.header.x} → ${afterAbout.header.x}`,
+);
+check(
+	"切到 /pages/about 页头头像不横移",
+	Math.abs(afterAbout.headerAvatar.x - rest.headerAvatar.x) < 1,
+	`x ${rest.headerAvatar.x} → ${afterAbout.headerAvatar.x}`,
 );
 
 // b) 滚动不该移动 rail —— sticky 位必须与静止位重合
@@ -285,6 +398,12 @@ check(
 	"滚动状态下切页，中栏 x 不横移",
 	Math.abs(afterScrollNav.main.x - rest.main.x) < 1,
 	`x ${rest.main.x} → ${afterScrollNav.main.x}`,
+);
+// 滚动中页头是 sticky 的（永远 y=0），页脚常驻底部 —— 两者切页后都该原位
+check(
+	"滚动状态下切页，页头 y 不弹动",
+	Math.abs(afterScrollNav.header.y - rest.header.y) < 1,
+	`静止 ${rest.header.y} / 滚动时 ${scrolled.header.y} / 切页后 ${afterScrollNav.header.y}`,
 );
 check("切页后 scrollY 归零（对照条件成立）", afterScrollNav.scrollY === 0);
 await p5.close();
