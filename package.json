@@ -15,7 +15,8 @@
     "typecheck": "astro check",
     "seed:bylines": "node scripts/seed-bylines-i18n.mjs",
     "seed:avatar": "node scripts/seed-owner-avatar.mjs",
-    "check:spa": "node scripts/check-spa.mjs"
+    "check:spa": "node scripts/check-spa.mjs",
+    "check:shell": "node scripts/check-shell.mjs"
   },
   "dependencies": {
     "@astrojs/node": "^11.1.5",
