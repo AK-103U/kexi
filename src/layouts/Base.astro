@@ -453,8 +453,14 @@ const isLoggedIn = !!Astro.locals.user;
 			}
 
 			.nav {
-				display: flex;
-				justify-content: space-between;
+				display: grid;
+				/*
+				 * 左右两列等宽（minmax(0,1fr)），中间按内容宽 —— 中列因此恒定
+				 * 落在页面中垂线上，与两侧有没有东西（汉堡、管理链接）无关。
+				 * 用 minmax(0,…) 而不是裸 1fr：裸 1fr 的下限是 min-content，
+				 * 侧边内容一宽就会把中列挤偏。
+				 */
+				grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
 				align-items: center;
 				gap: var(--spacing-4);
 				max-width: var(--wide-width);
@@ -466,6 +472,8 @@ const isLoggedIn = !!Astro.locals.user;
 			/* 汉堡按钮：只在 <1000px 出现（左栏隐藏时）。 */
 			.nav-burger {
 				display: none;
+				grid-column: 1;
+				justify-self: start;
 				align-items: center;
 				justify-content: center;
 				padding: var(--spacing-1);
@@ -540,10 +548,10 @@ const isLoggedIn = !!Astro.locals.user;
 			}
 
 			.nav-right {
+				grid-column: 2;
 				display: flex;
 				align-items: center;
 				gap: var(--spacing-6);
-				margin-inline-start: auto;
 			}
 
 			/* 语言与主题切换挨在一起，任何断点下都并排。 */
@@ -554,6 +562,8 @@ const isLoggedIn = !!Astro.locals.user;
 			}
 
 			.nav-admin {
+				grid-column: 3;
+				justify-self: end;
 				font-size: var(--font-size-sm);
 				color: var(--color-text-secondary);
 				text-decoration: none;
@@ -762,14 +772,13 @@ const isLoggedIn = !!Astro.locals.user;
 					grid-row: 1;
 				}
 
-				/* 导航链接已移入左栏，这里只剩搜索 + 两个切换控件，排成一行。 */
+				/* 移动端：搜索框占满剩余宽度，不再追求中垂线居中。 */
 				.nav-right {
 					grid-column: 2;
 					grid-row: 1;
 					display: flex;
 					align-items: center;
 					gap: var(--spacing-3);
-					margin-inline-start: 0;
 				}
 
 				:global(.site-search) {
@@ -790,7 +799,6 @@ const isLoggedIn = !!Astro.locals.user;
 					grid-row: 1;
 					justify-self: end;
 					font-size: var(--font-size-xs);
-					margin-inline-start: 0;
 					white-space: nowrap;
 				}
 			}

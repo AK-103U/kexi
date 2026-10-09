@@ -80,8 +80,21 @@ const avatarSrc = avatarStorageKey ? avatarUrl(avatarStorageKey, 96) : null;
 </div>
 
 <style>
+	/*
+	 * 容器层统一收口：头像、名字、导航链接全部沿容器中垂线对齐。
+	 * 放在这里而不是各子块上，是为了让「整条左栏一条中轴」这件事
+	 * 只有一个声明处，加新块时自动跟随。
+	 */
+	.rail-identity-wrap {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		text-align: center;
+	}
+
 	.rail-identity {
 		display: flex;
+		flex-direction: column;
 		align-items: center;
 		gap: var(--spacing-3);
 		text-decoration: none;

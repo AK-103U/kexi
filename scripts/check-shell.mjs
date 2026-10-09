@@ -132,6 +132,73 @@ for (const [name, url, expectLabel] of [
 }
 await p3.close();
 
+// ---------- 6. 对齐 ----------
+console.log("\n=== 对齐 ===");
+const p4 = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+await p4.goto(BASE + "/posts/building-for-the-long-term", { waitUntil: "networkidle" });
+
+const align = await p4.evaluate(() => {
+	const center = (el) => {
+		const b = el.getBoundingClientRect();
+		return b.x + b.width / 2;
+	};
+	const wrap = document.querySelector(".rail-identity-wrap");
+	const wrapC = center(wrap);
+	const kids = {
+		avatar: center(document.querySelector(".rail-avatar")),
+		name: center(document.querySelector(".rail-name")),
+		nav: center(document.querySelector(".rail-nav-list")),
+	};
+	// 全部导航链接都要在同一轴上，而不只是第一个
+	const links = [...document.querySelectorAll(".rail-nav-link")];
+	const linkMax = Math.max(...links.map((l) => Math.abs(center(l) - wrapC)));
+
+	const ab = document.querySelector(".rail-avatar").getBoundingClientRect();
+	const nb = document.querySelector(".rail-name").getBoundingClientRect();
+
+	return {
+		wrapC,
+		dev: {
+			avatar: Math.abs(kids.avatar - wrapC),
+			name: Math.abs(kids.name - wrapC),
+			nav: Math.abs(kids.nav - wrapC),
+			links: linkMax,
+		},
+		avatarAboveName: ab.bottom <= nb.top + 1,
+	};
+});
+
+for (const [label, d] of Object.entries(align.dev)) {
+	check(`左栏「${label}」在中垂线上`, d < 0.5, `偏差 ${d.toFixed(2)}px`);
+}
+check("头像在名字上方", align.avatarAboveName, `头像底 ≤ 名字顶`);
+
+// nav-right 在各桌面断点都落在页面中垂线（移动端搜索框占满剩余宽度，不参与）
+const navDev = [];
+for (const w of [1440, 1280, 1200, 1199, 1100, 1000, 999, 800]) {
+	await p4.setViewportSize({ width: w, height: 900 });
+	await p4.waitForTimeout(120);
+	const d = await p4.evaluate(() => {
+		const el = document.querySelector(".nav-right");
+		const b = el.getBoundingClientRect();
+		return b.x + b.width / 2 - document.documentElement.clientWidth / 2;
+	});
+	navDev.push(`${w}:${d.toFixed(1)}`);
+	if (Math.abs(d) >= 1) check(`nav-right 在 ${w}px 居中`, false, `偏差 ${d.toFixed(1)}px`);
+}
+check(
+	"nav-right 在各桌面断点居中（±1px）",
+	navDev.every((s) => Math.abs(Number(s.split(":")[1])) < 1),
+	navDev.join(" "),
+);
+
+// 汉堡出现时也不该把中列挤偏（这是 minmax(0,1fr) 而非裸 1fr 的理由）
+await p4.setViewportSize({ width: 999, height: 900 });
+await p4.waitForTimeout(120);
+const burgerVisible = await p4.locator(".nav-burger").isVisible();
+check("999px 汉堡可见（对照条件成立）", burgerVisible);
+await p4.close();
+
 await browser.close();
 const failed = results.filter((r) => !r.ok).length;
 console.log(`\n${results.length - failed}/${results.length} 通过`);
