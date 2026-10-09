@@ -7,6 +7,7 @@
 		"searchPlaceholder": "搜索…",
 		"admin": "管理",
 		"language": "语言",
+		"switchTo": "切换到 {lang}",
 		"lightMode": "切换到亮色模式",
 		"darkMode": "切换到暗色模式",
 		"systemMode": "跟随系统"

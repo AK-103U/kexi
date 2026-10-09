@@ -6,6 +6,7 @@ import LiveSearch from "emdash/ui/search";
 import { Font } from "astro:assets";
 import { ClientRouter } from "astro:transitions";
 import LanguageSwitcher from "../components/LanguageSwitcher.astro";
+import ThemeSwitcher from "../components/ThemeSwitcher.astro";
 import { type Lang } from "../i18n/config";
 import { htmlLang, localePath, useTranslations } from "../i18n/ui";
 import { resolveBlogSiteIdentity } from "../utils/site-identity";
@@ -164,7 +165,10 @@ const isLoggedIn = !!Astro.locals.user;
 							))
 						}
 					</div>
-					<LanguageSwitcher lang={lang} />
+					<div class="nav-toggles">
+						<LanguageSwitcher lang={lang} />
+						<ThemeSwitcher lang={lang} />
+					</div>
 				</div>
 				{
 					isLoggedIn && (
@@ -181,85 +185,8 @@ const isLoggedIn = !!Astro.locals.user;
 		</main>
 
 		<footer class="site-footer">
-			<div class="footer-inner">
-				<div class="footer-bottom">
-					<p class="footer-copyright" set:html={t("footer.poweredBy")} />
-					<div class="theme-switcher">
-						<button
-							type="button"
-							class="theme-btn"
-							data-theme="light"
-							aria-label={t("header.lightMode")}
-						>
-							<svg
-								width="16"
-								height="16"
-								viewBox="0 0 24 24"
-								fill="none"
-								stroke="currentColor"
-								stroke-width="2"
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								><circle cx="12" cy="12" r="5"></circle><line
-									x1="12"
-									y1="1"
-									x2="12"
-									y2="3"></line><line x1="12" y1="21" x2="12" y2="23"
-								></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"
-								></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"
-								></line><line x1="1" y1="12" x2="3" y2="12"></line><line
-									x1="21"
-									y1="12"
-									x2="23"
-									y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"
-								></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"
-								></line></svg
-							>
-						</button>
-						<button
-							type="button"
-							class="theme-btn"
-							data-theme="dark"
-							aria-label={t("header.darkMode")}
-						>
-							<svg
-								width="16"
-								height="16"
-								viewBox="0 0 24 24"
-								fill="none"
-								stroke="currentColor"
-								stroke-width="2"
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"
-								></path></svg
-							>
-						</button>
-						<button
-							type="button"
-							class="theme-btn"
-							data-theme="system"
-							aria-label={t("header.systemMode")}
-						>
-							<svg
-								width="16"
-								height="16"
-								viewBox="0 0 24 24"
-								fill="none"
-								stroke="currentColor"
-								stroke-width="2"
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								><rect x="2" y="3" width="20" height="14" rx="2" ry="2"
-								></rect><line x1="8" y1="21" x2="16" y2="21"></line><line
-									x1="12"
-									y1="17"
-									x2="12"
-									y2="21"></line></svg
-							>
-						</button>
-					</div>
-				</div>
+			<div class="footer-bottom">
+				<p class="footer-copyright" set:html={t("footer.poweredBy")} />
 			</div>
 		</footer>
 
@@ -492,6 +419,13 @@ const isLoggedIn = !!Astro.locals.user;
 				margin-inline-start: auto;
 			}
 
+			/* 语言与主题切换挨在一起，任何断点下都并排。 */
+			.nav-toggles {
+				display: flex;
+				align-items: center;
+				gap: var(--spacing-2);
+			}
+
 			.nav-links {
 				display: flex;
 				gap: var(--spacing-5);
@@ -632,16 +566,11 @@ const isLoggedIn = !!Astro.locals.user;
 				border-top: 1px solid var(--color-border-subtle);
 			}
 
-			.footer-inner {
+			.footer-bottom {
 				max-width: var(--wide-width);
 				margin: 0 auto;
-				padding: var(--spacing-16) var(--spacing-6) var(--spacing-8);
-			}
-
-			.footer-bottom {
-				display: flex;
-				justify-content: space-between;
-				align-items: center;
+				padding: var(--spacing-8) var(--spacing-6);
+				text-align: center;
 			}
 
 			.footer-copyright {
@@ -651,44 +580,6 @@ const isLoggedIn = !!Astro.locals.user;
 
 			.footer-copyright a {
 				color: var(--color-text-secondary);
-			}
-
-			/* Theme switcher */
-			.theme-switcher {
-				display: flex;
-				gap: var(--spacing-1);
-				padding: var(--spacing-1);
-				background: var(--color-surface);
-				border-radius: var(--radius);
-			}
-
-			.theme-btn {
-				display: flex;
-				align-items: center;
-				justify-content: center;
-				width: 32px;
-				height: 28px;
-				background: transparent;
-				border: none;
-				color: var(--color-muted);
-				border-radius: var(--radius);
-				cursor: pointer;
-				transition: all var(--transition-fast);
-			}
-
-			.theme-btn:hover {
-				color: var(--color-text-secondary);
-			}
-
-			.theme-btn.active {
-				background: var(--color-bg);
-				color: var(--color-text);
-				box-shadow: var(--shadow-sm);
-			}
-
-			.theme-btn svg {
-				width: 16px;
-				height: 16px;
 			}
 
 			@media (max-width: 640px) {
@@ -749,17 +640,6 @@ const isLoggedIn = !!Astro.locals.user;
 					font-size: var(--font-size-xs);
 					margin-inline-start: 0;
 					white-space: nowrap;
-				}
-
-				.footer-bottom {
-					flex-direction: column;
-					gap: var(--spacing-4);
-					text-align: center;
-				}
-
-				.footer-controls {
-					flex-wrap: wrap;
-					justify-content: center;
 				}
 			}
 		</style>

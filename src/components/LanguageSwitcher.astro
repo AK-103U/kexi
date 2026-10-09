@@ -1,9 +1,12 @@
 ---
 /**
- * 语言切换器。
+ * 语言切换器：一个 globe 图标，当前语言名压在它的右下角，点击切到下一个语言。
  *
  * 各语言共用 slug，所以切换语言 = 换 URL 前缀，不需要查翻译组。
  * 查询串（如 /search?q=…）原样保留。
+ *
+ * 两种语言时就是 zh ↔ en 互切；将来加第三种语言则按 siteConfig.locales
+ * 的顺序轮转 —— 若语言多到需要直接选，这里得改成下拉菜单。
  */
 import { siteConfig, type Lang } from "../i18n/config";
 import { localePath, stripLocale, useTranslations } from "../i18n/ui";
@@ -17,34 +20,47 @@ const t = useTranslations(lang);
 
 const path = stripLocale(Astro.url.pathname);
 const search = Astro.url.search;
+
+const current = siteConfig.locales.indexOf(lang);
+const next = siteConfig.locales[(current + 1) % siteConfig.locales.length];
+const nextLabel = siteConfig.localeLabels[next];
 ---
 
-<nav class="lang-switcher" aria-label={t("header.language")}>
-	{
-		siteConfig.locales.map((l) => (
-			<a
-				href={`${localePath(l, path)}${search}`}
-				hreflang={l}
-				lang={l}
-				class:list={["lang-link", { "lang-link--active": l === lang }]}
-				aria-current={l === lang ? "true" : undefined}
-			>
-				{siteConfig.localeLabels[l]}
-			</a>
-		))
-	}
-</nav>
+<a
+	class="lang-toggle"
+	href={`${localePath(next, path)}${search}`}
+	hreflang={next}
+	lang={next}
+	aria-label={t("header.switchTo", { lang: nextLabel })}
+	title={t("header.switchTo", { lang: nextLabel })}
+>
+	<svg
+		class="lang-globe"
+		viewBox="0 0 24 24"
+		fill="none"
+		stroke="currentColor"
+		stroke-width="1.75"
+		stroke-linecap="round"
+		stroke-linejoin="round"
+		aria-hidden="true"
+	>
+		<circle cx="12" cy="12" r="10"></circle>
+		<line x1="2" y1="12" x2="22" y2="12"></line>
+		<path
+			d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"
+		></path>
+	</svg>
+	<span class="lang-label">{siteConfig.localeLabels[lang]}</span>
+</a>
 
 <style>
-	.lang-switcher {
-		display: flex;
+	.lang-toggle {
+		position: relative;
+		display: inline-flex;
 		align-items: center;
-		gap: var(--spacing-1);
-		font-size: var(--font-size-sm);
-	}
-
-	.lang-link {
-		padding: 2px var(--spacing-2);
+		justify-content: center;
+		width: 38px;
+		height: 38px;
 		border-radius: var(--radius);
 		color: var(--color-text-secondary);
 		text-decoration: none;
@@ -53,13 +69,28 @@ const search = Astro.url.search;
 			background var(--transition-fast);
 	}
 
-	.lang-link:hover {
+	.lang-toggle:hover {
 		color: var(--color-text);
+		background: var(--color-surface);
 	}
 
-	.lang-link--active {
+	.lang-globe {
+		width: 24px;
+		height: 24px;
+	}
+
+	/* 语言名压在 globe 的右下角：底色垫一层，免得压在经纬线上看不清。 */
+	.lang-label {
+		position: absolute;
+		right: 0;
+		bottom: 0;
+		padding: 1px 3px;
+		border-radius: 4px;
+		background: var(--color-bg);
 		color: var(--color-text);
+		font-size: 9px;
 		font-weight: 600;
-		background: var(--color-surface);
+		line-height: 1.2;
+		white-space: nowrap;
 	}
 </style>
