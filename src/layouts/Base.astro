@@ -4,6 +4,7 @@ import { EmDashHead, EmDashBodyStart, EmDashBodyEnd } from "emdash/ui";
 import { createPublicPageContext } from "emdash/page";
 import LiveSearch from "emdash/ui/search";
 import { Font } from "astro:assets";
+import { ClientRouter } from "astro:transitions";
 import LanguageSwitcher from "../components/LanguageSwitcher.astro";
 import { type Lang } from "../i18n/config";
 import { htmlLang, localePath, useTranslations } from "../i18n/ui";
@@ -100,6 +101,11 @@ const isLoggedIn = !!Astro.locals.user;
 		<Font cssVariable="--font-mono" />
 		<title>{fullTitle}</title>
 		<EmDashHead page={pageCtx} />
+		{/*
+			客户端接管站内导航（含语言切换）：不再整页刷新，且带过渡动画。
+			底层仍是 MPA —— 首屏 SSR、SEO、hreflang、RSS 全部保留。
+		*/}
+		<ClientRouter />
 		<script is:inline>
 			// Apply an explicit theme choice immediately to prevent flash.
 			// With no cookie, color-scheme: light dark follows the OS.
@@ -311,9 +317,18 @@ const isLoggedIn = !!Astro.locals.user;
 
 		<script>
 			// Theme switcher
-			const themeBtns =
-				document.querySelectorAll<HTMLButtonElement>(".theme-btn");
-			const root = document.documentElement;
+			//
+			// ClientRouter 下这个模块脚本只在首次加载执行一次，而页面切换后
+			// <html> 的 class 会被重置、按钮也换成了新节点，所以每次导航都要
+			// 重跑一次初始化 —— 用 astro:page-load 驱动（首次加载与每次客户端
+			// 导航后都会触发）。监听器用 onclick 赋值而非 addEventListener，
+			// 重复执行也不会叠加。
+			function getStoredTheme(): string {
+				const row = document.cookie
+					.split("; ")
+					.find((item) => item.startsWith("theme="));
+				return row?.slice(6) || "system";
+			}
 
 			function setCookie(
 				name: string,
@@ -328,41 +343,47 @@ const isLoggedIn = !!Astro.locals.user;
 				}
 			}
 
-			function setTheme(theme: string) {
-				if (theme === "system") {
-					setCookie("theme", "");
-					root.classList.remove("light", "dark");
-				} else {
-					setCookie("theme", theme);
-					root.classList.remove("light", "dark");
-					root.classList.add(theme);
+			function setupTheme() {
+				const themeBtns =
+					document.querySelectorAll<HTMLButtonElement>(".theme-btn");
+				const root = document.documentElement;
+
+				function updateActiveBtn(theme: string) {
+					themeBtns.forEach((btn) => {
+						const active = btn.dataset.theme === theme;
+						btn.classList.toggle("active", active);
+						btn.setAttribute("aria-pressed", String(active));
+					});
 				}
-				updateActiveBtn(theme);
-			}
 
-			function updateActiveBtn(theme: string) {
+				function setTheme(theme: string) {
+					if (theme === "system") {
+						setCookie("theme", "");
+						root.classList.remove("light", "dark");
+					} else {
+						setCookie("theme", theme);
+						root.classList.remove("light", "dark");
+						root.classList.add(theme);
+					}
+					updateActiveBtn(theme);
+				}
+
+				setTheme(getStoredTheme());
+
 				themeBtns.forEach((btn) => {
-					const active = btn.dataset.theme === theme;
-					btn.classList.toggle("active", active);
-					btn.setAttribute("aria-pressed", String(active));
+					btn.onclick = () => setTheme(btn.dataset.theme || "system");
 				});
 			}
 
-			function getStoredTheme(): string {
-				const row = document.cookie
-					.split("; ")
-					.find((item) => item.startsWith("theme="));
-				return row?.slice(6) || "system";
-			}
+			setupTheme();
+			document.addEventListener("astro:page-load", setupTheme);
 
-			// Initialize
-			const storedTheme = getStoredTheme();
-			setTheme(storedTheme);
-
-			themeBtns.forEach((btn) => {
-				btn.addEventListener("click", () => {
-					setTheme(btn.dataset.theme || "system");
-				});
+			// 换页时先给新文档的 <html> 补上主题 class，避免过渡期间闪一下。
+			document.addEventListener("astro:before-swap", (event) => {
+				const theme = getStoredTheme();
+				if (theme === "light" || theme === "dark") {
+					event.newDocument.documentElement.classList.add(theme);
+				}
 			});
 		</script>
 
