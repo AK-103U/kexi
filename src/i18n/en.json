@@ -10,9 +10,10 @@
 		"switchTo": "Switch to {lang}",
 		"lightMode": "Switch to light mode",
 		"darkMode": "Switch to dark mode",
-		"systemMode": "System theme"
+		"toggleTheme": "Toggle theme"
 	},
 	"footer": {
+		"rss": "RSS Feed",
 		"poweredBy": "Powered by <a href=\"https://emdashcms.com\">EmDash</a>"
 	},
 	"home": {

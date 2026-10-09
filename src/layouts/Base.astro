@@ -187,6 +187,28 @@ const isLoggedIn = !!Astro.locals.user;
 		<footer class="site-footer">
 			<div class="footer-bottom">
 				<p class="footer-copyright" set:html={t("footer.poweredBy")} />
+				<a
+					class="footer-rss"
+					href={localePath(lang, "/rss.xml")}
+					aria-label={t("footer.rss")}
+					title={t("footer.rss")}
+				>
+					<svg
+						width="16"
+						height="16"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						aria-hidden="true"
+					>
+						<path d="M4 11a9 9 0 0 1 9 9"></path>
+						<path d="M4 4a16 16 0 0 1 16 16"></path>
+						<circle cx="5" cy="19" r="1"></circle>
+					</svg>
+				</a>
 			</div>
 		</footer>
 
@@ -218,36 +240,43 @@ const isLoggedIn = !!Astro.locals.user;
 				}
 			}
 
+			// 没有 cookie 时跟随系统，所以「此刻生效的是哪个主题」得问一下媒体查询。
+			function effectiveTheme(): "light" | "dark" {
+				const stored = getStoredTheme();
+				if (stored === "light" || stored === "dark") return stored;
+				return window.matchMedia("(prefers-color-scheme: dark)").matches
+					? "dark"
+					: "light";
+			}
+
 			function setupTheme() {
-				const themeBtns =
-					document.querySelectorAll<HTMLButtonElement>(".theme-btn");
+				const btn = document.querySelector<HTMLButtonElement>(".theme-btn");
+				if (!btn) return;
 				const root = document.documentElement;
+				const lightLabel = btn.dataset.labelLight ?? "";
+				const darkLabel = btn.dataset.labelDark ?? "";
 
-				function updateActiveBtn(theme: string) {
-					themeBtns.forEach((btn) => {
-						const active = btn.dataset.theme === theme;
-						btn.classList.toggle("active", active);
-						btn.setAttribute("aria-pressed", String(active));
-					});
+				// 按钮说的是「点了会切到哪」，所以文案指向的是另一个主题。
+				function sync() {
+					const label = effectiveTheme() === "dark" ? lightLabel : darkLabel;
+					btn!.setAttribute("aria-label", label);
+					btn!.title = label;
 				}
 
-				function setTheme(theme: string) {
-					if (theme === "system") {
-						setCookie("theme", "");
-						root.classList.remove("light", "dark");
-					} else {
-						setCookie("theme", theme);
-						root.classList.remove("light", "dark");
-						root.classList.add(theme);
-					}
-					updateActiveBtn(theme);
-				}
+				btn.onclick = () => {
+					const next = effectiveTheme() === "dark" ? "light" : "dark";
+					setCookie("theme", next);
+					root.classList.remove("light", "dark");
+					root.classList.add(next);
+					sync();
+				};
 
-				setTheme(getStoredTheme());
+				// 跟随系统时，系统主题变了图标也得跟着换（onchange 赋值，不叠加）。
+				window.matchMedia("(prefers-color-scheme: dark)").onchange = () => {
+					if (getStoredTheme() === "system") sync();
+				};
 
-				themeBtns.forEach((btn) => {
-					btn.onclick = () => setTheme(btn.dataset.theme || "system");
-				});
+				sync();
 			}
 
 			setupTheme();
@@ -566,11 +595,15 @@ const isLoggedIn = !!Astro.locals.user;
 				border-top: 1px solid var(--color-border-subtle);
 			}
 
+			/* 页脚就一行：版权 + RSS，高度贴着内容走。 */
 			.footer-bottom {
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				gap: var(--spacing-3);
 				max-width: var(--wide-width);
 				margin: 0 auto;
-				padding: var(--spacing-8) var(--spacing-6);
-				text-align: center;
+				padding: var(--spacing-3) var(--spacing-6);
 			}
 
 			.footer-copyright {
@@ -580,6 +613,22 @@ const isLoggedIn = !!Astro.locals.user;
 
 			.footer-copyright a {
 				color: var(--color-text-secondary);
+			}
+
+			.footer-rss {
+				display: inline-flex;
+				align-items: center;
+				color: var(--color-muted);
+				transition: color var(--transition-fast);
+			}
+
+			.footer-rss:hover {
+				color: var(--color-brand);
+			}
+
+			.footer-rss svg {
+				width: 16px;
+				height: 16px;
 			}
 
 			@media (max-width: 640px) {
