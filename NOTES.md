@@ -25,6 +25,7 @@ emdash-lab/
 ├── seed/seed.json                 # 内容模型 + 双语示例内容
 ├── seed/bylines-i18n.json         # byline 各语言文案覆盖
 ├── scripts/shots.mjs              # 自建截图脚本（见第七节）
+├── scripts/check-spa.mjs          # 客户端导航回归断言（见第六节）
 ├── scripts/seed-bylines-i18n.mjs  # 补齐 byline 的语言行（见第五节）
 └── src/
     ├── live.config.ts             # 注册 _emdash live collection（boilerplate）
@@ -212,7 +213,7 @@ pnpm seed:bylines      # 补齐其他语言的 byline
 站内点击（含语言切换）由客户端接管，不再整页刷新。底层仍是 MPA —— 首屏 SSR、
 爬虫拿到的 HTML、RSS、`EmDashHead` 注入的 hreflang 全部保留。
 
-实测（Chromium，脚本在 `.tmp-i18n/`）：
+实测（Chromium，`pnpm check:spa`）：
 
 | 验证项 | 结果 |
 |---|---|
@@ -223,6 +224,23 @@ pnpm seed:bylines      # 补齐其他语言的 byline
 | 浏览器后退 | 正常 |
 | 模块脚本重复执行 | 不会，⌘K 的 keydown 监听不叠加 |
 | 客户端导航后 prefetch | 仍工作（`onPageLoad` 会重新绑定） |
+
+### 回归断言：`scripts/check-spa.mjs`
+
+**ClientRouter 失效是静默的** —— 页面照样跳、内容照样对、`curl` 到的 HTML 也完全正常，
+只是偷偷退回了整页刷新，prefetch 和过渡动画全没了，但没有任何报错。肉眼和截图都分辨不出来。
+
+判据只有一条：**在 `window` 上打标记，点站内链接后标记还在 → 没有整页刷新**
+（整页刷新会重建 `window`）。围绕它一共 10 条断言，另查 `<html lang>` / `<title>` /
+正文是否跟随、后退是否可用、有无 page error。
+
+```bash
+pnpm dev            # 另开一个终端
+pnpm check:spa      # 默认 http://localhost:4321，可传参改地址
+```
+
+> 这套断言不是摆设：主题切换器「导航后失效」那个 bug 就是它抓出来的
+> （`probe6` 打印出 `<html>` 的 class 从 `dark` 变成了 `""`）。
 
 ### 必须配套改的：主题切换
 
@@ -354,7 +372,8 @@ Run `astro dev stop` to stop it, or use `astro dev --force` to replace it.
 | `seed/seed.json` | 改写为双语内容（16 posts + 2 pages + 双语分类法/菜单） | 重建数据库后中英页面均正常 |
 | `scripts/seed-bylines-i18n.mjs`、`seed/bylines-i18n.json` | 补齐 byline 的语言行 | 中英文章页均显示署名 |
 | `package.json`、`astro.config.mjs` | math 插件依赖键改用真实包名 `@ak-103u/emdash-plugin-math` | `pnpm install` 后 dev server 正常 |
-| `src/layouts/Base.astro` | head 加 `<ClientRouter />`；主题切换脚本改为 `astro:page-load` 驱动 | 见第六节；Chromium 实测 10/10 |
+| `src/layouts/Base.astro` | head 加 `<ClientRouter />`；主题切换脚本改为 `astro:page-load` 驱动 | 见第六节；`pnpm check:spa` 10/10 |
+| `scripts/check-spa.mjs`、`package.json` | 收编客户端导航回归断言，加 `pnpm check:spa` | 上述 10/10 即由它跑出 |
 
 **明确没动**：`src/live.config.ts`（boilerplate）、`Base.astro` 的数据获取逻辑与 `EmDashHead` 钩子。
 
@@ -375,7 +394,7 @@ Run `astro dev stop` to stop it, or use `astro dev --force` to replace it.
 - [x] RSS `<language>` 按 locale 输出（`zh-CN` / `en-US`）
 - [x] 语言切换器双向可达；中英文章页署名均显示
 - [x] 回退提示：zh 页显示「本文暂无中文版本…」，en 页显示 "not yet available…"
-- [x] ClientRouter：切语言/进详情页均不整页刷新，`<html lang>`、`<title>`、`canonical`、hreflang 跟着换，后退正常，无 page error
+- [x] ClientRouter：切语言/进详情页均不整页刷新，`<html lang>`、`<title>`、`canonical`、hreflang 跟着换，后退正常，无 page error（`pnpm check:spa` 10/10）
 - [x] ClientRouter 下主题切换：导航后 class 与按钮 active 保持，三个按钮仍可点
 - [x] prefetch 悬停生效，且客户端导航后仍工作
 
@@ -383,8 +402,8 @@ Run `astro dev stop` to stop it, or use `astro dev --force` to replace it.
 
 ## 十一、下一步可选方向
 
-- **决定 `test/spa` 分支的去留** —— ClientRouter 已在该分支跑通（见第六节），
-  还没合回 `main`。
+- ~~决定 `test/spa` 分支的去留~~ —— 2026-10-09 已用 `--no-ff` 合并进 `main`
+  （合并提交 `6760d1c`），分支已删。ClientRouter 的验证脚本收进 `scripts/check-spa.mjs`。
 - **重做主题布局** —— 用户明确说现有布局不符合心意，i18n 之后单独做这一项。
   路由已按 locale 分好，改布局时只需动 `src/pages/*.astro` 与 `Base.astro` 的单点。
 - **做 Cloudflare 变体**：D1 + R2 + `wrangler.jsonc` + `worker.ts`。
@@ -404,6 +423,7 @@ pnpm dev                    # 启动（默认只绑 ::1，localhost 或 [::1] �
 pnpm dev --host             # 需要 127.0.0.1 或局域网访问时
 pnpm typecheck              # 类型检查
 node scripts/shots.mjs      # 截图（含 en 变体）
+pnpm check:spa              # 客户端导航回归断言（需 dev server 在跑）
 pnpm seed:bylines           # 补齐 byline 的语言行（跑完重启 dev）
 
 npx emdash seed --validate  # 只校验 seed

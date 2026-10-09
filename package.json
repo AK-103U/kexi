@@ -13,7 +13,8 @@
     "preview": "astro preview",
     "start": "node ./dist/server/entry.mjs",
     "typecheck": "astro check",
-    "seed:bylines": "node scripts/seed-bylines-i18n.mjs"
+    "seed:bylines": "node scripts/seed-bylines-i18n.mjs",
+    "check:spa": "node scripts/check-spa.mjs"
   },
   "dependencies": {
     "@astrojs/node": "^11.1.5",
