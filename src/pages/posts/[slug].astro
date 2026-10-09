@@ -9,6 +9,7 @@ import { Image, PortableText } from "emdash/ui";
 import { Comments, CommentForm } from "emdash/ui/comments";
 import Base from "../../layouts/Base.astro";
 import { getReadingTime } from "../../utils/reading-time";
+import { mediaUrl } from "../../utils/media";
 import { resolveBlogSiteIdentity } from "../../utils/site-identity";
 import { siteConfig } from "../../i18n/config";
 import { formatDate, localePath, pageLang, useTranslations } from "../../i18n/ui";
@@ -157,9 +158,9 @@ const commentFormLabels = {
 									<div class="bylines">
 										{bylines.map((credit) => (
 											<div class="byline">
-												{credit.byline.avatarMediaId && (
+												{credit.byline.avatarStorageKey && (
 													<img
-														src={`/_emdash/api/media/file/${credit.byline.avatarMediaId}`}
+														src={mediaUrl(credit.byline.avatarStorageKey)}
 														alt={credit.byline.displayName}
 														class="byline-avatar"
 													/>

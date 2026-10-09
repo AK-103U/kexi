@@ -2,6 +2,7 @@
 import type { ContentBylineCredit, EditProxy, MediaValue } from "emdash";
 import { Image } from "emdash/ui";
 import { formatDate, localePath, useTranslations, type Lang } from "../i18n/ui";
+import { mediaUrl } from "../utils/media";
 
 interface Props {
 	lang: Lang;
@@ -53,9 +54,9 @@ const formattedDate = date ? formatDate(date, lang) : null;
 							<div class="card-bylines">
 								{bylines.slice(0, 1).map((credit) => (
 									<span class="card-byline">
-										{credit.byline.avatarMediaId && (
+										{credit.byline.avatarStorageKey && (
 											<img
-												src={`/_emdash/api/media/file/${credit.byline.avatarMediaId}`}
+												src={mediaUrl(credit.byline.avatarStorageKey)}
 												alt={credit.byline.displayName}
 												class="card-byline-avatar"
 											/>
