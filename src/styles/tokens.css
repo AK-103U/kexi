@@ -98,7 +98,6 @@
 		--wide-width: 1200px; /* max container (home, archives) */
 		--max-width: var(--content-width);
 		--gutter-width: 200px; /* right sidebar column (TOC) on article pages */
-		--meta-col-width: 180px; /* left meta column on article pages */
 		--nav-height: 64px; /* sticky header height */
 		--search-input-width: 180px; /* nav search box width */
 
@@ -112,9 +111,8 @@
 
 		/* Avatars */
 		--avatar-size-xs: 18px; /* card byline avatars */
-		--avatar-size-sm: 20px; /* post list byline avatars */
+		--avatar-size-sm: 20px; /* post list + article meta byline avatars */
 		--avatar-size-md: 24px; /* featured post byline avatars */
-		--avatar-size-lg: 32px; /* single post byline avatars */
 
 		/* Shadows */
 		--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);

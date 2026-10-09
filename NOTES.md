@@ -33,7 +33,7 @@ emdash-lab/
     ├── pages/                     # 默认语言（zh）公开路由，全部服务端渲染
     ├── pages/[locale]/            # 其他语言的薄壳路由（见第五节）
     ├── layouts/Base.astro
-    ├── components/                # PostCard / LanguageSwitcher / Sidebar
+    ├── components/                # PostCard / LanguageSwitcher / ThemeSwitcher
     ├── utils/rss.ts               # 按 locale 生成 feed
     └── styles/                    # tokens.css / theme.css
 ```
@@ -161,7 +161,7 @@ export const siteConfig = {
 | 匿名请求的 ALS 上下文里没有 locale | 每次数据调用都要**显式**传 `{ locale }`：`getEmDashCollection` / `getEmDashEntry` / `getMenu` / `getTaxonomyTerms` / `getTermsForEntries` / `search` |
 | 列表查询**不** fallback | 只有 zh 的文章不会出现在 `/en/posts`（EmDash 设计如此）；详情页有 fallback |
 | `i18n.fallback` 不能用 defaultLocale 作 key | Astro 直接报错。而且 EmDash 的 `getFallbackChain` 本来就会把 defaultLocale 追加到链尾 → **en → zh 自动成立**；zh → en 在主题层手动补（`posts/[slug].astro`、`pages/[slug].astro`） |
-| settings / widgetAreas 没有 locale 列 | 站名与标语全局单值；侧边栏、页脚改为自建（`Sidebar.astro` + Base.astro 里的 `footer-nav`），标题走 UI 字典 |
+| settings / widgetAreas 没有 locale 列 | 站名与标语全局单值；页头、页脚改为自建，文案走 UI 字典（侧栏 widget 后来整个删掉了，见第九节） |
 | `custom` 类型菜单 URL 不会自动加前缀 | seed 菜单直接写完整 URL（zh 无前缀、en 带 `/en`），用 `locale` + `translationOf` 关联 |
 | byline 没有 locale 字段 | seed 建的署名只落一种语言，需补丁脚本（见下） |
 
@@ -362,13 +362,76 @@ Run `astro dev stop` to stop it, or use `astro dev --force` to replace it.
 
 ---
 
-## 九、本次改动
+## 九、版式改造（i18n 之后）
+
+i18n 落地后，按「现有布局不合心意」逐块重排。都是删减，没有新增依赖。
+
+### 文章页：三栏 → 两栏
+
+```
+之前:  [左 meta 180px] [正文 680px] [右 TOC 200px]
+现在:                   [正文 680px] [右 TOC 200px]
+```
+
+- 左栏整个删掉，`.meta-sticky` 移到**标题下方**横排一行：
+  作者 · 日期 · 时长 · 标签
+- `.meta-label`（「发布于」「阅读时长」「标签」）全部移除 —— 图标已表意，再写一遍冗余
+- `.meta-tags` 保留 pill 样式
+- 日期用 Tabler `calendar-time`、时长用 `clock`（MIT，内联 SVG 不引依赖）
+
+> **踩到的坑**：`.bylines` 原本是 `flex-direction: column` + `--avatar-size-lg`，
+> 那是**左栏 180px 宽**时代的样式。搬到 680px 宽的正文列后竖排把整行撑成三行，
+> 和右侧日期完全不在一个基线。改成横排 + 头像 `lg → sm` 才对。
+> **读代码看不出来，必须渲染。**
+
+- 底部「继续阅读」三栏卡片区（`.more-posts`）删除，连带 `recentPosts` 查询、
+  `getTermsForEntries` 批量查 tag、`PostCard` 的 import 与字典 key
+
+### 侧栏 widget 区：整个删除
+
+`.sidebar-widgets`（搜索 / 分类 / 标签 / 最新文章）连同 `Sidebar.astro` 文件一并删掉。
+它是 i18n 阶段为绕过「widget 标题无 locale 列」而自建的，但版式上不属于这里。
+右栏现在只剩 TOC。`--gutter-width` 仍被 TOC 使用，保留。
+
+### 页头：两个控件
+
+```
+[搜索框]  [首页 关于 文章]  [🌐中文] [☀]
+```
+
+- **语言切换**：原来两个并列文字链接合并成单个 globe 控件，当前语言名压在
+  globe 右下角（带底色垫片，压在经纬线上也读得清），点击切到下一个语言。
+  两语言即互切；**加到三种语言时这个交互就不够用了，得改下拉菜单**。
+- **主题切换**：三个按钮 → 一个，去掉「跟随系统」，图标随当前主题出太阳 / 月亮。
+  没有 cookie 时仍跟随系统，所以脚本要问 `matchMedia` 才知道此刻生效的是哪个主题
+  （光看 cookie 不够）。
+- `.nav-toggles` 包住两者：`.nav-right` 在 640px 断点是单列 grid，
+  不包一层会被拆成上下两行。
+
+### 页脚：收成一行
+
+```
+              由 EmDash 驱动  ⦿))
+```
+
+- 删 `footer-grid`（品牌 + 导航 + 连接 + 关于四栏），再去掉 `footer-inner` 包装
+- 高度 85px → 49px（padding 从 `spacing-8` 收到 `spacing-3`）
+- RSS 入口补回版权行右侧，图标 16px，href 走 `localePath`（中英各自正确）
+- 主题按钮已搬到页头，`.footer-bottom` 的 `space-between` 随之失效
+
+### 清理的设计令牌
+
+`--meta-col-width` 与 `--avatar-size-lg` 失去使用者，从 `tokens.css` 删除。
+
+---
+
+## 十、本次改动
 
 | 文件 | 改动 | 验证方式 |
 |---|---|---|
 | `src/styles/theme.css` | 柑橘色主色（`#E86233`）、圆角调大、标题减重 | 搜索页截图按钮变橙；页面 CSS 输出确认 |
 | `astro.config.mjs` | 正文字体 Inter → **Public Sans** | 页面 `font-family` 输出确认 |
-| `src/i18n/`、`src/pages/[locale]/`、`src/components/{LanguageSwitcher,Sidebar}.astro`、`src/utils/rss.ts` | 全量 i18n（zh 默认 + en） | 见第五节；40 张截图 + 双语文案断言 |
+| `src/i18n/`、`src/pages/[locale]/`、`src/components/{LanguageSwitcher,ThemeSwitcher}.astro`、`src/utils/rss.ts` | 全量 i18n（zh 默认 + en） | 见第五节；40 张截图 + 双语文案断言 |
 | `seed/seed.json` | 改写为双语内容（16 posts + 2 pages + 双语分类法/菜单） | 重建数据库后中英页面均正常 |
 | `scripts/seed-bylines-i18n.mjs`、`seed/bylines-i18n.json` | 补齐 byline 的语言行 | 中英文章页均显示署名 |
 | `package.json`、`astro.config.mjs` | math 插件依赖键改用真实包名 `@ak-103u/emdash-plugin-math` | `pnpm install` 后 dev server 正常 |
@@ -379,7 +442,7 @@ Run `astro dev stop` to stop it, or use `astro dev --force` to replace it.
 
 ---
 
-## 十、验证清单（全部通过）
+## 十一、验证清单（全部通过）
 
 - [x] `pnpm dev` 启动无错，`emdash-env.d.ts` 生成 2 个集合
 - [x] 路由状态码正确：`/` `/en` `/posts` `/en/posts` 中英详情页、`/pages/about`、`/en/category/*`、`/en/tag/*`、`/search`、`/en/search`、`/rss.xml`、`/en/rss.xml` 全 200；`/xx/posts/foo` → 302；`/_emdash/admin` → 302
@@ -395,17 +458,25 @@ Run `astro dev stop` to stop it, or use `astro dev --force` to replace it.
 - [x] 语言切换器双向可达；中英文章页署名均显示
 - [x] 回退提示：zh 页显示「本文暂无中文版本…」，en 页显示 "not yet available…"
 - [x] ClientRouter：切语言/进详情页均不整页刷新，`<html lang>`、`<title>`、`canonical`、hreflang 跟着换，后退正常，无 page error（`pnpm check:spa` 10/10）
-- [x] ClientRouter 下主题切换：导航后 class 与按钮 active 保持，三个按钮仍可点
+- [x] ClientRouter 下主题切换：导航后仍可点（单按钮，class 与图标同步翻转）
 - [x] prefetch 悬停生效，且客户端导航后仍工作
+- [x] 版式改造（见第九节）：meta 在标题下方，≥900px 时四个块同一行、390px 折两行；
+      左栏、`.meta-label`、`.sidebar-widgets` 均不存在；正文列宽仍 680px；
+      TOC ≥1100px 在正文右侧、窄屏隐藏
+- [x] 单按钮主题切换：系统亮/暗两种偏好下各跑一遍（初始图标符合系统、点击后翻转、
+      cookie 落盘、刷新保持、导航后仍可点）16/16
+- [x] 页脚几何：1440/640/390 三个宽度高度均 49px，RSS 紧邻版权右侧 12px
 
 ---
 
-## 十一、下一步可选方向
+## 十二、下一步可选方向
 
 - ~~决定 `test/spa` 分支的去留~~ —— 2026-10-09 已用 `--no-ff` 合并进 `main`
   （合并提交 `6760d1c`），分支已删。ClientRouter 的验证脚本收进 `scripts/check-spa.mjs`。
-- **重做主题布局** —— 用户明确说现有布局不符合心意，i18n 之后单独做这一项。
-  路由已按 locale 分好，改布局时只需动 `src/pages/*.astro` 与 `Base.astro` 的单点。
+- ~~重做主题布局~~ —— 已按块完成（见第九节）：文章页两栏化、侧栏 widget 删除、
+  页头两个控件、页脚收成一行。继续按同样的方式逐块调整即可。
+- **`AGENTS.md` 已同步** —— 版式描述、字体、品牌色、令牌清单、i18n 与客户端导航
+  两节都更新过。改动版式时记得一并维护。
 - **做 Cloudflare 变体**：D1 + R2 + `wrangler.jsonc` + `worker.ts`。
 - **发布成 GitHub 模板**：`npm create astro@latest -- --template github:<you>/emdash-lab`。
 - **改 seed 做原创内容模型**：加 collection / 字段 / 自定义 PT 块（后者需要 native 插件注册编辑器）。
@@ -414,7 +485,7 @@ Run `astro dev stop` to stop it, or use `astro dev --force` to replace it.
 
 ---
 
-## 十二、速查
+## 十三、速查
 
 ```bash
 cd F:/dev/blog/emdash-lab

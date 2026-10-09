@@ -4,21 +4,32 @@ This is an EmDash site -- a CMS built on Astro with a full admin UI.
 
 ```bash
 pnpm dev              # Start the Astro dev server
+pnpm typecheck        # astro check
+pnpm check:spa        # Client-side navigation assertions (needs a running dev server)
+pnpm seed:bylines     # Backfill per-locale byline rows (restart dev afterwards)
 npx emdash types      # Regenerate TypeScript types from a running site
 ```
 
 The admin UI is at `http://localhost:4321/_emdash/admin`.
 
+`NOTES.md` (Chinese) holds the deeper findings -- environment quirks, the byline locale
+bug, the i18n mechanics. Read it before debugging anything unusual.
+
 ## Key Files
 
-| File                     | Purpose                                                                            |
-| ------------------------ | ---------------------------------------------------------------------------------- |
-| `astro.config.mjs`       | Astro config with `emdash()` integration, database, and storage                    |
-| `src/live.config.ts`     | EmDash loader registration (boilerplate -- don't modify)                           |
-| `seed/seed.json`         | Schema definition + demo content (collections, fields, taxonomies, menus, widgets) |
-| `emdash-env.d.ts`        | Generated types for collections (auto-regenerated on dev server start)             |
-| `src/layouts/Base.astro` | Base layout with EmDash wiring (menus, search, page contributions)                 |
-| `src/pages/`             | Astro pages -- all server-rendered                                                 |
+| File                          | Purpose                                                                            |
+| ----------------------------- | ---------------------------------------------------------------------------------- |
+| `astro.config.mjs`            | Astro config with `emdash()` integration, database, and storage                    |
+| `src/i18n/config.ts`          | Single source of truth for locales; imported by `astro.config.mjs` and theme code  |
+| `src/i18n/{zh,en}.json`       | UI dictionary (`MessageKey` derives from `zh.json`)                                |
+| `src/live.config.ts`          | EmDash loader registration (boilerplate -- don't modify)                           |
+| `seed/seed.json`              | Schema definition + bilingual demo content                                         |
+| `seed/bylines-i18n.json`      | Per-locale byline copy overrides                                                   |
+| `emdash-env.d.ts`             | Generated types for collections (auto-regenerated on dev server start)             |
+| `src/layouts/Base.astro`      | Base layout with EmDash wiring (menus, search, page contributions)                 |
+| `src/pages/`                  | Astro pages -- all server-rendered                                                 |
+| `scripts/shots.mjs`           | Screenshot script (replaces the template's `pnpm screenshots`, which needs lsof/rsync) |
+| `scripts/check-spa.mjs`       | Client-side navigation regression assertions                                       |
 
 ## Skills
 
@@ -48,16 +59,46 @@ A blog with posts, pages, categories, tags, full-text search, and RSS. Designed 
 
 ## Pages
 
-| Page        | Path               | What it shows                                                                                          |
-| ----------- | ------------------ | ------------------------------------------------------------------------------------------------------ |
-| Home        | `/`                | Featured post hero (large image + excerpt), latest posts grid                                          |
-| All posts   | `/posts`           | Article count, full post list with excerpts and tag chips                                              |
-| Post detail | `/posts/[slug]`    | Featured image, title, body, left meta column (authors + date), right TOC + search + categories gutter |
-| Search      | `/search`          | Full-text search UI                                                                                    |
-| Page        | `/pages/[slug]`    | Static page content (Portable Text)                                                                    |
-| Category    | `/category/[slug]` | Posts filtered by category                                                                             |
-| Tag         | `/tag/[slug]`      | Posts filtered by tag                                                                                  |
-| RSS         | `/rss.xml`         | Generated feed                                                                                         |
+| Page        | Path               | What it shows                                                                          |
+| ----------- | ------------------ | -------------------------------------------------------------------------------------- |
+| Home        | `/`                | Featured post hero (large image + excerpt), latest posts grid                          |
+| All posts   | `/posts`           | Article count, full post list with excerpts and tag chips                              |
+| Post detail | `/posts/[slug]`    | Featured image, title, meta row under the title (bylines, date, reading time, tags), body, right TOC gutter |
+| Search      | `/search`          | Full-text search UI                                                                    |
+| Page        | `/pages/[slug]`    | Static page content (Portable Text)                                                    |
+| Category    | `/category/[slug]` | Posts filtered by category                                                             |
+| Tag         | `/tag/[slug]`      | Posts filtered by tag                                                                  |
+| RSS         | `/rss.xml`         | Generated feed                                                                         |
+
+Every public route also exists under `/en` (`src/pages/[locale]/` holds thin shells that
+re-render the default-locale page with `locale` set). See **Internationalisation** below.
+
+## Internationalisation
+
+Two locales: **`zh` (default, no URL prefix)** and **`en` (`/en` prefix)**. `src/i18n/config.ts` is the single source of truth -- `astro.config.mjs` imports it to build Astro's `i18n` block, and theme code imports the same object at runtime.
+
+- **Routing** -- default-locale pages live at `src/pages/*`; other locales are thin shells under `src/pages/[locale]/*` that import the default page and pass `locale`. A shell must validate with `isLang(locale)` and redirect to `/404` otherwise.
+- **Pages read their own locale** -- `getLang(Astro)` off `Astro.currentLocale`. No prop drilling.
+- **Pass `{ locale }` to every data call** -- `getEmDashCollection`, `getEmDashEntry`, `getMenu*`, `getTaxonomyTerms*`, `getTermsForEntries`, `search`. Anonymous requests have no locale in the ALS context, so omitting it silently returns the wrong language.
+- **Links** -- always `localePath(lang, path)`, never a hand-built string, and always off `entry.data.slug` (in non-default locales `entry.id` carries an `en/` prefix).
+- **Content is row-per-locale** -- one row per language, same slug, linked by `translation_group`. Adding a post means writing both rows in `seed/seed.json` with `translationOf`.
+- **No fallback in lists** -- a post that only exists in `zh` won't appear on `/en/posts`. Detail pages do fall back, and show `post.translatedNotice` when they do.
+- **Not translatable** -- `settings` (site title/tagline) and widget areas have no locale column. The header/footer are hand-built so their copy comes from the dictionary.
+
+The UI dictionary is `src/i18n/{zh,en}.json`; `MessageKey` is derived from `zh.json`, so a missing key in `en.json` is a compile error.
+
+`pnpm check:spa` runs Playwright assertions that client-side navigation (see below) is still actually working.
+
+## Client-side navigation
+
+`Base.astro` renders `<ClientRouter />` (from `astro:transitions`), so in-site clicks swap the document client-side instead of doing a full page load. The site is still an MPA -- first paint, crawler HTML, RSS and hreflang are all server-rendered.
+
+Two things this breaks if you're not careful:
+
+- **Module scripts run once.** Anything binding to nodes that get swapped must re-init on `astro:page-load` and assign listeners with `onclick` (not `addEventListener`) so repeat runs don't stack. The theme switcher does this.
+- **Failure is silent.** The page still navigates, the content is still right, and `curl` looks normal -- it just quietly reverts to full page loads. `pnpm check:spa` catches this by planting a marker on `window` and checking it survives a click.
+
+Prefetch is on by default with `<ClientRouter />` (`init({ prefetchAll: true })`) -- no config needed.
 
 ## Schema
 
@@ -70,11 +111,11 @@ Site settings have `title` and `tagline` -- both render in the header / footer.
 
 ## Visual character
 
-Single typeface: **Inter** on `--font-body`, used for everything including headings (`--font-heading` defaults to the body face; tighter letter-spacing on h1/h2). **JetBrains Mono** on `--font-mono` for inline code and code blocks. Body and headings share the same family; weight and size carry the hierarchy (`--font-weight-heading` 600, `--font-weight-display` 700 for h1/page titles).
+Single typeface: **Public Sans** on `--font-body`, used for everything including headings (`--font-heading` defaults to the body face; tighter letter-spacing on h1/h2). **JetBrains Mono** on `--font-mono` for inline code and code blocks. Body and headings share the same family; weight and size carry the hierarchy (`--font-weight-heading` 600, `--font-weight-display` 600 for h1/page titles).
 
-The brand colour is `#0066cc` (`--color-brand`) -- used for links, the post-card title hover, and the search input focus ring. There's also a secondary text colour (`--color-text-secondary`) and a `--color-muted` for meta info. Don't add a second accent.
+The brand colour is `#e86233` (a citrus orange, `--color-brand`) -- used for links, the post-card title hover, and the search input focus ring. There's also a secondary text colour (`--color-text-secondary`) and a `--color-muted` for meta info. Don't add a second accent.
 
-The article layout is the standout feature: a three-column reading view with a left meta column (author bylines, date), centred 680px body column, and a right gutter for search, table of contents, and categories. Don't flatten that into one column on desktop -- the layout signals "this is something to read".
+The article layout is the standout feature: a two-column reading view with a centred 680px body column and a right gutter holding the table of contents. The bylines / date / reading time / tags meta sits as a single row directly under the title, using inline Tabler icons. Don't flatten the gutter into one column on desktop -- the layout signals "this is something to read".
 
 ## Customisation
 
@@ -89,19 +130,19 @@ CSS variables worth knowing (see `tokens.css` for the full list):
 - `--color-brand`, `--color-brand-hover`, `--color-on-brand`, `--color-brand-ring`
 - `--color-bg`, `--color-bg-subtle`, `--color-surface`, `--color-text`, `--color-text-secondary`, `--color-muted`, `--color-border`, `--color-border-subtle`
 - `--font-body`, `--font-heading`, `--font-mono`
-- `--font-weight-heading` (600) / `--font-weight-display` (700) -- heading weights; lower them if you switch to a serif
+- `--font-weight-heading` (600) / `--font-weight-display` (600) -- heading weights; lower them if you switch to a serif
 - `--tracking-tight` / `--tracking-snug` / `--tracking-wide` / `--tracking-wider` -- letter-spacing tokens used across headings and meta labels
 - `--content-width` (680px) -- article body column
 - `--wide-width` (1200px) -- max container
 - `--gutter-width` (200px) -- right sidebar (TOC) on article pages
-- `--meta-col-width` (180px) -- left meta column on article pages
-- `--avatar-size-{xs,sm,md,lg}` -- byline avatar sizes at different scales
+- `--avatar-size-{xs,sm,md}` -- byline avatar sizes at different scales
 
 ## What not to do
 
-- Don't add a second accent colour or coloured section backgrounds. The page should be black, white, and one blue.
-- Don't replace Inter with a display sans (Bebas, Anton, etc.). Headings rely on weight contrast, not novelty faces.
+- Don't add a second accent colour or coloured section backgrounds. The page should be black, white, and one orange.
+- Don't replace Public Sans with a display sans (Bebas, Anton, etc.). Headings rely on weight contrast, not novelty faces.
 - Don't collapse the article gutter on desktop -- it's part of the reading experience.
+- Don't put the post meta back into a left column -- it belongs on one row under the title.
 - Don't use stock blog copy ("Welcome to my blog", "Stay tuned for more"). Write a real tagline that says what this blog is about.
 - Don't seed the home page with three identical placeholder posts. If you only have one real post, show one real post.
 - Comments are enabled on posts and rendered on the post detail page. Configure moderation before publishing the site, or remove `commentsEnabled` and the comments UI together.
