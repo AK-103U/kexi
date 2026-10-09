@@ -408,7 +408,14 @@ const isLoggedIn = !!Astro.locals.user;
 					scrollbar-gutter: stable;
 				}
 
+				/*
+				 * 列方向 flex：.shell 吃掉剩余高度，页脚因此被顶到 body 底部。
+				 * 这是页脚 sticky 的前提 —— 没有它，短页面（如 /pages/about）
+				 * 的页脚会停在视口中部，下面的空白全露出来。
+				 */
 				body {
+					display: flex;
+					flex-direction: column;
 					font-family: var(--font-body);
 					font-size: var(--font-size-base);
 					line-height: var(--leading-relaxed);
@@ -547,6 +554,13 @@ const isLoggedIn = !!Astro.locals.user;
 			 */
 			.shell {
 				display: grid;
+				/*
+				 * 吃掉 body 剩余高度，把页脚顶到底部。
+				 * 页脚是 `sticky; bottom: 0` —— 它只会把「已经掉到视口下方」的
+				 * 页脚拉回来，**不会**把「停在半空」的页脚推下去。短页面
+				 * （/pages/about）靠的就是这一行。
+				 */
+				flex: 1;
 				grid-template-columns:
 					var(--rail-width) minmax(0, var(--content-width))
 					var(--rail-width);
@@ -743,11 +757,30 @@ const isLoggedIn = !!Astro.locals.user;
 				color: var(--color-text);
 			}
 
-			main {
-				min-height: calc(100vh - var(--nav-height) - 300px);
-			}
-			/* Footer */
+			/*
+			 * 这里曾经有一条 main { min-height: calc(100vh - nav-height - 300px) }。
+			 * 在「页头 + 单列内容」的旧版式里它给短页面兜一个最小高度，免得页脚
+			 * 浮在半空。现在这活由 .shell { flex: 1 } 干，而且干得更准 —— 它按真实
+			 * 剩余空间算，不靠 300px 这种猜出来的数字。两条并存只会在窄屏上多顶出
+			 * 一段空白，所以删掉。
+			 */
+			/*
+			 * 页脚常驻视口底部。
+			 *
+			 * 两件事合起来才成立：
+			 *  1. `.shell` 吃掉剩余高度（body 是列向 flex）—— 短页面（如
+			 *     /pages/about）的页脚因此落到视口底边，而不是停在半空。
+			 *  2. `position: sticky; bottom: 0` —— 长页面里页脚的自然位置在
+			 *     文档末尾、远在视口之下，sticky 把它拉进视口底部常驻。
+			 * 只有 1 会在长页面里看不见页脚，只有 2 会在短页面里留一条空白。
+			 *
+			 * 与页头一样是「静态范围」：它不随页面高度变化，切页时不漂移。
+			 */
 			.site-footer {
+				position: sticky;
+				bottom: 0;
+				/* 页头是 100，搜索结果下拉是 1000 —— 页脚在两者之下 */
+				z-index: 90;
 				background: var(--color-bg-subtle);
 				border-top: 1px solid var(--color-border-subtle);
 			}

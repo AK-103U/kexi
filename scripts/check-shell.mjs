@@ -308,6 +308,49 @@ const burgerVisible = await p4.locator(".nav-burger").isVisible();
 check("999px 汉堡可见（对照条件成立）", burgerVisible);
 await p4.close();
 
+// ---------- 6b. 页脚常驻 ----------
+//
+// 页脚是 sticky bottom:0 + .shell flex:1 —— 前者把长页面里掉到视口下方的
+// 页脚拉回来，后者把短页面的页脚顶到底。缺任何一个，位置都会随页面高度变，
+// 那正是用户看到的「页脚漂移」。
+console.log("\n=== 页脚常驻 ===");
+const p6 = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+const footGeom = {};
+for (const [name, url] of Object.entries(PAGES)) {
+	await p6.goto(BASE + url, { waitUntil: "networkidle" });
+	await p6.waitForTimeout(200);
+	footGeom[name] = await p6.evaluate(() => {
+		const b = document.querySelector(".site-footer").getBoundingClientRect();
+		return { y: +b.y.toFixed(1), h: +b.height.toFixed(1), vh: window.innerHeight };
+	});
+}
+const footYs = Object.entries(footGeom).map(([k, v]) => `${k}=${v.y.toFixed(0)}`);
+check(
+	"页脚贴视口底（各页）",
+	Object.values(footGeom).every((f) => Math.abs(f.y + f.h - f.vh) < 1),
+	footYs.join(" "),
+);
+check(
+	"页脚 y 各页一致（不随页面高度漂移）",
+	new Set(Object.values(footGeom).map((f) => Math.round(f.y))).size === 1,
+	footYs.join(" "),
+);
+
+// 滚动中也要贴着（长页面里页脚自然位置在文档末尾）
+await p6.goto(BASE + "/posts/building-for-the-long-term", { waitUntil: "networkidle" });
+await p6.evaluate(() => window.scrollTo(0, 1200));
+await p6.waitForTimeout(300);
+const scrolledFoot = await p6.evaluate(() => {
+	const b = document.querySelector(".site-footer").getBoundingClientRect();
+	return { y: +b.y.toFixed(1), h: +b.height.toFixed(1), vh: window.innerHeight };
+});
+check(
+	"滚动中页脚仍在视口底",
+	Math.abs(scrolledFoot.y + scrolledFoot.h - scrolledFoot.vh) < 1,
+	`y=${scrolledFoot.y} h=${scrolledFoot.h}`,
+);
+await p6.close();
+
 // ---------- 7. SPA 导航不漂移 ----------
 //
 // 两条曾经真实存在的漂移，都只在「客户端导航」时显形：
@@ -332,6 +375,7 @@ const geom = () =>
 			shell: box(".shell"),
 			header: box(".site-header"),
 			headerAvatar: box(".site-identity-avatar"),
+			footer: box(".site-footer"),
 			scrollY: Math.round(window.scrollY),
 		};
 	});
@@ -366,6 +410,11 @@ check(
 	"切到 /pages/about 页头头像不横移",
 	Math.abs(afterAbout.headerAvatar.x - rest.headerAvatar.x) < 1,
 	`x ${rest.headerAvatar.x} → ${afterAbout.headerAvatar.x}`,
+);
+check(
+	"切到 /pages/about 页脚不移动（常驻）",
+	Math.abs(afterAbout.footer.y - rest.footer.y) < 1,
+	`y ${rest.footer.y} → ${afterAbout.footer.y}`,
 );
 
 // b) 滚动不该移动 rail —— sticky 位必须与静止位重合
@@ -404,6 +453,11 @@ check(
 	"滚动状态下切页，页头 y 不弹动",
 	Math.abs(afterScrollNav.header.y - rest.header.y) < 1,
 	`静止 ${rest.header.y} / 滚动时 ${scrolled.header.y} / 切页后 ${afterScrollNav.header.y}`,
+);
+check(
+	"滚动状态下切页，页脚 y 不弹动",
+	Math.abs(afterScrollNav.footer.y - rest.footer.y) < 1,
+	`静止 ${rest.footer.y} / 滚动时 ${scrolled.footer.y} / 切页后 ${afterScrollNav.footer.y}`,
 );
 check("切页后 scrollY 归零（对照条件成立）", afterScrollNav.scrollY === 0);
 await p5.close();
