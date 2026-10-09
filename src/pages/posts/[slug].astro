@@ -1,8 +1,6 @@
 ---
 import {
 	getEmDashEntry,
-	getEmDashCollection,
-	getTermsForEntries,
 	getSeoMeta,
 	decodeSlug,
 	getSiteSettings,
@@ -10,7 +8,6 @@ import {
 import { Image, PortableText } from "emdash/ui";
 import { Comments, CommentForm } from "emdash/ui/comments";
 import Base from "../../layouts/Base.astro";
-import PostCard from "../../components/PostCard.astro";
 import Sidebar from "../../components/Sidebar.astro";
 import { getReadingTime } from "../../utils/reading-time";
 import { resolveBlogSiteIdentity } from "../../utils/site-identity";
@@ -95,32 +92,6 @@ const readingTime = getReadingTime(post.data.content);
 // This post's tags are already hydrated onto the entry by getEmDashEntry —
 // no extra query needed.
 const tags = post.data.terms?.tag ?? [];
-
-// Fetch a few extra recent posts in case the current post is among them.
-const { entries: recentPosts, cacheHint: recentPostsCacheHint } = await getEmDashCollection(
-	"posts",
-	{
-		locale: lang,
-		orderBy: { published_at: "desc" },
-		limit: 4,
-	},
-);
-if (Astro.cache?.enabled) Astro.cache.set(recentPostsCacheHint);
-const otherPosts = recentPosts.filter((p) => p.id !== post.id).slice(0, 3);
-
-// Single batched query for related-posts tags, rather than one
-// getEntryTerms() call per related post.
-const otherTagsByEntry = await getTermsForEntries(
-	"posts",
-	otherPosts.map((p) => p.data.id),
-	"tag",
-	{ locale: lang },
-);
-const otherPostsWithTags = otherPosts.map((p) => ({
-	post: p,
-	tags: otherTagsByEntry.get(p.data.id) ?? [],
-	bylines: p.data.bylines ?? [],
-}));
 
 const publishDate = post.data.publishedAt
 	? formatDate(post.data.publishedAt, lang, "long")
@@ -317,37 +288,6 @@ const commentFormLabels = {
 			</aside>
 		</div>
 	</article>
-
-	{
-		otherPostsWithTags.length > 0 && (
-			<section class="more-posts">
-				<div class="more-inner">
-					<h2 class="more-title">{t("post.continueReading")}</h2>
-					<div class="more-grid">
-						{otherPostsWithTags.map(
-							({ post: p, tags: postTags, bylines: postBylines }) => (
-								<PostCard
-									lang={lang}
-									title={p.data.title}
-									excerpt={p.data.excerpt}
-									featuredImage={p.data.featured_image}
-									href={localePath(lang, `/posts/${p.data.slug}`)}
-									date={p.data.publishedAt ?? undefined}
-									readingTime={getReadingTime(p.data.content)}
-									tags={postTags.map((tag) => ({
-										slug: tag.slug,
-										label: tag.label,
-									}))}
-									bylines={postBylines}
-									edit={p.edit}
-								/>
-							),
-						)}
-					</div>
-				</div>
-			</section>
-		)
-	}
 
 	<script>
 		// Build table of contents from h2/h3 headings
@@ -987,31 +927,6 @@ const commentFormLabels = {
 		color: var(--color-on-brand) !important;
 	}
 
-	/* More posts section */
-	.more-posts {
-		background: var(--color-bg-subtle);
-		padding: var(--spacing-16) 0;
-		margin-top: var(--spacing-16);
-	}
-
-	.more-inner {
-		max-width: var(--wide-width);
-		margin: 0 auto;
-		padding: 0 var(--spacing-6);
-	}
-
-	.more-title {
-		font-size: var(--font-size-2xl);
-		font-weight: var(--font-weight-heading);
-		margin-bottom: var(--spacing-10);
-	}
-
-	.more-grid {
-		display: grid;
-		grid-template-columns: repeat(3, 1fr);
-		gap: var(--spacing-8);
-	}
-
 	/* Responsive */
 	@media (max-width: 1100px) {
 		.article-grid {
@@ -1038,19 +953,11 @@ const commentFormLabels = {
 		.article-grid {
 			padding: 0 var(--spacing-4);
 		}
-
-		.more-grid {
-			grid-template-columns: repeat(2, 1fr);
-		}
 	}
 
 	@media (max-width: 600px) {
 		.article-title {
 			font-size: var(--font-size-3xl);
-		}
-
-		.more-grid {
-			grid-template-columns: 1fr;
 		}
 	}
 </style>
