@@ -433,7 +433,7 @@ i18n 落地后，按「现有布局不合心意」逐块重排。都是删减，
 ### 清理的设计令牌
 
 `--meta-col-width` 与 `--avatar-size-lg` 失去使用者，从 `tokens.css` 删除。
-（`--avatar-size-lg` 后来在三栏改造中重新加回，值 40px，见第十四节。）
+（`--avatar-size-lg` 后来在三栏改造中重新加回，值 40px；第十五节随头像搬进页头改为 32px。）
 
 ---
 
@@ -557,6 +557,9 @@ Astro 把 `sharp` 列为 optional peer；pnpm 的严格 node_modules 布局下�
 
 ### 对齐：左栏一条中轴、页头中列居中
 
+> **本节已被第十五节取代**：头像与名字搬进了页头左侧，左栏只剩导航；
+> 页头也不再自己居中，而是与外壳共用列几何。保留在此以记录当时的推理。
+
 两处对齐要求，都是「整体」而非逐块：
 
 **左栏** —— `.rail-identity-wrap` 声明一次
@@ -652,6 +655,124 @@ grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
 | `src/pages/*.astro` | 让出外层宽度、网格重排、修头像 URL |
 | `src/styles/tokens.css` | 加 `--rail-width` / `--avatar-size-lg`；删 `--gutter-width` |
 | `package.json` | 加 `sharp` 直接依赖、`seed:avatar`、`check:shell` |
+
+---
+
+## 十五、页头收窄与页脚常驻
+
+用户第二轮反馈的三条：页脚漂移（尤其 about 页，且希望**全局可见**而非滚到底才见）、
+页头变矮并把头像与名称放到左侧、搜索框去边框用浅灰底、间距 16 / 12–16px、
+页头元素横向中线对齐。
+
+### 页脚常驻：两条声明，缺一不可
+
+```css
+body { display: flex; flex-direction: column; }   /* 让 .shell 能吃掉剩余高度 */
+.shell { flex: 1; }                               /* 短页面：把页脚顶到视口底 */
+.site-footer { position: sticky; bottom: 0; }     /* 长页面：把页脚拉回视口底 */
+```
+
+- 只有 `flex: 1`：长页面里页脚的自然位置在文档末尾、远在视口之下，**看不见**。
+- 只有 `sticky`：短页面（`/pages/about`，docH == clientH）里页脚停在视口中部，
+  下面露出一段空白。`sticky; bottom: 0` 只把**已经掉到视口下方**的元素拉回来，
+  它不会把停在半空的元素推下去。
+
+实测三个视口 × 七个路由 × 三个滚动位置（顶/中/底），页脚恒在 `y + h == vh`，
+各页 y 完全一致（851.2 @900 高）—— 用户说的「漂移」就此消失。
+
+> 删掉了旧的 `main { min-height: calc(100vh - var(--nav-height) - 300px) }`。
+> 它在「页头 + 单列」的旧版式里干的就是现在 `flex: 1` 的活，而且干得更差
+> （300px 是猜的）。两条并存只会在窄屏多顶出一段空白。
+
+### 页头与外壳共用列几何
+
+这是「头像与左栏内容中垂线对齐」的实现方式 —— 不手算偏移，而是让 `.nav`
+用**和 `.shell` 完全一样**的列定义：
+
+```css
+grid-template-columns:
+  var(--rail-width) minmax(0, var(--content-width)) var(--rail-width);
+gap: var(--spacing-6);
+justify-content: center;
+```
+
+于是页头第 1 列**就是**左栏那一列，头像在这一列里居中即落在左栏中轴上。
+改 `--rail-width` / `--content-width` 时两边自动跟随。实测 6 个桌面断点
+（1440 / 1280 / 1200 / 1199 / 1100 / 1000）偏差全部 **0.0px**。
+
+`SiteIdentity` 组件把宽度锁死为头像宽、名字绝对定位挂在右侧 —— 名字再长
+也不会把头像从中轴上挤走（超长则省略号截断）。
+
+> **≤999px 的一个坑**：页头这时不需要左栏列了，我最初写成
+> `grid-template-columns: auto minmax(0, 1fr) auto`（汉堡占 `auto`）。
+> 结果 999px 与 800px 下 `nav-right` 偏离中栏中轴 **15px** —— 汉堡那个
+> `auto` 轨道比右侧的 `auto` 宽，中列就被推偏了。改回
+> `minmax(0, 1fr) auto minmax(0, 1fr)` 后归零。
+> 这条被 `check:shell` 的 8 断点断言当场抓到。
+
+### 搜索框：一个「写了但没生效」的教训
+
+要求是去边框、只用浅灰底。改完发现**底色没变**，查下来是两层坑叠在一起：
+
+1. `.site-search-input` 是**传给子组件**的 class，必须 `:global()`（旧坑，已知）。
+2. 更深一层：组件自带的 `.emdash-live-search-input[data-astro-cid-*]`
+   特异性是 **(0,2,0)**，压过 `:global(.class)` 的 **(0,1,0)**。于是
+   `padding` / `font-size` / `border-radius` / `background` 四行**全是死代码** ——
+   实测 `border-radius` 一直是组件的 4px，而 `Base.astro` 里写着 `--radius`（8px）。
+
+两种解法，优先第一种：
+
+```css
+/* 1) 给组件自己的自定义属性赋值 —— 自定义属性不参与特异性比较 */
+--emdash-search-bg: var(--color-surface);
+
+/* 2) 组件硬编码的值只能 !important */
+border: 0 !important;
+border-radius: var(--radius) !important;
+padding: var(--spacing-2) var(--spacing-3) !important;
+font-size: var(--font-size-sm) !important;
+```
+
+焦点态从「边框变橙」改成「2px 橙色环」（`box-shadow`），因为边框已经没了。
+
+> **这类失败在源码里完全看不出来**。所以 `check:shell` 现在量的是
+> **计算样式**（`getComputedStyle` 的 `borderTopWidth` / `backgroundColor`），
+> 而不是读 CSS 源。补这条断言之前我做过破坏性自验：把底色改回
+> `--color-bg`，**当时的 49 条断言全绿放行** —— 这就是它必须存在的理由。
+
+### 间距与中线
+
+- `.nav-right` gap 24px → **16px**（搜索框与图标组）
+- `.nav-toggles` gap 8px → **12px**（图标之间）
+- `.nav` 的 `align-items: center` 保证横向中线对齐：搜索框 36px、语言钮 38px、
+  主题钮 32px 三种高度，实测中线全部落在 28.0px，与页头几何中线 28.5px 差 0.5px。
+
+页头高度 `--nav-height` 64px → **56px**（实际 57px，含 1px 下边框）。
+
+> 改 `--nav-height` 会连带影响 `--rail-sticky-top` 的推导，但因为两者是
+> `calc(var(--nav-height) + 1px + var(--shell-pad-top))` 的关系，改一个即可 ——
+> 实测 sticky 位 105px == 静止位 105px，仍是一致的。
+
+### 移动端取舍
+
+≤999px 时左栏整块隐藏，页头左侧的头像与名字**跟着一起隐藏**（用户既定：
+窄屏不显示头像与名字），第 1 列让给汉堡。抽屉里同样只有链接、没有身份块 ——
+实测 `抽屉里头像数=0`。
+
+### 断言补强
+
+`check-shell.mjs` 从 35 条涨到 **49 条**，新增：
+
+- 页头头像与左栏导航共轴（6 个桌面断点，±0.5px）
+- `nav-right` 对齐中栏中轴（8 个断点，±1px）
+- 页头元素横向中线对齐、中线 == 页头几何中线
+- 搜索框无边框 + 浅灰底（**计算样式**）、两处间距
+- 页脚贴视口底 + 各页 y 一致 + 滚动中仍贴底
+- SPA：切到 about 时页头 / 页头头像 / 页脚都不动；滚动中切页页头页脚不弹动
+
+四条破坏性自验（去掉页脚 `sticky`、去掉 `.shell` 的 `flex: 1`、页头列几何
+与外壳脱节、搜索框底色改回白色）—— 前三条分别被 3 / 2 / 4 条断言抓到，
+第四条最初**全绿放行**，于是补了计算样式断言，再验即红。
 
 ---
 

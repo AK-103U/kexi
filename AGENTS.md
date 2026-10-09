@@ -6,7 +6,7 @@ This is an EmDash site -- a CMS built on Astro with a full admin UI.
 pnpm dev              # Start the Astro dev server
 pnpm typecheck        # astro check
 pnpm check:spa        # Client-side navigation + TOC assertions (needs a running server)
-pnpm check:shell      # Shell geometry + rail/header alignment at every breakpoint (needs a running server)
+pnpm check:shell      # Shell/header/footer geometry, alignment, no-drift at every breakpoint (needs a running server)
 pnpm seed:bylines     # Backfill per-locale byline rows (restart dev afterwards)
 pnpm seed:avatar      # Point the site-owner byline at an avatar image (restart dev afterwards)
 npx emdash types      # Regenerate TypeScript types from a running site
@@ -29,13 +29,14 @@ bug, the i18n mechanics. Read it before debugging anything unusual.
 | `seed/bylines-i18n.json`      | Per-locale byline copy overrides                                                   |
 | `emdash-env.d.ts`             | Generated types for collections (auto-regenerated on dev server start)             |
 | `src/layouts/Base.astro`      | Base layout: three-column shell, header, footer, drawer, EmDash wiring            |
-| `src/components/SiteRail.astro` | Left rail contents -- owner avatar, name, site navigation                        |
+| `src/components/SiteIdentity.astro` | Header's owner avatar + name -- avatar-centred, name hangs off its right    |
+| `src/components/SiteRail.astro` | Left rail contents -- site navigation (the owner identity moved to the header)  |
 | `src/components/TableOfContents.astro` | Right rail contents -- TOC with scroll highlighting                       |
 | `src/utils/media.ts`          | Media URLs (`mediaUrl`, `avatarUrl`) -- storageKey only, see below                 |
 | `src/pages/`                  | Astro pages -- all server-rendered                                                 |
 | `scripts/shots.mjs`           | Screenshot script -- 20 routes × 3 breakpoints (desktop/tablet/mobile) × light/dark; `--only <page>`, `--bp <name>` |
 | `scripts/check-spa.mjs`       | Client-side navigation + TOC regression assertions                                 |
-| `scripts/check-shell.mjs`     | Three-column shell geometry + alignment assertions                                  |
+| `scripts/check-shell.mjs`     | Shell/header/footer geometry, alignment, and no-drift assertions (49 checks)         |
 
 ## Skills
 
@@ -104,13 +105,25 @@ The UI dictionary is `src/i18n/{zh,en}.json`; `MessageKey` is derived from `zh.j
 - The right rail's **track is always present**; its contents come from a named slot (`<slot name="rail" />`) that only article pages fill. Non-article pages render an empty 200px rail on purpose -- it keeps the content column at the same x everywhere.
 - Width budget (including a ~15px classic scrollbar, reserved on every page by `scrollbar-gutter: stable`): `200 + 24 + 680 + 24 + 200 = 1128`, plus 48px of padding = 1176, plus the scrollbar ≈ 1191. Hence the 1200px breakpoint.
 - The mobile drawer duplicates the menu links. Both copies come from the same `menu.items`; the drawer deliberately omits the avatar and name.
-- The left rail is **centre-aligned on one axis**: `.rail-identity-wrap` is the flex column that centres the avatar, the name and the nav list together. Add new rail blocks inside it and they inherit the axis -- don't re-centre per child.
-- The header's `.nav-right` (search + toggles) sits on the **page's centre line** on desktop. `.nav` is `grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr)` so the middle track centres regardless of what the side tracks hold. The `minmax(0, …)` lower bound matters: a bare `1fr` floors at `min-content`, so a wide burger or admin link would shove the middle track off-centre. Below 640px the search box goes full-width instead and centring is dropped on purpose.
+- **The header shares the shell's column geometry.** `.nav` is `grid-template-columns: var(--rail-width) minmax(0, var(--content-width)) var(--rail-width)` with the same gap, padding and `justify-content: center` as `.shell` -- so the header's first track *is* the left rail's column. The owner avatar (`SiteIdentity`) is centred inside it and therefore lands on the rail's centre line for free. Don't hand-compute an offset; change `--rail-width` / `--content-width` and both follow. At ≤1199px the header drops to the same two columns as the shell; at ≤999px it goes back to `minmax(0,1fr) auto minmax(0,1fr)` because the burger needs the first track (a bare `auto` track there shoves the middle off-centre by 15px -- measured).
+- The left rail is **centre-aligned on one axis**: `.rail-content` is the flex column that centres the nav list. Add new rail blocks inside it and they inherit the axis -- don't re-centre per child. The owner avatar/name are **not** here any more -- they live in the header (see above).
+- `SiteIdentity` locks its width to the avatar and absolutely positions the name to its right. That's what keeps the avatar on the centre line no matter how long the display name is; the name is clipped with an ellipsis instead of pushing the avatar off-axis.
+- The header's `.nav-right` (search + toggles) sits on the **content column's** centre line, which is the page centre because the header uses the shell's geometry. Below 640px the search box goes full-width instead and centring is dropped on purpose. Header controls are `align-items: center` on `.nav` -- different control heights (36px search, 38px language, 32px theme) all land on one horizontal centre line.
+- **The footer is always visible**, not just at the end of the document. Two declarations make it so and neither works alone: `body { display: flex; flex-direction: column }` + `.shell { flex: 1 }` (pushes the footer to the viewport bottom on short pages) and `.site-footer { position: sticky; bottom: 0 }` (pulls it back into view on long pages, where its natural position is far below the fold). `z-index: 90` keeps it under the header (100) and the search dropdown (1000).
 - **No layout drift on client-side navigation.** Two things keep the shell still when ClientRouter swaps the page, and both are load-bearing:
   - `html { scrollbar-gutter: stable }`. Without it a page that fits in one viewport (`/pages/about`) has no scrollbar, so its `clientWidth` is ~15px wider than a long page's and the centred shell shifts sideways mid-navigation.
   - `.rail`'s sticky `top` must equal its **resting** position: `--rail-sticky-top: calc(var(--nav-height) + 1px + var(--shell-pad-top))`. The `+1px` is the header's bottom border. If the two differ, the rail jumps by that difference when scroll resets to 0. Both values derive from `--shell-pad-top` -- change that one variable, never the padding and the sticky offset separately.
 
-  `check:shell` asserts both, but it only sees them because it launches Chrome **without** Playwright's default `--hide-scrollbars` (which forces scrollbar width to 0 and hides the whole class of bug). Any new layout-checking script must do the same.
+  `check:shell` asserts both, but it only sees them because it launches Chrome **without** Playwright's default `--hide-scrollbars` (which forces scrollbar width to 0 and hides the whole class of bug). Any new layout-checking script must do the same. It also asserts the header and footer don't move across a client-side navigation.
+
+## Overriding EmDash's own components
+
+`LiveSearch` (`emdash/ui/search`) ships scoped styles on its input. `.emdash-live-search-input[data-astro-cid-…]` is specificity (0,2,0) and beats the theme's `:global(.site-search-input)` at (0,1,0) -- so `padding`, `font-size`, `border-radius` and `background` written in `Base.astro` were **silently dead** until they were forced. Two ways out, in order of preference:
+
+1. **Set the component's own custom property** on the element. `--emdash-search-bg` is read by the component's rule, and custom properties don't compete on specificity: `--emdash-search-bg: var(--color-surface)` on `.site-search-input` wins with no `!important`. `LiveSearch.astro`'s style block lists every knob it exposes.
+2. `!important` for the values it hard-codes (`border`, `border-radius`, `padding`, `font-size`).
+
+Because these failures are invisible in the source, `check:shell` asserts the search box's **computed** border width and background colour rather than reading the CSS.
 
 ## Images
 
@@ -146,7 +159,7 @@ Single typeface: **Public Sans** on `--font-body`, used for everything including
 
 The brand colour is `#e86233` (a citrus orange, `--color-brand`) -- used for links, the post-card title hover, and the search input focus ring. There's also a secondary text colour (`--color-text-secondary`) and a `--color-muted` for meta info. Don't add a second accent.
 
-The layout is a **three-column document shell**, owned by `Base.astro` and applied site-wide: a 200px left rail (owner avatar + name + site navigation), a 680px content column, and a 200px right rail (the article TOC). Rails are sticky. The right rail's track is reserved on **every** page but its contents render only on article pages -- that keeps the content column at the same x everywhere instead of re-centring page to page. Breakpoints: below 1200px the right rail is dropped, below 1000px the left rail is dropped and its navigation moves into a hamburger drawer in the header.
+The layout is a **three-column document shell**, owned by `Base.astro` and applied site-wide: a 200px left rail (site navigation), a 680px content column, and a 200px right rail (the article TOC). Rails are sticky, and the sticky header carries the owner avatar + name on the left, the search box on the content column's centre line, and the language/theme toggles beside it; the footer is pinned to the viewport bottom. The right rail's track is reserved on **every** page but its contents render only on article pages -- that keeps the content column at the same x everywhere instead of re-centring page to page. Breakpoints: below 1200px the right rail is dropped, below 1000px the left rail is dropped and its navigation moves into a hamburger drawer in the header.
 
 The bylines / date / reading time / tags meta sits as a single row directly under the title, using inline Tabler icons. The article hero image sits **above** the title, inside the content column.
 
@@ -168,7 +181,7 @@ CSS variables worth knowing (see `tokens.css` for the full list):
 - `--content-width` (680px) -- article body column
 - `--wide-width` (1200px) -- max container (header, footer)
 - `--rail-width` (200px) -- left and right rail of the three-column shell
-- `--avatar-size-{xs,sm,md,lg}` -- byline avatars at each scale; `lg` (40px) is the rail avatar
+- `--avatar-size-{xs,sm,md,lg}` -- byline avatars at each scale; `lg` (32px) is the header avatar
 
 ## What not to do
 
