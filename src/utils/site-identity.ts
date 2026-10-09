@@ -15,6 +15,12 @@ export interface BlogSiteIdentitySettings {
 const DEFAULT_SITE_TITLE = "My Blog";
 const DEFAULT_SITE_TAGLINE = "Thoughts, stories, and ideas.";
 
+/**
+ * 左栏展示的站主署名。头像与名字都取自这条 byline
+ * （`getBylineBySlug` 会走 locale fallback 链，中英各取各的 displayName）。
+ */
+export const OWNER_BYLINE_SLUG = "emdash-editorial";
+
 export function resolveBlogSiteIdentity(settings?: BlogSiteIdentitySettings) {
 	return {
 		siteTitle: settings?.title ?? DEFAULT_SITE_TITLE,

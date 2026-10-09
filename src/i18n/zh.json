@@ -10,7 +10,8 @@
 		"switchTo": "切换到 {lang}",
 		"lightMode": "切换到亮色模式",
 		"darkMode": "切换到暗色模式",
-		"toggleTheme": "切换主题"
+		"toggleTheme": "切换主题",
+		"openMenu": "打开导航菜单"
 	},
 	"footer": {
 		"rss": "RSS 订阅",

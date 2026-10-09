@@ -95,9 +95,9 @@
 
 		/* Layout */
 		--content-width: 680px; /* article/page body column */
-		--wide-width: 1200px; /* max container (home, archives) */
+		--wide-width: 1200px; /* max container (header, footer) */
 		--max-width: var(--content-width);
-		--gutter-width: 200px; /* right sidebar column (TOC) on article pages */
+		--rail-width: 200px; /* left + right rail of the three-column shell */
 		--nav-height: 64px; /* sticky header height */
 		--search-input-width: 180px; /* nav search box width */
 
@@ -113,6 +113,7 @@
 		--avatar-size-xs: 18px; /* card byline avatars */
 		--avatar-size-sm: 20px; /* post list + article meta byline avatars */
 		--avatar-size-md: 24px; /* featured post byline avatars */
+		--avatar-size-lg: 40px; /* site owner avatar in the left rail */
 
 		/* Shadows */
 		--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);

@@ -10,3 +10,25 @@
 export function mediaUrl(storageKey: string): string {
 	return `/_emdash/api/media/file/${storageKey}`;
 }
+
+/**
+ * 方形头像 URL：经 Astro 的图片端点做**服务端裁剪**（sharp），
+ * 而不是让浏览器把 1200×800 的原图缩成 40px。
+ *
+ * `fit=cover` 中心裁方，输出 webp —— 实测 172KB JPEG → 3.7KB（96px）。
+ */
+export function avatarUrl(
+	storageKey: string,
+	size: number,
+	format: "webp" | "avif" | "jpeg" | "png" = "webp",
+): string {
+	const params = new URLSearchParams({
+		href: mediaUrl(storageKey),
+		w: String(size),
+		h: String(size),
+		fit: "cover",
+		f: format,
+		q: "85",
+	});
+	return `/_image?${params}`;
+}

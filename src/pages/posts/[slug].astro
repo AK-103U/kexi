@@ -10,8 +10,8 @@ import { Comments, CommentForm } from "emdash/ui/comments";
 import Base from "../../layouts/Base.astro";
 import TableOfContents from "../../components/TableOfContents.astro";
 import { getReadingTime } from "../../utils/reading-time";
-import { mediaUrl } from "../../utils/media";
 import { resolveBlogSiteIdentity } from "../../utils/site-identity";
+import { mediaUrl } from "../../utils/media";
 import { siteConfig } from "../../i18n/config";
 import { formatDate, localePath, pageLang, useTranslations } from "../../i18n/ui";
 
@@ -135,7 +135,7 @@ const commentFormLabels = {
 	content={{ collection: "posts", id: post.data.id, slug }}
 >
 	<article class="article">
-		{/* Hero: Full-width featured image */}
+		{/* Hero：收进中栏，位于标题上方 */}
 		{
 			post.data.featured_image && (
 				<div class="article-hero" {...post.edit.featured_image}>
@@ -144,70 +144,42 @@ const commentFormLabels = {
 			)
 		}
 
-		{/* Two-column layout */}
-		<div class="article-grid">
-			{/* Main content */}
-			<div class="article-main">
-				<header class="article-header">
-					<h1 class="article-title" {...post.edit.title}>{post.data.title}</h1>
+		<header class="article-header">
+			<h1 class="article-title" {...post.edit.title}>{post.data.title}</h1>
 
-					{/* 标题下方一行 meta：作者、日期、时长、标签 */}
-					<div class="meta-sticky">
-						{
-							bylines.length > 0 && (
-								<div class="meta-block byline-block">
-									<div class="bylines">
-										{bylines.map((credit) => (
-											<div class="byline">
-												{credit.byline.avatarStorageKey && (
-													<img
-														src={mediaUrl(credit.byline.avatarStorageKey)}
-														alt={credit.byline.displayName}
-														class="byline-avatar"
-													/>
-												)}
-												<div class="byline-info">
-													<span class="byline-name">
-														{credit.byline.displayName}
-													</span>
-													{credit.roleLabel && (
-														<span class="byline-role">{credit.roleLabel}</span>
-													)}
-												</div>
-											</div>
-										))}
+			{/* 标题下方一行 meta：作者、日期、时长、标签 */}
+			<div class="meta-sticky">
+				{
+					bylines.length > 0 && (
+						<div class="meta-block byline-block">
+							<div class="bylines">
+								{bylines.map((credit) => (
+									<div class="byline">
+										{credit.byline.avatarStorageKey && (
+											<img
+												src={mediaUrl(credit.byline.avatarStorageKey)}
+												alt={credit.byline.displayName}
+												class="byline-avatar"
+											/>
+										)}
+										<div class="byline-info">
+											<span class="byline-name">
+												{credit.byline.displayName}
+											</span>
+											{credit.roleLabel && (
+												<span class="byline-role">{credit.roleLabel}</span>
+											)}
+										</div>
 									</div>
-								</div>
-							)
-						}
-						{
-							publishDate && (
-								<div class="meta-block">
-									{/* Tabler Icons `calendar-time`（MIT），内联以免引依赖 */}
-									<svg
-										class="meta-icon"
-										viewBox="0 0 24 24"
-										fill="none"
-										stroke="currentColor"
-										stroke-width="2"
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										aria-hidden="true"
-									>
-										<path d="M11.795 21h-6.795a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v4"
-										></path>
-										<path d="M14 18a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"></path>
-										<path d="M15 3v4"></path>
-										<path d="M7 3v4"></path>
-										<path d="M3 11h16"></path>
-										<path d="M18 16.496v1.504l1 1"></path>
-									</svg>
-									<time class="meta-value">{publishDate}</time>
-								</div>
-							)
-						}
+								))}
+							</div>
+						</div>
+					)
+				}
+				{
+					publishDate && (
 						<div class="meta-block">
-							{/* Tabler Icons `clock`（MIT） */}
+							{/* Tabler Icons `calendar-time`（MIT），内联以免引依赖 */}
 							<svg
 								class="meta-icon"
 								viewBox="0 0 24 24"
@@ -218,82 +190,102 @@ const commentFormLabels = {
 								stroke-linejoin="round"
 								aria-hidden="true"
 							>
-								<path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0"></path>
-								<path d="M12 7v5l3 3"></path>
+								<path d="M11.795 21h-6.795a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v4"
+								></path>
+								<path d="M14 18a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"></path>
+								<path d="M15 3v4"></path>
+								<path d="M7 3v4"></path>
+								<path d="M3 11h16"></path>
+								<path d="M18 16.496v1.504l1 1"></path>
 							</svg>
-							<span class="meta-value">{t("post.min", { n: readingTime })}</span>
+							<time class="meta-value">{publishDate}</time>
 						</div>
-						{
-							tags.length > 0 && (
-								<div class="meta-block">
-									<div class="meta-tags">
-										{tags.map((tag) => (
-											<a
-												href={localePath(lang, `/tag/${tag.slug}`)}
-												class="meta-tag"
-											>
-												{tag.label}
-											</a>
-										))}
-									</div>
-								</div>
-							)
-						}
-					</div>
-					{
-						fallbackLocale && (
-							<p class="article-fallback-notice">{t("post.translatedNotice")}</p>
-						)
-					}
-					{
-						post.data.excerpt && (
-							<p class="article-excerpt" {...post.edit.excerpt}>
-								{post.data.excerpt}
-							</p>
-						)
-					}
-				</header>
-
-				<div class="article-content">
-					<PortableText value={post.data.content} />
+					)
+				}
+				<div class="meta-block">
+					{/* Tabler Icons `clock`（MIT） */}
+					<svg
+						class="meta-icon"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						aria-hidden="true"
+					>
+						<path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0"></path>
+						<path d="M12 7v5l3 3"></path>
+					</svg>
+					<span class="meta-value">{t("post.min", { n: readingTime })}</span>
 				</div>
-
-				<div class="article-comments">
-					<Comments
-						collection="posts"
-						contentId={post.data.id}
-						threaded
-						locale={lang}
-						labels={commentsLabels}
-					/>
-					<CommentForm
-						collection="posts"
-						contentId={post.data.id}
-						labels={commentFormLabels}
-					/>
-				</div>
+				{
+					tags.length > 0 && (
+						<div class="meta-block">
+							<div class="meta-tags">
+								{tags.map((tag) => (
+									<a
+										href={localePath(lang, `/tag/${tag.slug}`)}
+										class="meta-tag"
+									>
+										{tag.label}
+									</a>
+								))}
+							</div>
+						</div>
+					)
+				}
 			</div>
+			{
+				fallbackLocale && (
+					<p class="article-fallback-notice">{t("post.translatedNotice")}</p>
+				)
+			}
+			{
+				post.data.excerpt && (
+					<p class="article-excerpt" {...post.edit.excerpt}>
+						{post.data.excerpt}
+					</p>
+				)
+			}
+		</header>
 
-			{/* Right gutter: TOC */}
-			<aside class="article-sidebar">
-				<div class="sidebar-sticky">
-					<TableOfContents title={t("post.onThisPage")} label={t("post.toc")} />
-				</div>
-			</aside>
+		<div class="article-content">
+			<PortableText value={post.data.content} />
+		</div>
+
+		<div class="article-comments">
+			<Comments
+				collection="posts"
+				contentId={post.data.id}
+				threaded
+				locale={lang}
+				labels={commentsLabels}
+			/>
+			<CommentForm
+				collection="posts"
+				contentId={post.data.id}
+				labels={commentFormLabels}
+			/>
 		</div>
 	</article>
+
+	<TableOfContents
+		slot="rail"
+		title={t("post.onThisPage")}
+		label={t("post.toc")}
+	/>
 </Base>
 
 <style>
-	/* Article container */
+	/* 列宽与位置由 Base.astro 的三栏外壳接管，这里只管文章自己的排版。 */
 	.article {
-		max-width: var(--wide-width);
-		margin: 0 auto;
+		min-width: 0;
 	}
 
-	/* Hero image - full width within container */
+	/* Hero：中栏内的配图 */
 	.article-hero {
-		margin: var(--spacing-16) var(--spacing-6);
+		margin: 0 0 var(--spacing-12);
 		border-radius: var(--radius-lg);
 		overflow: hidden;
 		background: var(--color-surface);
@@ -302,18 +294,8 @@ const commentFormLabels = {
 	.article-hero img {
 		width: 100%;
 		height: auto;
-		max-height: 500px;
+		max-height: 420px;
 		object-fit: cover;
-	}
-
-	/* Two-column grid：正文 + 右侧 TOC */
-	.article-grid {
-		display: grid;
-		grid-template-columns: minmax(0, var(--content-width)) var(--gutter-width);
-		gap: var(--spacing-10);
-		justify-content: center;
-		padding: 0 var(--spacing-6);
-		margin: var(--spacing-16) 0;
 	}
 
 	/*
@@ -411,10 +393,6 @@ const commentFormLabels = {
 	}
 
 	/* Main content column */
-	.article-main {
-		min-width: 0;
-	}
-
 	.article-header {
 		margin-bottom: var(--spacing-10);
 	}
@@ -535,16 +513,6 @@ const commentFormLabels = {
 		text-decoration-thickness: 2px;
 	}
 
-	/* Right column: TOC */
-	.article-sidebar {
-		display: block;
-	}
-
-	.sidebar-sticky {
-		position: sticky;
-		top: calc(var(--nav-height) + var(--spacing-8));
-	}
-
 	/* Comments section */
 	.article-comments {
 		margin-top: var(--spacing-16);
@@ -592,32 +560,15 @@ const commentFormLabels = {
 		color: var(--color-on-brand) !important;
 	}
 
-	/* Responsive */
-	@media (max-width: 1100px) {
-		.article-grid {
-			grid-template-columns: minmax(0, var(--content-width));
-			gap: 0;
-		}
-
-		.article-sidebar {
-			display: none;
-		}
-	}
-
-	@media (max-width: 900px) {
-		.article-hero {
-			margin: var(--spacing-4) var(--spacing-4) var(--spacing-8);
-			border-radius: var(--radius);
-		}
-
-		.article-grid {
-			padding: 0 var(--spacing-4);
-		}
-	}
-
+	/* Responsive —— 列数由 Base.astro 的外壳决定，这里只调文章自身。 */
 	@media (max-width: 600px) {
 		.article-title {
 			font-size: var(--font-size-3xl);
+		}
+
+		.article-hero {
+			margin-bottom: var(--spacing-8);
+			border-radius: var(--radius);
 		}
 	}
 </style>

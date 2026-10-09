@@ -145,10 +145,9 @@ const postsWithTags = posts.map((post) => ({
 </Base>
 
 <style>
+	/* 列宽由 Base.astro 的三栏外壳接管 */
 	.posts-page {
-		max-width: var(--content-width);
-		margin: 0 auto;
-		padding: var(--spacing-8) var(--spacing-6) var(--spacing-16);
+		min-width: 0;
 	}
 
 	.page-header {

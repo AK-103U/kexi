@@ -1,5 +1,5 @@
 ---
-import { getMenuWithCacheHint, getSiteSettingsWithCacheHint } from "emdash";
+import { getBylineBySlug, getMenuWithCacheHint, getSiteSettingsWithCacheHint } from "emdash";
 import { EmDashHead, EmDashBodyStart, EmDashBodyEnd } from "emdash/ui";
 import { createPublicPageContext } from "emdash/page";
 import LiveSearch from "emdash/ui/search";
@@ -7,9 +7,10 @@ import { Font } from "astro:assets";
 import { ClientRouter } from "astro:transitions";
 import LanguageSwitcher from "../components/LanguageSwitcher.astro";
 import ThemeSwitcher from "../components/ThemeSwitcher.astro";
+import SiteRail from "../components/SiteRail.astro";
 import { type Lang } from "../i18n/config";
 import { htmlLang, localePath, useTranslations } from "../i18n/ui";
-import { resolveBlogSiteIdentity } from "../utils/site-identity";
+import { OWNER_BYLINE_SLUG, resolveBlogSiteIdentity } from "../utils/site-identity";
 import "../styles/tokens.css";
 import "../styles/theme.css";
 
@@ -45,16 +46,18 @@ const {
 	content,
 } = Astro.props;
 const t = useTranslations(lang);
-const [settingsResult, menuResult] = await Promise.all([
+const [settingsResult, menuResult, ownerByline] = await Promise.all([
 	getSiteSettingsWithCacheHint(),
 	getMenuWithCacheHint("primary", { locale: lang }),
+	// 左栏的站主身份。走 locale fallback 链，中英各取各的 displayName。
+	getBylineBySlug(OWNER_BYLINE_SLUG, { locale: lang }),
 ]);
 if (Astro.cache?.enabled) {
 	Astro.cache.set(settingsResult.cacheHint);
 	Astro.cache.set(menuResult.cacheHint);
 }
 
-const { siteTitle, siteLogo } = resolveBlogSiteIdentity(
+const { siteTitle } = resolveBlogSiteIdentity(
 	settingsResult.data,
 );
 const titleIncludesSiteName =
@@ -125,19 +128,28 @@ const isLoggedIn = !!Astro.locals.user;
 		<EmDashBodyStart page={pageCtx} />
 		<header class="site-header">
 			<nav class="nav">
-				<a href={localePath(lang, "/")} class="site-title">
-					{
-						siteLogo ? (
-							<img
-								src={siteLogo.url}
-								alt={siteLogo.alt || siteTitle}
-								class="site-logo-img"
-							/>
-						) : (
-							siteTitle
-						)
-					}
-				</a>
+				<button
+					type="button"
+					class="nav-burger"
+					data-nav-toggle
+					aria-expanded="false"
+					aria-controls="nav-drawer"
+					aria-label={t("header.openMenu")}
+				>
+					<svg
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						aria-hidden="true"
+					>
+						<line x1="4" y1="6" x2="20" y2="6"></line>
+						<line x1="4" y1="12" x2="20" y2="12"></line>
+						<line x1="4" y1="18" x2="20" y2="18"></line>
+					</svg>
+				</button>
 				<div class="nav-right">
 					<LiveSearch
 						placeholder={t("header.searchPlaceholder")}
@@ -150,21 +162,6 @@ const isLoggedIn = !!Astro.locals.user;
 						routeMap={searchRouteMap}
 						searchPage={localePath(lang, "/search")}
 					/>
-					<div class="nav-links">
-						{
-							menu?.items.map((item) => (
-								<a
-									href={item.url}
-									target={item.target}
-									rel={
-										item.target === "_blank" ? "noopener noreferrer" : undefined
-									}
-								>
-									{item.label}
-								</a>
-							))
-						}
-					</div>
 					<div class="nav-toggles">
 						<LanguageSwitcher lang={lang} />
 						<ThemeSwitcher lang={lang} />
@@ -178,11 +175,54 @@ const isLoggedIn = !!Astro.locals.user;
 					)
 				}
 			</nav>
+
+			{/* 窄屏导航抽屉：与左栏同一份菜单，但**不含**头像与名字。 */}
+			<div class="nav-drawer" id="nav-drawer" data-nav-drawer hidden>
+				<ul class="nav-drawer-list">
+					{
+						menu?.items.map((item) => (
+							<li>
+								<a
+									href={item.url}
+									target={item.target}
+									rel={item.target === "_blank" ? "noopener noreferrer" : undefined}
+								>
+									{item.label}
+								</a>
+							</li>
+						))
+					}
+				</ul>
+			</div>
 		</header>
 
-		<main>
-			<slot />
-		</main>
+		{/*
+			文档式三栏外壳：左栏（站主 + 导航）／中栏（正文）／右栏（目录）。
+			右栏的槽在非文章页是空的 —— 轨道照样占位，中栏位置全站恒定不跳。
+		*/}
+		<div class="shell">
+			<aside class="rail rail--left">
+				{
+					ownerByline && (
+						<SiteRail
+							displayName={ownerByline.displayName}
+							avatarStorageKey={ownerByline.avatarStorageKey}
+							avatarAlt={ownerByline.avatarAlt}
+							items={menu?.items ?? []}
+							pathname={Astro.url.pathname}
+						/>
+					)
+				}
+			</aside>
+
+			<main class="shell-main">
+				<slot />
+			</main>
+
+			<aside class="rail rail--right">
+				<slot name="rail" />
+			</aside>
+		</div>
 
 		<footer class="site-footer">
 			<div class="footer-bottom">
@@ -416,29 +456,87 @@ const isLoggedIn = !!Astro.locals.user;
 				display: flex;
 				justify-content: space-between;
 				align-items: center;
+				gap: var(--spacing-4);
 				max-width: var(--wide-width);
 				margin: 0 auto;
 				padding: var(--spacing-4) var(--spacing-6);
 				height: var(--nav-height);
 			}
 
-			.site-title {
-				font-size: var(--font-size-lg);
-				font-weight: 600;
+			/* 汉堡按钮：只在 <1000px 出现（左栏隐藏时）。 */
+			.nav-burger {
+				display: none;
+				align-items: center;
+				justify-content: center;
+				padding: var(--spacing-1);
+				background: none;
+				border: none;
 				color: var(--color-text);
-				text-decoration: none;
-				letter-spacing: var(--tracking-snug);
+				cursor: pointer;
+				border-radius: var(--radius);
 			}
 
-			.site-title:hover {
+			.nav-burger svg {
+				width: 22px;
+				height: 22px;
+			}
+
+			.nav-burger:hover {
 				color: var(--color-brand);
 			}
 
-			.site-logo-img {
-				height: 48px;
-				width: auto;
+			/* 抽屉：与左栏同一份菜单。 */
+			.nav-drawer {
+				border-top: 1px solid var(--color-border-subtle);
+				background: var(--color-bg);
+			}
+
+			.nav-drawer-list {
+				list-style: none;
+				display: flex;
+				flex-direction: column;
+				max-width: var(--wide-width);
+				margin: 0 auto;
+				padding: var(--spacing-3) var(--spacing-6) var(--spacing-4);
+			}
+
+			.nav-drawer-list a {
 				display: block;
-				margin: -8px 0;
+				padding: var(--spacing-2) 0;
+				font-size: var(--font-size-base);
+				color: var(--color-text);
+				text-decoration: none;
+			}
+
+			.nav-drawer-list a:hover {
+				color: var(--color-brand);
+			}
+
+			/*
+			 * 三栏外壳。宽度账（含 Windows 经典滚动条 ~17px）：
+			 * 200 + 24 + 680 + 24 + 200 = 1128，加两侧 padding 48 = 1176，
+			 * 加滚动条 = 需要视口 ≥1193 → 断点取 1200。
+			 */
+			.shell {
+				display: grid;
+				grid-template-columns:
+					var(--rail-width) minmax(0, var(--content-width))
+					var(--rail-width);
+				gap: var(--spacing-6);
+				justify-content: center;
+				/* 必须 start：stretch 会让 rail 撑满行高，sticky 就没有可滚动的余量 */
+				align-items: start;
+				padding: var(--spacing-12) var(--spacing-6) var(--spacing-16);
+			}
+
+			.rail {
+				align-self: start;
+				position: sticky;
+				top: calc(var(--nav-height) + var(--spacing-8));
+			}
+
+			.shell-main {
+				min-width: 0;
 			}
 
 			.nav-right {
@@ -455,22 +553,6 @@ const isLoggedIn = !!Astro.locals.user;
 				gap: var(--spacing-2);
 			}
 
-			.nav-links {
-				display: flex;
-				gap: var(--spacing-5);
-				font-size: var(--font-size-sm);
-			}
-
-			.nav-links a {
-				text-decoration: none;
-				color: var(--color-text);
-				transition: color var(--transition-fast);
-			}
-
-			.nav-links a:hover {
-				color: var(--color-brand);
-			}
-
 			.nav-admin {
 				font-size: var(--font-size-sm);
 				color: var(--color-text-secondary);
@@ -482,8 +564,13 @@ const isLoggedIn = !!Astro.locals.user;
 				color: var(--color-text);
 			}
 
-			/* Search styling */
-			.site-search {
+			/*
+			 * Search styling。
+			 * `.site-search` 是传给 LiveSearch 的 class，节点上带的是**子组件的**
+			 * scope 属性，所以这里必须用 :global() —— 否则规则一条都不生效
+			 * （搜索结果下拉的定位就靠这里的 position: relative）。
+			 */
+			:global(.site-search) {
 				position: relative;
 				width: var(--search-input-width);
 				--emdash-search-border-focus: var(--color-brand);
@@ -588,7 +675,6 @@ const isLoggedIn = !!Astro.locals.user;
 			main {
 				min-height: calc(100vh - var(--nav-height) - 300px);
 			}
-
 			/* Footer */
 			.site-footer {
 				background: var(--color-bg-subtle);
@@ -631,39 +717,65 @@ const isLoggedIn = !!Astro.locals.user;
 				height: 16px;
 			}
 
-			@media (max-width: 640px) {
-				.site-header {
-					position: relative;
-					border-bottom: none;
+			/*
+			 * 三栏 → 两栏：视口装不下 200+680+200+gap+padding 时先收右栏。
+			 * 左栏还在，中栏位置不变 —— 这正是「右栏留空不渲染」的延伸。
+			 */
+			@media (max-width: 1199px) {
+				.shell {
+					grid-template-columns: var(--rail-width) minmax(0, var(--content-width));
 				}
 
+				.rail--right {
+					display: none;
+				}
+			}
+
+			/* 两栏也装不下 → 单栏，左栏收进页头的汉堡抽屉。 */
+			@media (max-width: 999px) {
+				.shell {
+					grid-template-columns: minmax(0, var(--content-width));
+					padding: var(--spacing-8) var(--spacing-4) var(--spacing-12);
+				}
+
+				.rail--left {
+					display: none;
+				}
+
+				.nav-burger {
+					display: inline-flex;
+				}
+			}
+
+			@media (max-width: 640px) {
 				.nav {
 					display: grid;
-					grid-template-columns: minmax(0, 1fr) auto;
+					grid-template-columns: auto minmax(0, 1fr) auto;
 					align-items: center;
 					height: auto;
 					column-gap: var(--spacing-3);
-					row-gap: var(--spacing-2);
 					padding: var(--spacing-3) var(--spacing-4);
 				}
 
-				.site-title {
+				.nav-burger {
 					grid-column: 1;
 					grid-row: 1;
-					font-size: var(--font-size-base);
-					min-width: 0;
 				}
 
+				/* 导航链接已移入左栏，这里只剩搜索 + 两个切换控件，排成一行。 */
 				.nav-right {
-					grid-column: 1 / -1;
-					grid-row: 2;
-					display: grid;
-					row-gap: var(--spacing-2);
+					grid-column: 2;
+					grid-row: 1;
+					display: flex;
+					align-items: center;
+					gap: var(--spacing-3);
+					margin-inline-start: 0;
 				}
 
-				.site-search {
-					grid-column: 1;
-					width: 100%;
+				:global(.site-search) {
+					flex: 1;
+					min-width: 0;
+					width: auto;
 					max-width: none;
 				}
 
@@ -673,17 +785,8 @@ const isLoggedIn = !!Astro.locals.user;
 					font-size: var(--font-size-sm) !important;
 				}
 
-				.nav-links {
-					grid-column: 1;
-					display: flex;
-					column-gap: var(--spacing-3);
-					row-gap: var(--spacing-1);
-					flex-wrap: wrap;
-					justify-content: flex-start;
-				}
-
 				.nav-admin {
-					grid-column: 2;
+					grid-column: 3;
 					grid-row: 1;
 					justify-self: end;
 					font-size: var(--font-size-xs);
@@ -706,6 +809,26 @@ const isLoggedIn = !!Astro.locals.user;
 					}
 				}
 			});
+
+			// 窄屏导航抽屉。与主题切换同一套 ClientRouter 规矩：
+			// 每次导航后按钮是新节点，所以要在 astro:page-load 重绑，
+			// 且用 onclick 赋值（不是 addEventListener）避免监听器叠加。
+			function setupNavDrawer() {
+				const btn = document.querySelector<HTMLButtonElement>("[data-nav-toggle]");
+				const drawer = document.querySelector<HTMLElement>("[data-nav-drawer]");
+				if (!btn || !drawer) return;
+
+				const setOpen = (open: boolean) => {
+					drawer.hidden = !open;
+					btn.setAttribute("aria-expanded", String(open));
+				};
+
+				setOpen(false);
+				btn.onclick = () => setOpen(drawer.hasAttribute("hidden"));
+			}
+
+			setupNavDrawer();
+			document.addEventListener("astro:page-load", setupNavDrawer);
 		</script>
 		<EmDashBodyEnd page={pageCtx} />
 	</body>

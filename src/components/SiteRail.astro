@@ -1,0 +1,136 @@
+---
+/**
+ * 左栏内容：站主头像 + 名字 + 站点导航。
+ *
+ * 只渲染内容，不渲染 `<aside>` —— 外层容器与 sticky 定位属于 `Base.astro`
+ * 的三栏外壳。全站渲染，不只是文章页；窄屏由外壳整块隐藏，导航改走页头的
+ * 汉堡抽屉，所以这里不需要自己的响应式逻辑。
+ *
+ * 当前页高亮：菜单项的 URL 自带语言前缀（en 菜单写 `/en/posts`），
+ * 所以两边都过一遍 `stripLocale` 再比，`/en/posts` 与 `/posts` 就能对上。
+ */
+import { stripLocale } from "../i18n/ui";
+import { avatarUrl } from "../utils/media";
+
+interface MenuItem {
+	label: string;
+	url: string;
+	target?: string | null;
+}
+
+interface Props {
+	displayName: string;
+	avatarStorageKey?: string | null;
+	avatarAlt?: string | null;
+	items: MenuItem[];
+	/** 当前请求路径，用于高亮。 */
+	pathname: string;
+}
+
+const { displayName, avatarStorageKey, avatarAlt, items, pathname } = Astro.props;
+
+const current = stripLocale(pathname);
+
+/** `/` 只做精确匹配，否则所有路径都会命中首页。 */
+function isCurrent(url: string): boolean {
+	const target = stripLocale(url);
+	if (target === "/") return current === "/";
+	return current === target || current.startsWith(`${target}/`);
+}
+
+const avatarSrc = avatarStorageKey ? avatarUrl(avatarStorageKey, 96) : null;
+---
+
+<div class="rail-identity-wrap">
+	<a class="rail-identity" href={items[0]?.url ?? "/"}>
+		{
+			avatarSrc && (
+				<img
+					class="rail-avatar"
+					src={avatarSrc}
+					alt={avatarAlt || displayName}
+					width="40"
+					height="40"
+					loading="eager"
+				/>
+			)
+		}
+		<span class="rail-name">{displayName}</span>
+	</a>
+
+	<nav class="rail-nav">
+		<ul class="rail-nav-list">
+			{
+				items.map((item) => (
+					<li>
+						<a
+							href={item.url}
+							target={item.target}
+							rel={item.target === "_blank" ? "noopener noreferrer" : undefined}
+							class:list={["rail-nav-link", { "is-current": isCurrent(item.url) }]}
+							aria-current={isCurrent(item.url) ? "page" : undefined}
+						>
+							{item.label}
+						</a>
+					</li>
+				))
+			}
+		</ul>
+	</nav>
+</div>
+
+<style>
+	.rail-identity {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-3);
+		text-decoration: none;
+		color: var(--color-text);
+		margin-bottom: var(--spacing-6);
+	}
+
+	.rail-avatar {
+		width: var(--avatar-size-lg);
+		height: var(--avatar-size-lg);
+		border-radius: 50%;
+		object-fit: cover;
+		flex-shrink: 0;
+		background: var(--color-surface);
+	}
+
+	.rail-name {
+		font-size: var(--font-size-base);
+		font-weight: 600;
+		letter-spacing: var(--tracking-snug);
+		line-height: var(--leading-snug);
+	}
+
+	.rail-identity:hover .rail-name {
+		color: var(--color-brand);
+	}
+
+	.rail-nav-list {
+		list-style: none;
+		display: flex;
+		flex-direction: column;
+		gap: var(--spacing-1);
+	}
+
+	.rail-nav-link {
+		display: block;
+		padding: var(--spacing-1) 0;
+		font-size: var(--font-size-sm);
+		color: var(--color-text-secondary);
+		text-decoration: none;
+		transition: color var(--transition-fast);
+	}
+
+	.rail-nav-link:hover {
+		color: var(--color-text);
+	}
+
+	.rail-nav-link.is-current {
+		color: var(--color-text);
+		font-weight: 500;
+	}
+</style>
