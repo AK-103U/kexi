@@ -6,7 +6,7 @@ This is an EmDash site -- a CMS built on Astro with a full admin UI.
 pnpm dev              # Start the Astro dev server
 pnpm typecheck        # astro check
 pnpm check:spa        # Client-side navigation + TOC assertions (needs a running server)
-pnpm check:shell      # Three-column shell geometry at every breakpoint (needs a running server)
+pnpm check:shell      # Shell geometry + rail/header alignment at every breakpoint (needs a running server)
 pnpm seed:bylines     # Backfill per-locale byline rows (restart dev afterwards)
 pnpm seed:avatar      # Point the site-owner byline at an avatar image (restart dev afterwards)
 npx emdash types      # Regenerate TypeScript types from a running site
@@ -35,7 +35,7 @@ bug, the i18n mechanics. Read it before debugging anything unusual.
 | `src/pages/`                  | Astro pages -- all server-rendered                                                 |
 | `scripts/shots.mjs`           | Screenshot script -- 20 routes × 3 breakpoints (desktop/tablet/mobile) × light/dark; `--only <page>`, `--bp <name>` |
 | `scripts/check-spa.mjs`       | Client-side navigation + TOC regression assertions                                 |
-| `scripts/check-shell.mjs`     | Three-column shell geometry assertions                                             |
+| `scripts/check-shell.mjs`     | Three-column shell geometry + alignment assertions                                  |
 
 ## Skills
 
@@ -104,6 +104,8 @@ The UI dictionary is `src/i18n/{zh,en}.json`; `MessageKey` is derived from `zh.j
 - The right rail's **track is always present**; its contents come from a named slot (`<slot name="rail" />`) that only article pages fill. Non-article pages render an empty 200px rail on purpose -- it keeps the content column at the same x everywhere.
 - Width budget (including a ~17px classic scrollbar): `200 + 24 + 680 + 24 + 200 = 1128`, plus 48px of padding = 1176, plus the scrollbar ≈ 1193. Hence the 1200px breakpoint.
 - The mobile drawer duplicates the menu links. Both copies come from the same `menu.items`; the drawer deliberately omits the avatar and name.
+- The left rail is **centre-aligned on one axis**: `.rail-identity-wrap` is the flex column that centres the avatar, the name and the nav list together. Add new rail blocks inside it and they inherit the axis -- don't re-centre per child.
+- The header's `.nav-right` (search + toggles) sits on the **page's centre line** on desktop. `.nav` is `grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr)` so the middle track centres regardless of what the side tracks hold. The `minmax(0, …)` lower bound matters: a bare `1fr` floors at `min-content`, so a wide burger or admin link would shove the middle track off-centre. Below 640px the search box goes full-width instead and centring is dropped on purpose.
 
 ## Images
 

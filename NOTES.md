@@ -555,6 +555,36 @@ Astro 把 `sharp` 列为 optional peer；pnpm 的严格 node_modules 布局下�
 文件名带上断点（`post-tablet-dark.png`），并新增 `--bp` 参数。
 全量从 40 张涨到 **120 张**（20 路由 × 3 断点 × 明暗）。
 
+### 对齐：左栏一条中轴、页头中列居中
+
+两处对齐要求，都是「整体」而非逐块：
+
+**左栏** —— `.rail-identity-wrap` 声明一次
+`display:flex; flex-direction:column; align-items:center; text-align:center`，
+头像、名字、导航链接全部落在这条中垂线上。收口在容器而不是各子块上，
+是为了加新块时自动跟随，不用再写一遍。
+
+**页头 `.nav-right`** —— 要它落在**页面**中垂线上，而 `.nav` 的
+`max-width: var(--wide-width)` 居中之后，容器自身的中线才是页面中线
+（1440 视口下两者都是 720）。改法是把 `.nav` 从 flex 换成三列网格：
+
+```css
+grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+```
+
+两侧等宽、中间按内容宽，中列因此恒定居中。
+
+> **`1fr` 与 `minmax(0, 1fr)` 的区别在这里是要害**。裸 `1fr` 的下限是
+> `min-content`，侧列内容一宽就把中列挤偏。实测：用裸 `1fr` 时 999px
+> 断点（汉堡刚出现）偏差 0，但这是运气 —— `minmax(0, 1fr)` 才是有保证的写法。
+
+移动端（<640px）**不追求这个居中**：搜索框改为占满剩余宽度，
+`grid-template-columns: auto minmax(0, 1fr) auto`，这是有意的取舍。
+
+两条都进了 `check-shell.mjs`（29 条断言）：左栏四项（头像/名字/导航列表/
+全部链接）各自与容器中轴比对，`nav-right` 在 8 个桌面断点逐个验偏差 <1px。
+这类对齐光靠肉眼看截图分辨不出 0.5px 的偏差，必须量。
+
 ### 本轮文件
 
 | 文件 | 改动 |
@@ -565,7 +595,7 @@ Astro 把 `sharp` 列为 optional peer；pnpm 的严格 node_modules 布局下�
 | `src/utils/media.ts` | **新建**（`mediaUrl` / `avatarUrl`） |
 | `src/utils/site-identity.ts` | 加 `OWNER_BYLINE_SLUG` |
 | `scripts/seed-owner-avatar.mjs` | **新建**（幂等设置头像） |
-| `scripts/check-shell.mjs` | **新建**（22 条几何断言） |
+| `scripts/check-shell.mjs` | **新建**（29 条几何 + 对齐断言） |
 | `scripts/check-spa.mjs` | 加 4 条 TOC 回归断言 |
 | `scripts/shots.mjs` | 断点矩阵补 `tablet: 1100`；循环真正遍历断点（原先硬编码 desktop）；加 `--bp` |
 | `src/pages/*.astro` | 让出外层宽度、网格重排、修头像 URL |
