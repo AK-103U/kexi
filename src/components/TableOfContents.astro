@@ -1,0 +1,140 @@
+---
+/**
+ * 文章目录（右栏）。随滚动高亮当前小节。
+ *
+ * 由 `posts/[slug].astro` 的内联版本抽出来，同时修掉三个 bug：
+ *
+ *  1. **没有 `astro:page-load` 重绑** —— ClientRouter 下模块脚本只执行一次，
+ *     从一篇文章客户端导航到另一篇时目录会是空的（实测复现：整页加载有 1 条
+ *     链接，`文章A → /posts → 文章B` 全程客户端导航后是 0 条）。
+ *  2. **`IntersectionObserver` 从不 disconnect** —— 每次重建都留下一个观察者。
+ *  3. **`appendChild` 不幂等** —— 重复执行会追加第二个 `<ul>`。
+ *
+ * 容器用 `data-toc` 属性选择器而非硬编码 `id`，这样同页可以放多个。
+ */
+
+interface Props {
+	/** 提取 h2/h3 的根节点选择器。 */
+	source?: string;
+	/** 小标题，如「本页目录」。 */
+	title: string;
+	/** 无障碍标签，如「本页目录」。 */
+	label: string;
+}
+
+const { source = ".article-content", title, label } = Astro.props;
+---
+
+<nav class="toc" aria-label={label} data-toc-root data-toc-source={source}>
+	<h2 class="toc-title">{title}</h2>
+	<div class="toc-content" data-toc></div>
+</nav>
+
+<script>
+	// 每次重建前先拆掉上一个观察者，避免泄漏与重复回调。
+	let observer: IntersectionObserver | null = null;
+
+	function buildToc() {
+		const root = document.querySelector<HTMLElement>("[data-toc-root]");
+		const container = root?.querySelector<HTMLElement>("[data-toc]");
+		if (!root || !container) return;
+
+		// 幂等：重绑时先清空，否则会追加出第二个 <ul>。
+		container.innerHTML = "";
+		observer?.disconnect();
+		observer = null;
+
+		const content = document.querySelector(root.dataset.tocSource ?? ".article-content");
+		if (!content) return;
+
+		const headings = content.querySelectorAll<HTMLElement>("h2, h3");
+		if (headings.length === 0) {
+			// 没有标题就整块隐藏 —— 右栏本来就允许留空，不必留个空壳。
+			root.hidden = true;
+			return;
+		}
+		root.hidden = false;
+
+		const list = document.createElement("ul");
+		list.className = "toc-list";
+
+		headings.forEach((heading, index) => {
+			if (!heading.id) heading.id = `heading-${index}`;
+
+			const li = document.createElement("li");
+			li.className =
+				heading.tagName === "H3" ? "toc-item toc-item--nested" : "toc-item";
+
+			const link = document.createElement("a");
+			link.href = `#${heading.id}`;
+			link.className = "toc-link";
+			link.textContent = heading.textContent;
+
+			li.appendChild(link);
+			list.appendChild(li);
+		});
+
+		container.appendChild(list);
+
+		observer = new IntersectionObserver(
+			(entries) => {
+				entries.forEach((entry) => {
+					if (!entry.isIntersecting) return;
+					const id = (entry.target as HTMLElement).id;
+					const link = container.querySelector(`a[href="#${id}"]`);
+					if (!link) return;
+					container
+						.querySelectorAll(".toc-link")
+						.forEach((l) => l.classList.remove("active"));
+					link.classList.add("active");
+				});
+			},
+			{ rootMargin: "-80px 0px -80% 0px" },
+		);
+
+		headings.forEach((heading) => observer!.observe(heading));
+	}
+
+	buildToc();
+	document.addEventListener("astro:page-load", buildToc);
+</script>
+
+<style>
+	.toc-title {
+		font-size: var(--font-size-xs);
+		font-weight: 500;
+		text-transform: uppercase;
+		letter-spacing: var(--tracking-wide);
+		color: var(--color-muted);
+		margin-bottom: var(--spacing-3);
+	}
+
+	.toc-content :global(.toc-list) {
+		list-style: none;
+		padding: 0;
+		margin: 0;
+	}
+
+	.toc-content :global(.toc-item) {
+		margin-bottom: var(--spacing-1);
+	}
+
+	.toc-content :global(.toc-item--nested) {
+		padding-left: var(--spacing-3);
+	}
+
+	.toc-content :global(.toc-link) {
+		display: block;
+		font-size: var(--font-size-sm);
+		color: var(--color-muted);
+		text-decoration: none;
+		padding: var(--spacing-1) 0;
+		transition: color var(--transition-fast);
+		line-height: var(--leading-snug);
+	}
+
+	.toc-content :global(.toc-link:hover),
+	.toc-content :global(.toc-link.active) {
+		color: var(--color-text);
+	}
+</style>

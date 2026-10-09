@@ -8,6 +8,7 @@ import {
 import { Image, PortableText } from "emdash/ui";
 import { Comments, CommentForm } from "emdash/ui/comments";
 import Base from "../../layouts/Base.astro";
+import TableOfContents from "../../components/TableOfContents.astro";
 import { getReadingTime } from "../../utils/reading-time";
 import { mediaUrl } from "../../utils/media";
 import { resolveBlogSiteIdentity } from "../../utils/site-identity";
@@ -276,80 +277,11 @@ const commentFormLabels = {
 			{/* Right gutter: TOC */}
 			<aside class="article-sidebar">
 				<div class="sidebar-sticky">
-					<nav class="toc" aria-label={t("post.toc")}>
-						<h2 class="toc-title">{t("post.onThisPage")}</h2>
-						<div class="toc-content" id="toc-content">
-							<!-- Populated by JS -->
-						</div>
-					</nav>
+					<TableOfContents title={t("post.onThisPage")} label={t("post.toc")} />
 				</div>
 			</aside>
 		</div>
 	</article>
-
-	<script>
-		// Build table of contents from h2/h3 headings
-		function buildToc() {
-			const content = document.querySelector(".article-content");
-			const tocContainer = document.getElementById("toc-content");
-			if (!content || !tocContainer) return;
-
-			const headings = content.querySelectorAll("h2, h3");
-			if (headings.length === 0) {
-				// Hide TOC if no headings
-				const toc = document.querySelector(".toc") as HTMLElement | null;
-				if (toc) toc.style.display = "none";
-				return;
-			}
-
-			const list = document.createElement("ul");
-			list.className = "toc-list";
-
-			headings.forEach((heading, index) => {
-				// Add ID if missing
-				if (!heading.id) {
-					heading.id = `heading-${index}`;
-				}
-
-				const li = document.createElement("li");
-				li.className =
-					heading.tagName === "H3" ? "toc-item toc-item--nested" : "toc-item";
-
-				const link = document.createElement("a");
-				link.href = `#${heading.id}`;
-				link.className = "toc-link";
-				link.textContent = heading.textContent;
-
-				li.appendChild(link);
-				list.appendChild(li);
-			});
-
-			tocContainer.appendChild(list);
-
-			// Highlight current section on scroll
-			const observer = new IntersectionObserver(
-				(entries) => {
-					entries.forEach((entry) => {
-						const id = entry.target.id;
-						const link = tocContainer.querySelector(`a[href="#${id}"]`);
-						if (link) {
-							if (entry.isIntersecting) {
-								tocContainer
-									.querySelectorAll(".toc-link")
-									.forEach((l) => l.classList.remove("active"));
-								link.classList.add("active");
-							}
-						}
-					});
-				},
-				{ rootMargin: "-80px 0px -80% 0px" },
-			);
-
-			headings.forEach((heading) => observer.observe(heading));
-		}
-
-		buildToc();
-	</script>
 </Base>
 
 <style>
@@ -611,44 +543,6 @@ const commentFormLabels = {
 	.sidebar-sticky {
 		position: sticky;
 		top: calc(var(--nav-height) + var(--spacing-8));
-	}
-
-	.toc-title {
-		font-size: var(--font-size-xs);
-		font-weight: 500;
-		text-transform: uppercase;
-		letter-spacing: var(--tracking-wide);
-		color: var(--color-muted);
-		margin-bottom: var(--spacing-3);
-	}
-
-	.toc-content :global(.toc-list) {
-		list-style: none;
-		padding: 0;
-		margin: 0;
-	}
-
-	.toc-content :global(.toc-item) {
-		margin-bottom: var(--spacing-1);
-	}
-
-	.toc-content :global(.toc-item--nested) {
-		padding-left: var(--spacing-3);
-	}
-
-	.toc-content :global(.toc-link) {
-		display: block;
-		font-size: var(--font-size-sm);
-		color: var(--color-muted);
-		text-decoration: none;
-		padding: var(--spacing-1) 0;
-		transition: color var(--transition-fast);
-		line-height: var(--leading-snug);
-	}
-
-	.toc-content :global(.toc-link:hover),
-	.toc-content :global(.toc-link.active) {
-		color: var(--color-text);
 	}
 
 	/* Comments section */

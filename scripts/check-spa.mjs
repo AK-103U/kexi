@@ -87,7 +87,41 @@ await page.goBack();
 await page.waitForTimeout(800);
 check("后退回到 /en", new URL(page.url()).pathname === "/en", page.url());
 
-// ---------- 4. 报错 ----------
+// ---------- 4. TOC 在客户端导航后仍有内容 ----------
+//
+// 这是抽 TableOfContents 组件前的真实 bug：模块脚本只执行一次，从一篇文章
+// 客户端导航到另一篇时目录是空的。走「文章 → 列表 → 文章」这条全客户端路径
+// 才复现（直接进文章页是整页加载，脚本会跑）。
+// 走「文章 → 文章列表 → 另一篇文章」，全程客户端导航。
+await page.goto(`${BASE}/posts/building-for-the-long-term`, { waitUntil: "networkidle" });
+const tocOnLoad = await page.locator(".toc-link").count();
+check("整页加载文章页 TOC 有内容", tocOnLoad > 0, `${tocOnLoad} 条`);
+
+// 站内有多份指向 /posts 的链接（页头导航、左栏、移动抽屉），
+// 这里只点当前可见的那一份。
+await page.locator('a[href="/posts"]:visible').first().click(); // → 列表页
+await page.waitForURL(`${BASE}/posts`, { timeout: 10000 });
+await page.waitForTimeout(600);
+await page.evaluate(() => {
+	window.__spaMarker3 = "kept3";
+});
+await page.locator("a.post-link").first().click(); // → 另一篇文章
+await page.waitForLoadState("networkidle");
+await page.waitForTimeout(900);
+
+const marker3 = await page.evaluate(() => window.__spaMarker3);
+const tocAfterNav = await page.locator(".toc-link").count();
+const tocLists = await page.locator(".toc-list").count();
+
+check("导航仍是客户端（标记存活）", marker3 === "kept3", `marker=${marker3}`);
+check(
+	"客户端导航后 TOC 不为空",
+	tocAfterNav > 0,
+	`${tocAfterNav} 条（抽组件前此处为 0）`,
+);
+check("TOC 幂等（只有一个 ul）", tocLists === 1, `${tocLists} 个`);
+
+// ---------- 5. 报错 ----------
 const realErrors = pageErrors.filter((e) => !/favicon|404 \(Not Found\)/i.test(e));
 check("无 page error", realErrors.length === 0, realErrors.slice(0, 3).join(" | "));
 
