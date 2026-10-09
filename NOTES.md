@@ -24,7 +24,7 @@ emdash-lab/
 ├── emdash-env.d.ts                # 生成的类型，勿手改
 ├── seed/seed.json                 # 内容模型 + 双语示例内容
 ├── seed/bylines-i18n.json         # byline 各语言文案覆盖
-├── scripts/shots.mjs              # 自建截图脚本（见第六节）
+├── scripts/shots.mjs              # 自建截图脚本（见第七节）
 ├── scripts/seed-bylines-i18n.mjs  # 补齐 byline 的语言行（见第五节）
 └── src/
     ├── live.config.ts             # 注册 _emdash live collection（boilerplate）
@@ -206,7 +206,70 @@ pnpm seed:bylines      # 补齐其他语言的 byline
 
 ---
 
-## 六、本机环境的坑（Windows）
+## 六、客户端导航（ClientRouter）与 prefetch
+
+`Base.astro` 的 head 里加了一行 `<ClientRouter />`（来自 `astro:transitions`），
+站内点击（含语言切换）由客户端接管，不再整页刷新。底层仍是 MPA —— 首屏 SSR、
+爬虫拿到的 HTML、RSS、`EmDashHead` 注入的 hreflang 全部保留。
+
+实测（Chromium，脚本在 `.tmp-i18n/`）：
+
+| 验证项 | 结果 |
+|---|---|
+| 切语言不刷新页面 | window 上的标记存活 |
+| `<html lang>` | `zh-CN` → `en-US` |
+| `<title>` / `canonical` / `og:url` | 跟着换 |
+| hreflang | 详情页导航后 `en / zh / x-default`，与整页加载一致 |
+| 浏览器后退 | 正常 |
+| 模块脚本重复执行 | 不会，⌘K 的 keydown 监听不叠加 |
+| 客户端导航后 prefetch | 仍工作（`onPageLoad` 会重新绑定） |
+
+### 必须配套改的：主题切换
+
+模块脚本只在首次加载执行一次，而换页后 `<html>` 的 class 被重置、按钮也换成了新
+节点，原来的 `addEventListener` 就丢了 —— 实测「导航后点 dark 无反应、class 也没了」。
+
+改法：用 `astro:page-load` 驱动初始化（首次加载与每次客户端导航后都会触发），
+监听器改用 `onclick` 赋值（重复执行不叠加），并在 `astro:before-swap` 里给新文档的
+`<html>` 补 class，避免过渡期间闪一下。
+
+⌘K 的 keydown 监听不用改 —— 它挂在 `document` 上，而 `document` 不随换页替换。
+
+### prefetch：用了 ClientRouter 就顺带开了（反直觉）
+
+`ClientRouter.astro` 源码里默认执行 `init({ prefetchAll: true })`，只有配置里显式
+写 `prefetch: false` 才关。官方类型文档同款表述：
+
+> Enabled by default on pages using the `<ClientRouter />` router.
+> Set `prefetch: false` to opt out of this behaviour.
+
+所以**不需要**在 `astro.config.mjs` 里写 `prefetch: true` —— 那是多余的。
+
+机制：悬停链接时往 head 插一个 `<link rel="prefetch">`（低优先级，走浏览器 HTTP
+缓存），把「点击后才开始取目标页」提前到「悬停就开始取」。实测悬停 `/posts` 后
+head 里立刻出现该 link。
+
+四种策略，默认 `hover`（悬停 80ms 后）：
+
+| 策略 | 触发点 | 启用方式 |
+|---|---|---|
+| `hover` | 悬停 80ms 后 | 默认，所有站内链接 |
+| `tap` | 触摸 / mousedown | `data-astro-prefetch="tap"` |
+| `viewport` | 进入视口 300ms 后 | `data-astro-prefetch="viewport"` |
+| `load` | 页面加载即取 | `data-astro-prefetch="load"` |
+
+因为 `prefetchAll: true`，没加属性的站内链接也会在悬停时被预取；单链接退出写
+`data-astro-prefetch="false"`。
+
+自带几道闸：只对同源链接生效、跳过当前页、`navigator.onLine` 为 false 或网络被
+判定为慢速时跳过、一个会话内同一 URL 只取一次。
+
+代价是服务端会多收到请求（悬停一次 = 一次额外渲染）。首页 29 个链接理论上全悬停
+就是 29 次额外请求，实际没人这么干；但后端若按请求计费或渲染很贵，要重新评估。
+
+---
+
+## 七、本机环境的坑（Windows）
 
 官方 `pnpm screenshots` **完全不可用**：
 
@@ -270,7 +333,7 @@ Run `astro dev stop` to stop it, or use `astro dev --force` to replace it.
 
 ---
 
-## 七、本版模板的已知小问题
+## 八、本版模板的已知小问题
 
 1. `seed.json` 的 widget 用了过时的 `settings` 键，`npx emdash seed --validate` 会警告：
    > `widgetAreas[0].widgets[3].settings: not applied; widget options belong in "props"`
@@ -281,7 +344,7 @@ Run `astro dev stop` to stop it, or use `astro dev --force` to replace it.
 
 ---
 
-## 八、本次改动
+## 九、本次改动
 
 | 文件 | 改动 | 验证方式 |
 |---|---|---|
@@ -291,12 +354,13 @@ Run `astro dev stop` to stop it, or use `astro dev --force` to replace it.
 | `seed/seed.json` | 改写为双语内容（16 posts + 2 pages + 双语分类法/菜单） | 重建数据库后中英页面均正常 |
 | `scripts/seed-bylines-i18n.mjs`、`seed/bylines-i18n.json` | 补齐 byline 的语言行 | 中英文章页均显示署名 |
 | `package.json`、`astro.config.mjs` | math 插件依赖键改用真实包名 `@ak-103u/emdash-plugin-math` | `pnpm install` 后 dev server 正常 |
+| `src/layouts/Base.astro` | head 加 `<ClientRouter />`；主题切换脚本改为 `astro:page-load` 驱动 | 见第六节；Chromium 实测 10/10 |
 
-**明确没动**：`src/live.config.ts`（boilerplate）、`Base.astro` 的 head/body 钩子与数据获取逻辑。
+**明确没动**：`src/live.config.ts`（boilerplate）、`Base.astro` 的数据获取逻辑与 `EmDashHead` 钩子。
 
 ---
 
-## 九、验证清单（全部通过）
+## 十、验证清单（全部通过）
 
 - [x] `pnpm dev` 启动无错，`emdash-env.d.ts` 生成 2 个集合
 - [x] 路由状态码正确：`/` `/en` `/posts` `/en/posts` 中英详情页、`/pages/about`、`/en/category/*`、`/en/tag/*`、`/search`、`/en/search`、`/rss.xml`、`/en/rss.xml` 全 200；`/xx/posts/foo` → 302；`/_emdash/admin` → 302
@@ -311,11 +375,16 @@ Run `astro dev stop` to stop it, or use `astro dev --force` to replace it.
 - [x] RSS `<language>` 按 locale 输出（`zh-CN` / `en-US`）
 - [x] 语言切换器双向可达；中英文章页署名均显示
 - [x] 回退提示：zh 页显示「本文暂无中文版本…」，en 页显示 "not yet available…"
+- [x] ClientRouter：切语言/进详情页均不整页刷新，`<html lang>`、`<title>`、`canonical`、hreflang 跟着换，后退正常，无 page error
+- [x] ClientRouter 下主题切换：导航后 class 与按钮 active 保持，三个按钮仍可点
+- [x] prefetch 悬停生效，且客户端导航后仍工作
 
 ---
 
-## 十、下一步可选方向
+## 十一、下一步可选方向
 
+- **决定 `test/spa` 分支的去留** —— ClientRouter 已在该分支跑通（见第六节），
+  还没合回 `main`。
 - **重做主题布局** —— 用户明确说现有布局不符合心意，i18n 之后单独做这一项。
   路由已按 locale 分好，改布局时只需动 `src/pages/*.astro` 与 `Base.astro` 的单点。
 - **做 Cloudflare 变体**：D1 + R2 + `wrangler.jsonc` + `worker.ts`。
@@ -326,7 +395,7 @@ Run `astro dev stop` to stop it, or use `astro dev --force` to replace it.
 
 ---
 
-## 十一、速查
+## 十二、速查
 
 ```bash
 cd F:/dev/blog/emdash-lab
