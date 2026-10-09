@@ -8,14 +8,19 @@
  * 所以这里用 playwright-core + 系统已有的 Chrome，绕开浏览器下载。
  *
  * 用法：
- *   node scripts/shots.mjs                  # 默认 http://[::1]:4321
+ *   node scripts/shots.mjs                  # 默认 http://[::1]:4321，三个断点
  *   node scripts/shots.mjs --base http://localhost:4400
  *   node scripts/shots.mjs --only homepage  # 只截某个页面
+ *   node scripts/shots.mjs --bp desktop     # 只截某个断点（desktop/tablet/mobile/all）
+ *
+ * 文件名形如 `<页面>-<断点>-<模式>.png`。断点写进文件名是有意的：
+ * 三栏外壳的两个关键行为（<1200 收右栏、<1000 收左栏）只在窄断点可见，
+ * 混在一个目录里必须一眼能看出每张图是哪个视口拍的。
  *
  * 注意服务器只监听 IPv6，所以 base URL 默认用 [::1] 而不是 localhost。
  */
 import { chromium } from "playwright-core";
-import { mkdirSync, existsSync, rmSync } from "node:fs";
+import { mkdirSync, existsSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -51,19 +56,28 @@ const PAGES = {
   notfoundEn: "/en/nonexistent",
 };
 
+/**
+ * 断点。名字会进文件名，改名字等于改产物名。
+ * 三个值分别落在三栏外壳的三档布局里（见 AGENTS.md「The three-column shell」）：
+ *   desktop 1440 → 三栏齐全
+ *   tablet  1100 → 两栏，右栏轨道收起（断点在 1199）
+ *   mobile  390  → 单栏，左栏收起、导航进汉堡抽屉（断点在 999）
+ */
 const BREAKPOINTS = {
   desktop: { width: 1440, height: 900 },
+  tablet: { width: 1100, height: 900 },
   mobile: { width: 390, height: 844 },
 };
 
 const SCHEMES = ["light", "dark"];
 
-/** 解析 --base / --only 参数。 */
+/** 解析 --base / --only / --bp / --full 参数。 */
 function parseArgs(argv) {
-  const out = { base: "http://[::1]:4321", only: null, fullPage: false };
+  const out = { base: "http://[::1]:4321", only: null, bp: null, fullPage: false };
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === "--base") out.base = argv[++i];
     else if (argv[i] === "--only") out.only = argv[++i];
+    else if (argv[i] === "--bp") out.bp = argv[++i];
     else if (argv[i] === "--full") out.fullPage = true;
   }
   return out;
@@ -101,41 +115,59 @@ if (targets.length === 0) {
   process.exit(1);
 }
 
+const bpNames =
+  !args.bp || args.bp === "all"
+    ? Object.keys(BREAKPOINTS)
+    : Object.keys(BREAKPOINTS).filter((name) => name === args.bp);
+
+if (bpNames.length === 0) {
+  console.error(`没有匹配的断点：${args.bp}`);
+  console.error(`可选：${Object.keys(BREAKPOINTS).join(", ")}, all`);
+  await browser.close();
+  process.exit(1);
+}
+
 let count = 0;
 const failures = [];
 
-for (const [name, path] of targets) {
-  for (const scheme of SCHEMES) {
-    const context = await browser.newContext({
-      viewport: BREAKPOINTS.desktop,
-      colorScheme: scheme,
-      deviceScaleFactor: 1,
-    });
-    const page = await context.newPage();
+for (const bpName of bpNames) {
+  const viewport = BREAKPOINTS[bpName];
+  console.log(`\n${bpName} ${viewport.width}×${viewport.height}`);
 
-    const url = `${args.base}${path}`;
-    try {
-      const resp = await page.goto(url, {
-        waitUntil: "networkidle",
-        timeout: 45000,
+  for (const [name, path] of targets) {
+    for (const scheme of SCHEMES) {
+      const context = await browser.newContext({
+        viewport,
+        colorScheme: scheme,
+        deviceScaleFactor: 1,
       });
-      const status = resp?.status() ?? 0;
+      const page = await context.newPage();
 
-      await page.evaluate(HIDE_DEV_CHROME);
-      await page.evaluate(() => window.scrollTo(0, 0));
-      // 等字体和懒加载图片落位
-      await page.waitForTimeout(600);
+      const url = `${args.base}${path}`;
+      const label = `${name}-${bpName}-${scheme}`;
+      try {
+        const resp = await page.goto(url, {
+          waitUntil: "networkidle",
+          timeout: 45000,
+        });
+        const status = resp?.status() ?? 0;
 
-      const file = resolve(OUT, `${name}-${scheme}.png`);
-      await page.screenshot({ path: file, fullPage: args.fullPage });
-      count++;
-      console.log(`  ${String(status).padEnd(4)} ${name}-${scheme}.png`);
-    } catch (err) {
-      failures.push(`${name}-${scheme}: ${err.message}`);
-      console.log(`  失败  ${name}-${scheme}  ${err.message}`);
+        await page.evaluate(HIDE_DEV_CHROME);
+        await page.evaluate(() => window.scrollTo(0, 0));
+        // 等字体和懒加载图片落位
+        await page.waitForTimeout(600);
+
+        const file = resolve(OUT, `${label}.png`);
+        await page.screenshot({ path: file, fullPage: args.fullPage });
+        count++;
+        console.log(`  ${String(status).padEnd(4)} ${label}.png`);
+      } catch (err) {
+        failures.push(`${label}: ${err.message}`);
+        console.log(`  失败  ${label}  ${err.message}`);
+      }
+
+      await context.close();
     }
-
-    await context.close();
   }
 }
 
