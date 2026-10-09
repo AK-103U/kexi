@@ -388,6 +388,12 @@ const isLoggedIn = !!Astro.locals.user;
 
 				html {
 					scroll-behavior: smooth;
+					/*
+					 * 恒定预留滚动条槽位。否则「一屏装得下的页面」（如 /pages/about）
+					 * 没有滚动条、clientWidth 比长页面宽 15px，居中的外壳会整体横移 ——
+					 * 客户端导航过去时肉眼可见地漂一下。
+					 */
+					scrollbar-gutter: stable;
 				}
 
 				body {
@@ -521,9 +527,9 @@ const isLoggedIn = !!Astro.locals.user;
 			}
 
 			/*
-			 * 三栏外壳。宽度账（含 Windows 经典滚动条 ~17px）：
+			 * 三栏外壳。宽度账（含滚动条槽位）：
 			 * 200 + 24 + 680 + 24 + 200 = 1128，加两侧 padding 48 = 1176，
-			 * 加滚动条 = 需要视口 ≥1193 → 断点取 1200。
+			 * 加滚动条 ≈ 1193 → 断点取 1200。
 			 */
 			.shell {
 				display: grid;
@@ -534,13 +540,22 @@ const isLoggedIn = !!Astro.locals.user;
 				justify-content: center;
 				/* 必须 start：stretch 会让 rail 撑满行高，sticky 就没有可滚动的余量 */
 				align-items: start;
-				padding: var(--spacing-12) var(--spacing-6) var(--spacing-16);
+				/*
+				 * rail 的静止位 = 页头高度 + 这里的上边距，而 .rail 的 sticky top
+				 * 必须与之相等 —— 否则在滚动状态下切页（scrollY 归零）时，rail 会
+				 * 从 sticky 位弹回静止位，那 17px 的跳动每次导航都看得见。
+				 * 两个值都从 --shell-pad-top 推出来，改一处即可。
+				 */
+				--shell-pad-top: var(--spacing-12);
+				/* +1px 是 .site-header 的下边框 */
+				--rail-sticky-top: calc(var(--nav-height) + 1px + var(--shell-pad-top));
+				padding: var(--shell-pad-top) var(--spacing-6) var(--spacing-16);
 			}
 
 			.rail {
 				align-self: start;
 				position: sticky;
-				top: calc(var(--nav-height) + var(--spacing-8));
+				top: var(--rail-sticky-top);
 			}
 
 			.shell-main {
@@ -745,7 +760,9 @@ const isLoggedIn = !!Astro.locals.user;
 			@media (max-width: 999px) {
 				.shell {
 					grid-template-columns: minmax(0, var(--content-width));
-					padding: var(--spacing-8) var(--spacing-4) var(--spacing-12);
+					/* 只改 --shell-pad-top，rail 的 sticky 位跟着走，不会脱节 */
+					--shell-pad-top: var(--spacing-8);
+					padding: var(--shell-pad-top) var(--spacing-4) var(--spacing-12);
 				}
 
 				.rail--left {
