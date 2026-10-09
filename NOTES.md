@@ -299,13 +299,24 @@ head 里立刻出现该 link。
 
 - 用 `playwright-core`（**不是** `playwright` —— 后者 postinstall 会下载浏览器）
 - `chromium.launch({ channel: "chrome" })` 复用系统 Chrome
-- 遍历 8 个路由 × 明暗两模式
+- 遍历 20 个路由 × 3 个断点 × 明暗两模式 = **120 张**
 
 ```bash
-node scripts/shots.mjs              # 全部
-node scripts/shots.mjs --only post  # 单个
-node scripts/shots.mjs --full       # 整页
+node scripts/shots.mjs                # 全部（三个断点）
+node scripts/shots.mjs --only post    # 单个页面
+node scripts/shots.mjs --bp mobile    # 单个断点（desktop/tablet/mobile/all）
+node scripts/shots.mjs --full         # 整页
 ```
+
+文件名形如 `<页面>-<断点>-<模式>.png`（如 `post-tablet-dark.png`）。断点写进
+文件名是有意的：三栏外壳的两个关键行为只在窄断点可见，混在一个目录里必须
+一眼看出每张图是哪个视口拍的。三个断点各自落在三档布局里：
+
+| 断点 | 视口 | 布局 |
+|---|---|---|
+| `desktop` | 1440×900 | 三栏齐全 |
+| `tablet` | 1100×900 | 两栏，右栏收起（断点 1199） |
+| `mobile` | 390×844 | 单栏，左栏收起、导航进汉堡（断点 999） |
 
 ### dev server 默认只监听 `::1`
 
@@ -422,6 +433,144 @@ i18n 落地后，按「现有布局不合心意」逐块重排。都是删减，
 ### 清理的设计令牌
 
 `--meta-col-width` 与 `--avatar-size-lg` 失去使用者，从 `tokens.css` 删除。
+（`--avatar-size-lg` 后来在三栏改造中重新加回，值 40px，见第十四节。）
+
+---
+
+## 十四、全站三栏文档式布局
+
+把「顶部页头 + 单列内容」换成**文档式三栏**：左栏（站主头像/名字/导航）／
+中栏（正文）／右栏（文章目录，滚动高亮）。全站生效，不只是文章页。
+
+### 外壳
+
+`Base.astro` 拥有网格，页面只提供内容：
+
+```
+┌──────────┬─────────────────────┬──────────┐
+│ 头像+名字 │                     │  本页目录  │
+│ 首页      │       正文           │  ●        │
+│ 关于      │                     │  ○        │
+│ 文章      │                     │           │
+└──────────┴─────────────────────┴──────────┘
+   200px          680px              200px
+```
+
+**宽度账（含 Windows 经典滚动条约 17px）**：
+`200 + 24 + 680 + 24 + 200 = 1128`，加两侧 padding 48 = 1176，
+加滚动条 ≈ **1193** → 断点取 1200。
+
+| 视口 | 布局 |
+|---|---|
+| ≥1200px | 三栏齐全 |
+| 1000–1199px | 左栏 + 中栏；右栏 `display: none` |
+| <1000px | 单栏；左栏消失，导航进页头汉堡抽屉 |
+
+**`align-items: start` 是必需的**：默认的 `stretch` 会让 rail 撑满行高，
+`position: sticky` 就没有可滚动的余量，看着像没生效。
+
+### 右栏「留空不渲染」
+
+右栏的**轨道**在每一页都保留，只有文章页往里放 TOC（命名 slot
+`<slot name="rail" />`）。非文章页就是一个空的 200px 轨道 —— 换来的是
+中栏左边缘全站恒定。
+
+改造前实测（1440px）：文章页 `x=260`、首页 `x=120`、列表页 `x=380`、
+关于 `x=380` —— 互不相同。改造后全部 `x=380`。这条现在是
+`scripts/check-shell.mjs` 的断言，不靠肉眼。
+
+### 抽 TOC 组件时修掉的三个 bug
+
+`TableOfContents.astro` 从 `posts/[slug].astro` 的内联版本抽出来，顺带修了：
+
+1. **没有 `astro:page-load` 重绑** —— ClientRouter 下模块脚本只执行一次，
+   走「文章 → 列表 → 另一篇文章」这条全客户端路径，到达时目录是**空的**。
+   （实测复现：整页加载 1 条链接，客户端导航后 0 条，而 window 标记存活，
+   证明确实没整页刷新。）现在 `check:spa` 会走这条路径并断言目录非空。
+2. **`IntersectionObserver` 从不 disconnect** —— 每次重建都留下一个观察者。
+   现在存到模块级变量，重建前先 `disconnect()`。
+3. **`appendChild` 不幂等** —— 重复执行会追加第二个 `<ul>`。
+   现在建列表前先清空容器；断言 `.toc-list` 只有一个。
+
+容器从硬编码 `id="toc-content"` 改成 `data-toc` 属性选择器，同页可以放多个。
+
+### 头像：媒体 URL 只认 storageKey
+
+**这是个既有 bug**：主题里 4 处头像 `<img>` 都用 `credit.byline.avatarMediaId`
+（ULID）拼 URL，而 `/_emdash/api/media/file/<key>` 路由是
+`storage.download(key)` —— 传 ULID 会 404。只因从没有 byline 设过头像才没暴露。
+`BylineSummary.avatarStorageKey`（media 表 LEFT JOIN 填充）才是可用的那个，
+已全部改用它（经 `src/utils/media.ts` 的 `mediaUrl()`）。
+
+头像本身复用媒体库里现成的配图，经 `/_image` **服务端裁剪**：
+
+```
+/_image?href=<encodeURIComponent('/_emdash/api/media/file/<storageKey>')>
+        &w=96&h=96&fit=cover&f=webp&q=85
+```
+
+实测 172KB JPEG → **3.7KB** 的 96×96 WebP。`scripts/seed-owner-avatar.mjs`
+（`pnpm seed:avatar`）把 byline 指向这张图，幂等，不新增任何资源文件。
+
+> **选图踩的坑**：一开始选了 `notes-on-simplicity.jpg`（白纸几何纹理），
+> 截出来在 40px 圆形里**几乎是空白灰点**。换成 `building-long-term.jpg`
+> （深色代码屏）后小尺寸下辨识度好得多。
+> **只有把候选图并排渲染出来看才知道**，读文件名判断不了。
+
+### `sharp` 必须显式依赖（部署阻断级）
+
+生产构建下 `/_image` 返回 **500 `Could not find Sharp`**。
+
+Astro 把 `sharp` 列为 optional peer；pnpm 的严格 node_modules 布局下，
+仅作为传递依赖的 sharp 在 **dev 能解析**（Vite 的解析更宽松）、
+**生产构建解析不到**。所以它必须在 `dependencies` 里显式声明。
+
+**这个坑 dev server 永远发现不了** —— 页面全 200，只有 `/_image` 悄悄挂掉。
+`pnpm build && pnpm start` 是唯一能验的路径。
+
+### 页头收窄
+
+站名移入左栏，页头只剩：汉堡（<1000px）+ 搜索框 + 语言/主题切换 + 管理链接。
+
+> **scoped 样式的坑**：`.site-search` 是**传给子组件** LiveSearch 的 class，
+> 节点上带的是**子组件的** scope 属性，所以 `Base.astro` 里的 `.site-search { ... }`
+> 一条都不生效。改成 `:global(.site-search)` 才对 —— 搜索结果下拉的定位
+> 就靠这里的 `position: relative`。
+> 同理，`<slot />` 投进来的页面节点也没有 Base 的 scope，但外壳的 grid
+> 只作用在容器上，不需要 `:global()`。
+
+### 各页让出外层宽度
+
+删掉页面自己的 `max-width` / 水平 padding，交给外壳。**首页与 category/tag
+原本是 1200px 三列网格，收进 680px 中栏后必须重排**：featured 改为图上文下
+堆叠、文章列表与卡片网格全部单列。
+
+文章 hero 从「跨列出血」改为**收进中栏、位于标题上方**。
+
+### 截图断点补齐
+
+三栏的两个关键行为（<1200 收右栏、<1000 收左栏）原先**没有任何截图覆盖**：
+`shots.mjs` 里 `mobile` 断点定义了却没人用，视口硬编码 `BREAKPOINTS.desktop`。
+现在循环真正遍历 `BREAKPOINTS`，加了 `tablet: 1100`（落在两栏档），
+文件名带上断点（`post-tablet-dark.png`），并新增 `--bp` 参数。
+全量从 40 张涨到 **120 张**（20 路由 × 3 断点 × 明暗）。
+
+### 本轮文件
+
+| 文件 | 改动 |
+|---|---|
+| `src/layouts/Base.astro` | 三栏外壳、窄页头、汉堡抽屉、左栏数据 |
+| `src/components/SiteRail.astro` | **新建**（头像 + 名字 + 导航 + 当前页高亮） |
+| `src/components/TableOfContents.astro` | **新建**（抽出 + 修三个 bug） |
+| `src/utils/media.ts` | **新建**（`mediaUrl` / `avatarUrl`） |
+| `src/utils/site-identity.ts` | 加 `OWNER_BYLINE_SLUG` |
+| `scripts/seed-owner-avatar.mjs` | **新建**（幂等设置头像） |
+| `scripts/check-shell.mjs` | **新建**（22 条几何断言） |
+| `scripts/check-spa.mjs` | 加 4 条 TOC 回归断言 |
+| `scripts/shots.mjs` | 断点矩阵补 `tablet: 1100`；循环真正遍历断点（原先硬编码 desktop）；加 `--bp` |
+| `src/pages/*.astro` | 让出外层宽度、网格重排、修头像 URL |
+| `src/styles/tokens.css` | 加 `--rail-width` / `--avatar-size-lg`；删 `--gutter-width` |
+| `package.json` | 加 `sharp` 直接依赖、`seed:avatar`、`check:shell` |
 
 ---
 
@@ -461,8 +610,17 @@ i18n 落地后，按「现有布局不合心意」逐块重排。都是删减，
 - [x] ClientRouter 下主题切换：导航后仍可点（单按钮，class 与图标同步翻转）
 - [x] prefetch 悬停生效，且客户端导航后仍工作
 - [x] 版式改造（见第九节）：meta 在标题下方，≥900px 时四个块同一行、390px 折两行；
-      左栏、`.meta-label`、`.sidebar-widgets` 均不存在；正文列宽仍 680px；
-      TOC ≥1100px 在正文右侧、窄屏隐藏
+      `.meta-label`、`.sidebar-widgets` 均不存在；正文列宽仍 680px
+      （~~左栏不存在~~ 该条已被第十四节的三栏布局推翻）
+- [x] 三栏布局（见第十四节）：中栏左边缘在文章/首页/列表/关于/搜索五者间恒为 x=380
+      （改造前 260/120/380/380 各不相同）；≥1200 三栏、1000–1199 两栏、
+      <1000 单栏 + 汉堡；非文章页右栏轨道在但内容空（`pnpm check:shell` 22/22）
+- [x] TOC 三个 bug 修复：客户端导航后目录非空（抽组件前为 0）、`.toc-list` 幂等、
+      observer 重建前 disconnect（`pnpm check:spa` 14/14）
+- [x] 头像：40px 圆形、`naturalWidth=96`（证明走服务端裁剪而非 CSS 拉伸）、
+      中英各自显示「EmDash 编辑部」/「EmDash Editorial」
+- [x] **生产构建验证**：`pnpm build && pnpm start` 后 `/_image` 返回 200 +
+      3.7KB WebP（dev 下正常但生产 500 —— `sharp` 必须显式依赖，见第十四节）
 - [x] 单按钮主题切换：系统亮/暗两种偏好下各跑一遍（初始图标符合系统、点击后翻转、
       cookie 落盘、刷新保持、导航后仍可点）16/16
 - [x] 页脚几何：1440/640/390 三个宽度高度均 49px，RSS 紧邻版权右侧 12px
@@ -473,15 +631,22 @@ i18n 落地后，按「现有布局不合心意」逐块重排。都是删减，
 
 - ~~决定 `test/spa` 分支的去留~~ —— 2026-10-09 已用 `--no-ff` 合并进 `main`
   （合并提交 `6760d1c`），分支已删。ClientRouter 的验证脚本收进 `scripts/check-spa.mjs`。
-- ~~重做主题布局~~ —— 已按块完成（见第九节）：文章页两栏化、侧栏 widget 删除、
-  页头两个控件、页脚收成一行。继续按同样的方式逐块调整即可。
-- **`AGENTS.md` 已同步** —— 版式描述、字体、品牌色、令牌清单、i18n 与客户端导航
-  两节都更新过。改动版式时记得一并维护。
+- ~~重做主题布局~~ —— 已完成：第九节按块删减（文章页两栏化、侧栏 widget 删除、
+  页头两个控件、页脚收成一行），第十四节换成全站三栏文档式外壳。
+- **`AGENTS.md` 已同步** —— 版式描述、字体、品牌色、令牌清单、i18n、客户端导航、
+  三栏外壳与图片四节都更新过。改动版式时记得一并维护。
+- ~~`scripts/shots.mjs` 的断点矩阵偏少~~ —— 2026-10-09 已补：加了 `tablet: 1100`
+  （两栏，右栏收）并让循环真正遍历 `BREAKPOINTS`（此前 `mobile` 定义了却没人用，
+  视口硬编码 `BREAKPOINTS.desktop`）。文件名改为 `<页面>-<断点>-<模式>.png`，
+  新增 `--bp` 参数。全量 120 张。
 - **做 Cloudflare 变体**：D1 + R2 + `wrangler.jsonc` + `worker.ts`。
+  注意 `/_image` 在 Cloudflare 走的是 `IMAGES` binding 而非 sharp（见
+  `emdash/dist/media/image-endpoint.mjs` 的平台分支），`sharp` 那条依赖可以去掉。
 - **发布成 GitHub 模板**：`npm create astro@latest -- --template github:<you>/emdash-lab`。
 - **改 seed 做原创内容模型**：加 collection / 字段 / 自定义 PT 块（后者需要 native 插件注册编辑器）。
 - **补第三语言**：`siteConfig.locales` 加一项、`src/i18n/<lang>.json` 加字典、
   `src/pages/[locale]/` 薄壳自动生效（薄壳按 `isLang` 校验，无需逐个改）。
+  注意语言切换器现在是「点击切到下一个语言」的单控件，**加到三种语言就得改下拉**。
 
 ---
 
@@ -493,9 +658,14 @@ cd F:/dev/blog/emdash-lab
 pnpm dev                    # 启动（默认只绑 ::1，localhost 或 [::1] 都能访问）
 pnpm dev --host             # 需要 127.0.0.1 或局域网访问时
 pnpm typecheck              # 类型检查
-node scripts/shots.mjs      # 截图（含 en 变体）
-pnpm check:spa              # 客户端导航回归断言（需 dev server 在跑）
+node scripts/shots.mjs      # 截图（20 路由 × 3 断点 × 明暗，含 en 变体）
+pnpm check:spa              # 客户端导航 + TOC 回归断言（需 server 在跑）
+pnpm check:shell            # 三栏外壳几何断言（需 server 在跑）
 pnpm seed:bylines           # 补齐 byline 的语言行（跑完重启 dev）
+pnpm seed:avatar            # 设置左栏头像（跑完重启 dev）
+
+# 生产构建 —— /_image 与 sharp 只有这条路径能验（见第十四节）
+pnpm build && pnpm start    # 默认 4321；换端口用 PORT=4400 pnpm start
 
 npx emdash seed --validate  # 只校验 seed
 npx emdash seed             # 应用 seed（含示例内容）

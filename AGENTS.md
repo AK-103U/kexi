@@ -5,8 +5,10 @@ This is an EmDash site -- a CMS built on Astro with a full admin UI.
 ```bash
 pnpm dev              # Start the Astro dev server
 pnpm typecheck        # astro check
-pnpm check:spa        # Client-side navigation assertions (needs a running dev server)
+pnpm check:spa        # Client-side navigation + TOC assertions (needs a running server)
+pnpm check:shell      # Three-column shell geometry at every breakpoint (needs a running server)
 pnpm seed:bylines     # Backfill per-locale byline rows (restart dev afterwards)
+pnpm seed:avatar      # Point the site-owner byline at an avatar image (restart dev afterwards)
 npx emdash types      # Regenerate TypeScript types from a running site
 ```
 
@@ -26,10 +28,14 @@ bug, the i18n mechanics. Read it before debugging anything unusual.
 | `seed/seed.json`              | Schema definition + bilingual demo content                                         |
 | `seed/bylines-i18n.json`      | Per-locale byline copy overrides                                                   |
 | `emdash-env.d.ts`             | Generated types for collections (auto-regenerated on dev server start)             |
-| `src/layouts/Base.astro`      | Base layout with EmDash wiring (menus, search, page contributions)                 |
+| `src/layouts/Base.astro`      | Base layout: three-column shell, header, footer, drawer, EmDash wiring            |
+| `src/components/SiteRail.astro` | Left rail contents -- owner avatar, name, site navigation                        |
+| `src/components/TableOfContents.astro` | Right rail contents -- TOC with scroll highlighting                       |
+| `src/utils/media.ts`          | Media URLs (`mediaUrl`, `avatarUrl`) -- storageKey only, see below                 |
 | `src/pages/`                  | Astro pages -- all server-rendered                                                 |
-| `scripts/shots.mjs`           | Screenshot script (replaces the template's `pnpm screenshots`, which needs lsof/rsync) |
-| `scripts/check-spa.mjs`       | Client-side navigation regression assertions                                       |
+| `scripts/shots.mjs`           | Screenshot script -- 20 routes × 3 breakpoints (desktop/tablet/mobile) × light/dark; `--only <page>`, `--bp <name>` |
+| `scripts/check-spa.mjs`       | Client-side navigation + TOC regression assertions                                 |
+| `scripts/check-shell.mjs`     | Three-column shell geometry assertions                                             |
 
 ## Skills
 
@@ -50,6 +56,7 @@ This template ships with `.mcp.json`, `.cursor/mcp.json`, and `.vscode/mcp.json`
 - All content pages must be server-rendered (`output: "server"`). No `getStaticPaths()` for CMS content.
 - Image fields are objects (`{ src, alt }`), not strings. Use `<Image image={...} />` from `"emdash/ui"`.
 - `entry.id` is the slug (for URLs). `entry.data.id` is the database ULID (for API calls like `getEntryTerms`).
+- **Media URLs take a storageKey, never a media id.** `/_emdash/api/media/file/<key>` calls `storage.download(key)`, so passing the ULID 404s. Use `mediaUrl()` / `avatarUrl()` from `src/utils/media.ts`, and read `byline.avatarStorageKey` (populated by the media LEFT JOIN), not `avatarMediaId`.
 - When Astro's cache is enabled, pass content-query hints to `Astro.cache.set(cacheHint)`. Use the `WithCacheHint` variants for site settings, menus, taxonomies, and widget areas rendered by cached routes.
 - Taxonomy names in queries must match the seed's `"name"` field exactly (e.g., `"category"` not `"categories"`).
 
@@ -61,9 +68,9 @@ A blog with posts, pages, categories, tags, full-text search, and RSS. Designed 
 
 | Page        | Path               | What it shows                                                                          |
 | ----------- | ------------------ | -------------------------------------------------------------------------------------- |
-| Home        | `/`                | Featured post hero (large image + excerpt), latest posts grid                          |
+| Home        | `/`                | Featured post (image above title), latest posts stack                                 |
 | All posts   | `/posts`           | Article count, full post list with excerpts and tag chips                              |
-| Post detail | `/posts/[slug]`    | Featured image, title, meta row under the title (bylines, date, reading time, tags), body, right TOC gutter |
+| Post detail | `/posts/[slug]`    | Featured image, title, meta row under the title (bylines, date, reading time, tags), body, right-rail TOC |
 | Search      | `/search`          | Full-text search UI                                                                    |
 | Page        | `/pages/[slug]`    | Static page content (Portable Text)                                                    |
 | Category    | `/category/[slug]` | Posts filtered by category                                                             |
@@ -89,14 +96,31 @@ The UI dictionary is `src/i18n/{zh,en}.json`; `MessageKey` is derived from `zh.j
 
 `pnpm check:spa` runs Playwright assertions that client-side navigation (see below) is still actually working.
 
+## The three-column shell
+
+`Base.astro` owns the grid; pages supply content only. Page components must **not** declare their own outer `max-width` or horizontal padding -- that's what the shell is for.
+
+- `.shell` is `grid-template-columns: var(--rail-width) minmax(0, var(--content-width)) var(--rail-width)` with `align-items: start`. That last part is load-bearing: with the default `stretch`, each rail would grow to the full row height and `position: sticky` would have no scroll range to move within.
+- The right rail's **track is always present**; its contents come from a named slot (`<slot name="rail" />`) that only article pages fill. Non-article pages render an empty 200px rail on purpose -- it keeps the content column at the same x everywhere.
+- Width budget (including a ~17px classic scrollbar): `200 + 24 + 680 + 24 + 200 = 1128`, plus 48px of padding = 1176, plus the scrollbar ≈ 1193. Hence the 1200px breakpoint.
+- The mobile drawer duplicates the menu links. Both copies come from the same `menu.items`; the drawer deliberately omits the avatar and name.
+
+## Images
+
+`/_image` (Astro's endpoint, wrapped by EmDash) does server-side cropping -- `?w=96&h=96&fit=cover&f=webp` turns a 1200×800 JPEG into a 3.7KB square WebP. Use it rather than scaling a large image down in CSS. Helpers live in `src/utils/media.ts`.
+
+**`sharp` is a direct dependency for a reason.** Astro lists it as an optional peer; under pnpm's strict node_modules layout a transitive-only `sharp` resolves in dev (Vite's resolver is looser) but **not** in the production build, where `/_image` returns 500 with `Could not find Sharp`. Don't remove it from `dependencies`.
+
 ## Client-side navigation
 
 `Base.astro` renders `<ClientRouter />` (from `astro:transitions`), so in-site clicks swap the document client-side instead of doing a full page load. The site is still an MPA -- first paint, crawler HTML, RSS and hreflang are all server-rendered.
 
 Two things this breaks if you're not careful:
 
-- **Module scripts run once.** Anything binding to nodes that get swapped must re-init on `astro:page-load` and assign listeners with `onclick` (not `addEventListener`) so repeat runs don't stack. The theme switcher does this.
+- **Module scripts run once.** Anything binding to nodes that get swapped must re-init on `astro:page-load` and assign listeners with `onclick` (not `addEventListener`) so repeat runs don't stack. The theme switcher, the nav drawer, and the TOC all do this.
 - **Failure is silent.** The page still navigates, the content is still right, and `curl` looks normal -- it just quietly reverts to full page loads. `pnpm check:spa` catches this by planting a marker on `window` and checking it survives a click.
+
+The TOC was the victim of the first rule: it built its list once on module execution, so navigating article → list → article client-side left the TOC empty. `check:spa` now walks exactly that path and asserts the list is populated and not duplicated.
 
 Prefetch is on by default with `<ClientRouter />` (`init({ prefetchAll: true })`) -- no config needed.
 
@@ -115,7 +139,9 @@ Single typeface: **Public Sans** on `--font-body`, used for everything including
 
 The brand colour is `#e86233` (a citrus orange, `--color-brand`) -- used for links, the post-card title hover, and the search input focus ring. There's also a secondary text colour (`--color-text-secondary`) and a `--color-muted` for meta info. Don't add a second accent.
 
-The article layout is the standout feature: a two-column reading view with a centred 680px body column and a right gutter holding the table of contents. The bylines / date / reading time / tags meta sits as a single row directly under the title, using inline Tabler icons. Don't flatten the gutter into one column on desktop -- the layout signals "this is something to read".
+The layout is a **three-column document shell**, owned by `Base.astro` and applied site-wide: a 200px left rail (owner avatar + name + site navigation), a 680px content column, and a 200px right rail (the article TOC). Rails are sticky. The right rail's track is reserved on **every** page but its contents render only on article pages -- that keeps the content column at the same x everywhere instead of re-centring page to page. Breakpoints: below 1200px the right rail is dropped, below 1000px the left rail is dropped and its navigation moves into a hamburger drawer in the header.
+
+The bylines / date / reading time / tags meta sits as a single row directly under the title, using inline Tabler icons. The article hero image sits **above** the title, inside the content column.
 
 ## Customisation
 
@@ -133,16 +159,18 @@ CSS variables worth knowing (see `tokens.css` for the full list):
 - `--font-weight-heading` (600) / `--font-weight-display` (600) -- heading weights; lower them if you switch to a serif
 - `--tracking-tight` / `--tracking-snug` / `--tracking-wide` / `--tracking-wider` -- letter-spacing tokens used across headings and meta labels
 - `--content-width` (680px) -- article body column
-- `--wide-width` (1200px) -- max container
-- `--gutter-width` (200px) -- right sidebar (TOC) on article pages
-- `--avatar-size-{xs,sm,md}` -- byline avatar sizes at different scales
+- `--wide-width` (1200px) -- max container (header, footer)
+- `--rail-width` (200px) -- left and right rail of the three-column shell
+- `--avatar-size-{xs,sm,md,lg}` -- byline avatars at each scale; `lg` (40px) is the rail avatar
 
 ## What not to do
 
 - Don't add a second accent colour or coloured section backgrounds. The page should be black, white, and one orange.
 - Don't replace Public Sans with a display sans (Bebas, Anton, etc.). Headings rely on weight contrast, not novelty faces.
-- Don't collapse the article gutter on desktop -- it's part of the reading experience.
+- Don't collapse the three-column shell on desktop, and don't let the right rail's track disappear on non-article pages -- the reserved track is what keeps the content column from jumping between pages.
 - Don't put the post meta back into a left column -- it belongs on one row under the title.
+- Don't let page components declare their own outer `max-width` / horizontal padding -- the shell owns column width and page gutters.
+- Don't reach for a byline's `avatarMediaId` when building an image URL -- it 404s. Use `avatarStorageKey` via `mediaUrl()`.
 - Don't use stock blog copy ("Welcome to my blog", "Stay tuned for more"). Write a real tagline that says what this blog is about.
 - Don't seed the home page with three identical placeholder posts. If you only have one real post, show one real post.
 - Comments are enabled on posts and rendered on the post detail page. Configure moderation before publishing the site, or remove `commentsEnabled` and the comments UI together.
