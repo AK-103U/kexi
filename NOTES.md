@@ -226,12 +226,42 @@ node scripts/shots.mjs --only post  # 单个
 node scripts/shots.mjs --full       # 整页
 ```
 
-### 服务器只监听 IPv6
+### dev server 默认只监听 `::1`
 
-dev server 绑在 `[::1]:4321`，`127.0.0.1` **连不上**。
+默认 `pnpm dev` 只绑 `[::1]:4321`（`Get-NetTCPConnection` 确认只有一条 `::1`），
+所以 `127.0.0.1:4321` 连不上。但 **`localhost` 是能用的** —— 它同时解析出
+A(`127.0.0.1`) 与 AAAA(`::1`) 两条记录，客户端会挑通的那条。
 
-- 用 `curl "http://[::1]:4321/..."`，不要用 `localhost`（会解析到 IPv4）
-- 副作用：生成的图片 URL 里嵌了 `[::1]` 字面量
+| 启动方式 | 实际绑定 | `127.0.0.1` | `localhost` | `[::1]` |
+|---|---|---|---|---|
+| `pnpm dev`（默认） | `::1` | ✘ | ✔ | ✔ |
+| `pnpm dev --host 127.0.0.1` | `127.0.0.1` | ✔ | ✔ | ✘ |
+| `pnpm dev --host` | `0.0.0.0` + `[::]` | ✔ | ✔ | ✔ |
+
+三种启动方式都用 curl 实测过。`--host` 不带参数还会额外暴露到局域网
+（启动日志会列出 `192.168.x.x` 之类），适合手机连上来调试。
+
+所以踩坑只发生在**写死字面量**时：`127.0.0.1` 在默认绑定下失败，`[::1]` 在
+`--host 127.0.0.1` 下失败。强制 IPv4 也会踩 —— `curl -4 localhost` 在默认绑定下
+返回 000。
+
+> 旧记录写的「不要用 `localhost`（会解析到 IPv4）」是错的，2026-10-09 实测推翻。
+> 「`127.0.0.1` 连不上」这一半仍然成立。
+
+副作用：默认绑定下生成的图片 URL 里嵌了 `[::1]` 字面量。
+
+### Astro 7 不允许同时跑两个 dev server
+
+想换个端口起第二个会直接失败：
+
+```
+Another astro dev server is already running.
+  URL:  http://localhost:4321
+  PID:  15528
+Run `astro dev stop` to stop it, or use `astro dev --force` to replace it.
+```
+
+要先停掉原来的，或加 `--force` 顶掉它。
 
 ### 其他
 
@@ -301,7 +331,8 @@ dev server 绑在 `[::1]:4321`，`127.0.0.1` **连不上**。
 ```bash
 cd F:/dev/blog/emdash-lab
 
-pnpm dev                    # 启动（注意用 [::1] 访问）
+pnpm dev                    # 启动（默认只绑 ::1，localhost 或 [::1] 都能访问）
+pnpm dev --host             # 需要 127.0.0.1 或局域网访问时
 pnpm typecheck              # 类型检查
 node scripts/shots.mjs      # 截图（含 en 变体）
 pnpm seed:bylines           # 补齐 byline 的语言行（跑完重启 dev）
