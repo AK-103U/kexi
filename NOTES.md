@@ -456,9 +456,9 @@ i18n 落地后，按「现有布局不合心意」逐块重排。都是删减，
    200px          680px              200px
 ```
 
-**宽度账（含 Windows 经典滚动条约 17px）**：
+**宽度账（含本机实测 15px 滚动条）**：
 `200 + 24 + 680 + 24 + 200 = 1128`，加两侧 padding 48 = 1176，
-加滚动条 ≈ **1193** → 断点取 1200。
+加滚动条 ≈ **1191** → 断点取 1200。
 
 | 视口 | 布局 |
 |---|---|
@@ -585,6 +585,57 @@ grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
 全部链接）各自与容器中轴比对，`nav-right` 在 8 个桌面断点逐个验偏差 <1px。
 这类对齐光靠肉眼看截图分辨不出 0.5px 的偏差，必须量。
 
+### SPA 导航下的两处布局漂移
+
+用户报的三条症状（切到 `/pages/about` 漂、滚动后进文章漂、滚动后切页漂），
+实测是**两个独立的根因**：
+
+**a) 短页面没有滚动条 → 居中的外壳整体横移**
+
+`/pages/about` 的内容正好一屏高（`docH == clientH`），**不出现滚动条**，
+`clientWidth` 1425 → 1440。外壳是 `justify-content: center` 的，
+于是整体右移 **7.5px**。长页面之间互切看不出来，只有切到短页面才现形。
+
+修法：`html { scrollbar-gutter: stable }` —— 恒定预留滚动条槽位。
+
+> 注意 `documentElement.clientWidth` 在 Chrome 里对 `scrollbar-gutter`
+> 的反映**不可靠**（about 页仍报 1440），但实际布局宽度是对的
+> （`body.clientWidth` 与 `.shell` 宽度都是 1425）。量的时候要用
+> 元素几何（`getBoundingClientRect`），别信 `clientWidth`。
+
+**b) sticky 位 ≠ 静止位 → rail 弹动**
+
+`.rail` 的 `top` 写的是 `calc(var(--nav-height) + var(--spacing-8))` = 96px，
+但它的**静止位**是 113px（页头实际 65px = 64px 令牌 + 1px 下边框，加外壳
+上边距 48px）。页面滚到中途时 rail 贴在 96px；一旦切页，ClientRouter 把
+`scrollY` 归零，rail 立刻弹回 113px —— **17px 的跳动，每次导航都看得见**。
+
+修法：两个值从同一个变量推出来，改一处即可：
+
+```css
+.shell {
+  --shell-pad-top: var(--spacing-12);
+  --rail-sticky-top: calc(var(--nav-height) + 1px + var(--shell-pad-top));
+  padding: var(--shell-pad-top) var(--spacing-6) var(--spacing-16);
+}
+.rail { top: var(--rail-sticky-top); }
+```
+
+<640px 的断点只覆盖 `--shell-pad-top`，派生值自动跟随。
+
+> **为什么之前所有检查都是绿的**：Playwright 默认给 Chrome 传
+> `--hide-scrollbars`，滚动条宽度恒为 0，`clientWidth` 永远等于视口宽 ——
+> 整个「滚动条有无」类的漂移都量不出来。三个脚本现在都显式
+> `ignoreDefaultArgs: ["--hide-scrollbars"]`。**写任何布局量测脚本都要带上这个**，
+> 否则等于蒙着眼睛验。
+>
+> 顺带修正了宽度账：本机实测滚动条 **15px**（不是文档里一直写的 17px），
+> 所以是 1176 + 15 ≈ **1191** → 断点 1200 依然成立。
+
+`check:shell` 补了第 7 段共 6 条断言覆盖这两处。**断言本身也验过**：
+分别把两个修法改回去，确认对应断言会红（第一条 `372.5 → 380`，
+第二条 `113 → 96`）—— 否则就是写了个恒真的测试。
+
 ### 本轮文件
 
 | 文件 | 改动 |
@@ -595,7 +646,7 @@ grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
 | `src/utils/media.ts` | **新建**（`mediaUrl` / `avatarUrl`） |
 | `src/utils/site-identity.ts` | 加 `OWNER_BYLINE_SLUG` |
 | `scripts/seed-owner-avatar.mjs` | **新建**（幂等设置头像） |
-| `scripts/check-shell.mjs` | **新建**（29 条几何 + 对齐断言） |
+| `scripts/check-shell.mjs` | **新建**（35 条几何 + 对齐 + 不漂移断言） |
 | `scripts/check-spa.mjs` | 加 4 条 TOC 回归断言 |
 | `scripts/shots.mjs` | 断点矩阵补 `tablet: 1100`；循环真正遍历断点（原先硬编码 desktop）；加 `--bp` |
 | `src/pages/*.astro` | 让出外层宽度、网格重排、修头像 URL |
@@ -642,9 +693,11 @@ grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
 - [x] 版式改造（见第九节）：meta 在标题下方，≥900px 时四个块同一行、390px 折两行；
       `.meta-label`、`.sidebar-widgets` 均不存在；正文列宽仍 680px
       （~~左栏不存在~~ 该条已被第十四节的三栏布局推翻）
-- [x] 三栏布局（见第十四节）：中栏左边缘在文章/首页/列表/关于/搜索五者间恒为 x=380
+- [x] 三栏布局（见第十四节）：中栏左边缘在文章/首页/列表/关于/搜索五者间一致
       （改造前 260/120/380/380 各不相同）；≥1200 三栏、1000–1199 两栏、
-      <1000 单栏 + 汉堡；非文章页右栏轨道在但内容空（`pnpm check:shell` 22/22）
+      <1000 单栏 + 汉堡；非文章页右栏轨道在但内容空（`pnpm check:shell` 35/35）
+- [x] SPA 导航不漂移：切到短页面（`/pages/about`）中栏不横移、滚动状态下切页
+      左栏不弹动（两处根因与断言自验见第十四节；脚本须去掉 `--hide-scrollbars`）
 - [x] TOC 三个 bug 修复：客户端导航后目录非空（抽组件前为 0）、`.toc-list` 幂等、
       observer 重建前 disconnect（`pnpm check:spa` 14/14）
 - [x] 头像：40px 圆形、`naturalWidth=96`（证明走服务端裁剪而非 CSS 拉伸）、

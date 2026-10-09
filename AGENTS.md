@@ -102,10 +102,15 @@ The UI dictionary is `src/i18n/{zh,en}.json`; `MessageKey` is derived from `zh.j
 
 - `.shell` is `grid-template-columns: var(--rail-width) minmax(0, var(--content-width)) var(--rail-width)` with `align-items: start`. That last part is load-bearing: with the default `stretch`, each rail would grow to the full row height and `position: sticky` would have no scroll range to move within.
 - The right rail's **track is always present**; its contents come from a named slot (`<slot name="rail" />`) that only article pages fill. Non-article pages render an empty 200px rail on purpose -- it keeps the content column at the same x everywhere.
-- Width budget (including a ~17px classic scrollbar): `200 + 24 + 680 + 24 + 200 = 1128`, plus 48px of padding = 1176, plus the scrollbar ≈ 1193. Hence the 1200px breakpoint.
+- Width budget (including a ~15px classic scrollbar, reserved on every page by `scrollbar-gutter: stable`): `200 + 24 + 680 + 24 + 200 = 1128`, plus 48px of padding = 1176, plus the scrollbar ≈ 1191. Hence the 1200px breakpoint.
 - The mobile drawer duplicates the menu links. Both copies come from the same `menu.items`; the drawer deliberately omits the avatar and name.
 - The left rail is **centre-aligned on one axis**: `.rail-identity-wrap` is the flex column that centres the avatar, the name and the nav list together. Add new rail blocks inside it and they inherit the axis -- don't re-centre per child.
 - The header's `.nav-right` (search + toggles) sits on the **page's centre line** on desktop. `.nav` is `grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr)` so the middle track centres regardless of what the side tracks hold. The `minmax(0, …)` lower bound matters: a bare `1fr` floors at `min-content`, so a wide burger or admin link would shove the middle track off-centre. Below 640px the search box goes full-width instead and centring is dropped on purpose.
+- **No layout drift on client-side navigation.** Two things keep the shell still when ClientRouter swaps the page, and both are load-bearing:
+  - `html { scrollbar-gutter: stable }`. Without it a page that fits in one viewport (`/pages/about`) has no scrollbar, so its `clientWidth` is ~15px wider than a long page's and the centred shell shifts sideways mid-navigation.
+  - `.rail`'s sticky `top` must equal its **resting** position: `--rail-sticky-top: calc(var(--nav-height) + 1px + var(--shell-pad-top))`. The `+1px` is the header's bottom border. If the two differ, the rail jumps by that difference when scroll resets to 0. Both values derive from `--shell-pad-top` -- change that one variable, never the padding and the sticky offset separately.
+
+  `check:shell` asserts both, but it only sees them because it launches Chrome **without** Playwright's default `--hide-scrollbars` (which forces scrollbar width to 0 and hides the whole class of bug). Any new layout-checking script must do the same.
 
 ## Images
 
