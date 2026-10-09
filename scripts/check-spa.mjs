@@ -18,7 +18,12 @@ import { chromium } from "playwright-core";
 
 const BASE = process.argv[2] ?? "http://localhost:4321";
 
-const browser = await chromium.launch({ channel: "chrome" });
+// 去掉 Playwright 默认的 --hide-scrollbars：带上它滚动条宽度恒为 0，
+// 量不出「短页面没有滚动条导致居中外壳横移」这类漂移。见 check-shell.mjs。
+const browser = await chromium.launch({
+	channel: "chrome",
+	ignoreDefaultArgs: ["--hide-scrollbars"],
+});
 const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
 const page = await context.newPage();
 

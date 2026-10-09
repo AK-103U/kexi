@@ -6,7 +6,16 @@
 import { chromium } from "playwright-core";
 
 const BASE = process.argv[2] ?? "http://localhost:4321";
-const browser = await chromium.launch({ channel: "chrome" });
+/*
+ * ⚠️ 必须去掉 Playwright 默认的 `--hide-scrollbars`。
+ * 带上它滚动条宽度恒为 0，`clientWidth` 永远等于视口宽 —— 「一屏装得下的
+ * 页面没有滚动条、居中外壳因此横移」这类漂移就永远量不出来（本文件曾经
+ * 因此在漂移存在的情况下全绿）。去掉后本机量到 15px。
+ */
+const browser = await chromium.launch({
+	channel: "chrome",
+	ignoreDefaultArgs: ["--hide-scrollbars"],
+});
 
 const results = [];
 const check = (name, ok, detail = "") => {
@@ -198,6 +207,87 @@ await p4.waitForTimeout(120);
 const burgerVisible = await p4.locator(".nav-burger").isVisible();
 check("999px 汉堡可见（对照条件成立）", burgerVisible);
 await p4.close();
+
+// ---------- 7. SPA 导航不漂移 ----------
+//
+// 两条曾经真实存在的漂移，都只在「客户端导航」时显形：
+//   a) 短页面（/pages/about，正好一屏高）没有滚动条，clientWidth 比长页面宽
+//      15px，居中的外壳整体横移。
+//   b) 在滚动状态下切页时 scrollY 归零，rail 从 sticky 位弹回静止位。
+// 修法是 html { scrollbar-gutter: stable } 与「sticky top = 页头高 + 外壳上边距」。
+console.log("\n=== SPA 导航不漂移 ===");
+const p5 = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+
+const geom = () =>
+	p5.evaluate(() => {
+		const box = (s) => {
+			const el = document.querySelector(s);
+			if (!el) return null;
+			const b = el.getBoundingClientRect();
+			return { x: +b.x.toFixed(1), y: +b.y.toFixed(1), w: +b.width.toFixed(1) };
+		};
+		return {
+			main: box(".shell-main"),
+			railL: box(".rail--left"),
+			shell: box(".shell"),
+			scrollY: Math.round(window.scrollY),
+		};
+	});
+
+// 静止参考：整页加载时的各区域位置（同一页面，scroll 0）
+await p5.goto(BASE + "/posts", { waitUntil: "networkidle" });
+await p5.waitForTimeout(300);
+const rest = await geom();
+
+// a) 列表 → /pages/about（无滚动条的短页面）
+await p5.locator('a[href="/pages/about"]:visible').first().click();
+await p5.waitForURL("**/pages/about", { timeout: 10000 });
+await p5.waitForTimeout(1200);
+const afterAbout = await geom();
+check(
+	"切到 /pages/about 中栏不横移",
+	Math.abs(afterAbout.main.x - rest.main.x) < 1,
+	`x ${rest.main.x} → ${afterAbout.main.x}`,
+);
+check(
+	"切到 /pages/about 左栏不横移",
+	Math.abs(afterAbout.railL.x - rest.railL.x) < 1,
+	`x ${rest.railL.x} → ${afterAbout.railL.x}`,
+);
+
+// b) 滚动不该移动 rail —— sticky 位必须与静止位重合
+//
+// 这条要量的是「滚动时」与「静止时」的差，不是「切页后」与「静止时」的差：
+// 后者两边都是静止位，恒真，抓不到 bug（试过，旧的 sticky top 也能蒙混过去）。
+// 不变量是：rail 无论在滚动中还是切页后，位置都该与静止时一致。
+await p5.goto(BASE + "/posts/notes-on-simplicity", { waitUntil: "networkidle" });
+await p5.waitForTimeout(300);
+const postRest = await geom();
+await p5.evaluate(() => window.scrollTo(0, 900));
+await p5.waitForTimeout(400);
+const scrolled = await geom();
+check(
+	"滚动时左栏不移动（sticky 位 = 静止位）",
+	Math.abs(scrolled.railL.y - postRest.railL.y) < 1,
+	`静止 ${postRest.railL.y} → 滚动 900 后 ${scrolled.railL.y}`,
+);
+
+await p5.locator('a[href="/posts"]:visible').first().click();
+await p5.waitForURL("**/posts", { timeout: 10000 });
+await p5.waitForTimeout(1200);
+const afterScrollNav = await geom();
+check(
+	"滚动状态下切页，左栏 y 不弹动",
+	Math.abs(afterScrollNav.railL.y - rest.railL.y) < 1,
+	`静止 ${rest.railL.y} / 滚动时 ${scrolled.railL.y} / 切页后 ${afterScrollNav.railL.y}`,
+);
+check(
+	"滚动状态下切页，中栏 x 不横移",
+	Math.abs(afterScrollNav.main.x - rest.main.x) < 1,
+	`x ${rest.main.x} → ${afterScrollNav.main.x}`,
+);
+check("切页后 scrollY 归零（对照条件成立）", afterScrollNav.scrollY === 0);
+await p5.close();
 
 await browser.close();
 const failed = results.filter((r) => !r.ok).length;

@@ -101,8 +101,12 @@ const args = parseArgs(process.argv.slice(2));
 
 if (!existsSync(OUT)) mkdirSync(OUT, { recursive: true });
 
-// 用系统 Chrome，不下载 Playwright 自带的浏览器
-const browser = await chromium.launch({ channel: "chrome" });
+// 用系统 Chrome，不下载 Playwright 自带的浏览器。
+// 去掉 --hide-scrollbars：截图要反映真实布局宽度，带上它页面会宽 15px。
+const browser = await chromium.launch({
+  channel: "chrome",
+  ignoreDefaultArgs: ["--hide-scrollbars"],
+});
 
 const targets = args.only
   ? Object.entries(PAGES).filter(([name]) => name === args.only)
