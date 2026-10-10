@@ -16,6 +16,8 @@ The admin UI is at `http://localhost:4321/_emdash/admin`.
 
 `NOTES.md` 记录踩坑过程与环境特异性坑，改布局前先读它。`DESIGN.md` 是设计令牌的规范层。
 
+**注意：不要在 commit 消息或 PR 描述中自动添加 Co-Authored-By / Generated with Claude Code 等署名行。**
+
 ## Key Files
 
 | File                          | Purpose                                                                            |
