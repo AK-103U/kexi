@@ -1,4 +1,4 @@
-This is an EmDash site -- a CMS built on Astro with a full admin UI.
+# EmDash Blog Template — 快速上手与规则
 
 ## Commands
 
@@ -14,8 +14,7 @@ npx emdash types      # Regenerate TypeScript types from a running site
 
 The admin UI is at `http://localhost:4321/_emdash/admin`.
 
-`NOTES.md` (Chinese) holds the deeper findings -- environment quirks, the byline locale
-bug, the i18n mechanics. Read it before debugging anything unusual.
+`NOTES.md` 记录踩坑过程与环境特异性坑，改布局前先读它。`DESIGN.md` 是设计令牌的规范层。
 
 ## Key Files
 
@@ -61,10 +60,6 @@ This template ships with `.mcp.json`, `.cursor/mcp.json`, and `.vscode/mcp.json`
 - When Astro's cache is enabled, pass content-query hints to `Astro.cache.set(cacheHint)`. Use the `WithCacheHint` variants for site settings, menus, taxonomies, and widget areas rendered by cached routes.
 - Taxonomy names in queries must match the seed's `"name"` field exactly (e.g., `"category"` not `"categories"`).
 
-## This Template
-
-A blog with posts, pages, categories, tags, full-text search, and RSS. Designed for personal writing, technical writing, indie newsletters, and anything where the writing is the product. Editorial-tech aesthetic: confident sans-serif, restrained accent, real article structure with bylines and reading time.
-
 ## Pages
 
 | Page        | Path               | What it shows                                                                          |
@@ -78,119 +73,87 @@ A blog with posts, pages, categories, tags, full-text search, and RSS. Designed 
 | Tag         | `/tag/[slug]`      | Posts filtered by tag                                                                  |
 | RSS         | `/rss.xml`         | Generated feed                                                                         |
 
-Every public route also exists under `/en` (`src/pages/[locale]/` holds thin shells that
-re-render the default-locale page with `locale` set). See **Internationalisation** below.
+Every public route also exists under `/en` (`src/pages/[locale]/` holds thin shells that re-render the default-locale page with `locale` set). See i18n 节.
 
-## Internationalisation
+## i18n（中文默认 + 英文变体）
 
-Two locales: **`zh` (default, no URL prefix)** and **`en` (`/en` prefix)**. `src/i18n/config.ts` is the single source of truth -- `astro.config.mjs` imports it to build Astro's `i18n` block, and theme code imports the same object at runtime.
+Two locales: **`zh`（默认，无前缀）+ `en`（`/en` 前缀）**。`src/i18n/config.ts` 是唯一真源，`astro.config.mjs` 与主题代码都 import 它。
 
-- **Routing** -- default-locale pages live at `src/pages/*`; other locales are thin shells under `src/pages/[locale]/*` that import the default page and pass `locale`. A shell must validate with `isLang(locale)` and redirect to `/404` otherwise.
-- **Pages read their own locale** -- `getLang(Astro)` off `Astro.currentLocale`. No prop drilling.
-- **Pass `{ locale }` to every data call** -- `getEmDashCollection`, `getEmDashEntry`, `getMenu*`, `getTaxonomyTerms*`, `getTermsForEntries`, `search`. Anonymous requests have no locale in the ALS context, so omitting it silently returns the wrong language.
-- **Links** -- always `localePath(lang, path)`, never a hand-built string, and always off `entry.data.slug` (in non-default locales `entry.id` carries an `en/` prefix).
-- **Content is row-per-locale** -- one row per language, same slug, linked by `translation_group`. Adding a post means writing both rows in `seed/seed.json` with `translationOf`.
-- **No fallback in lists** -- a post that only exists in `zh` won't appear on `/en/posts`. Detail pages do fall back, and show `post.translatedNotice` when they do.
-- **Not translatable** -- `settings` (site title/tagline) and widget areas have no locale column. The header/footer are hand-built so their copy comes from the dictionary.
+- **薄壳路由**：非默认语言在 `src/pages/[locale]/` 下挂薄壳（4 行），薄壳 import 主页面并传 `locale`，主页面声明 `interface Props { locale?: string }`。薄壳必须校验 locale 合法性，非法则 `Astro.redirect("/404")`。
+- **Pages 自取 locale**：`getLang(Astro)` off `Astro.currentLocale`。No prop drilling.
+- **显式传 `{ locale }`**：匿名请求的 ALS 上下文里没有 locale，每次数据调用都要传 `{ locale }`：`getEmDashCollection` / `getEmDashEntry` / `getMenu` / `getTaxonomyTerms` / `getTermsForEntries` / `search`。
+- **链接用 `localePath(lang, path)`**：永远不要用手工拼接字符串；非默认语言里 `entry.id` 带前缀（`en/foo`），但 `entry.data.slug` 不带。
+- **Content row-per-locale**：同 slug 两条，zh 加 `translationOf` 指向 en 条目的 seed id。
+- **列表查询不 fallback**：只有 zh 的文章不会出现在 `/en/posts`；详情页有 fallback，显示「本文暂无中文版本」。
+- **Not translatable**：settings / widgetAreas 没有 locale 列（页头页脚改为自建，文案走 UI 字典）。
+- **UI 字典**：`src/i18n/{zh,en}.json`；`MessageKey` 从 zh.json 推导，en 少 key 会编译报错。
 
-The UI dictionary is `src/i18n/{zh,en}.json`; `MessageKey` is derived from `zh.json`, so a missing key in `en.json` is a compile error.
+详见 NOTES.md i18n 机制坑章节。
 
-`pnpm check:spa` runs Playwright assertions that client-side navigation (see below) is still actually working.
+## 三栏文档式布局（Base.astro）
 
-## The three-column shell
+`Base.astro` 拥有网格，页面只提供内容。Page components 必须**不声明外层 `max-width` / 水平 padding**。
 
-`Base.astro` owns the grid; pages supply content only. Page components must **not** declare their own outer `max-width` or horizontal padding -- that's what the shell is for.
+- `.shell` = `grid-template-columns: var(--rail-width) minmax(0, var(--content-width)) var(--rail-width)`，`align-items: start`。**`stretch` 会让 sticky rail 滚不动**。
+- 右栏轨道**每页都在**（非文章页空 200px 轨道），保证正文列 x 坐标全站恒定。
+- `html { scrollbar-gutter: stable }` —— 短页面有滚动条槽位，客户端导航时外壳不横移。
+- **.nav 与 .shell 共用列几何**：头像在左栏居中即落在壳的中轴上，改 `--rail-width` 两边自动跟随。
+- **页脚常驻视口底**：`body flex` + `.shell flex:1`（短页推底）与 `.site-footer sticky bottom`（长页拉回）缺一不可。z-index: footer 90 < header 100 < 搜索下拉 1000。
+- **SPA 不漂移**：sticky 位必须等于静止位，两者从同一变量推导。
 
-- `.shell` is `grid-template-columns: var(--rail-width) minmax(0, var(--content-width)) var(--rail-width)` with `align-items: start`. That last part is load-bearing: with the default `stretch`, each rail would grow to the full row height and `position: sticky` would have no scroll range to move within.
-- The right rail's **track is always present**; its contents come from a named slot (`<slot name="rail" />`) that only article pages fill. Non-article pages render an empty 200px rail on purpose -- it keeps the content column at the same x everywhere.
-- Width budget (including a ~15px classic scrollbar, reserved on every page by `scrollbar-gutter: stable`): `200 + 24 + 680 + 24 + 200 = 1128`, plus 48px of padding = 1176, plus the scrollbar ≈ 1191. Hence the 1200px breakpoint.
-- The mobile drawer duplicates the menu links. Both copies come from the same `menu.items`; the drawer deliberately omits the avatar and name.
-- **The header shares the shell's column geometry.** `.nav` is `grid-template-columns: var(--rail-width) minmax(0, var(--content-width)) var(--rail-width)` with the same gap, padding and `justify-content: center` as `.shell` -- so the header's first track *is* the left rail's column. The owner avatar (`SiteIdentity`) is centred inside it and therefore lands on the rail's centre line for free. Don't hand-compute an offset; change `--rail-width` / `--content-width` and both follow. At ≤1199px the header drops to the same two columns as the shell; at ≤999px it goes back to `minmax(0,1fr) auto minmax(0,1fr)` because the burger needs the first track (a bare `auto` track there shoves the middle off-centre by 15px -- measured).
-- The left rail is **centre-aligned on one axis**: `.rail-content` is the flex column that centres the nav list. Add new rail blocks inside it and they inherit the axis -- don't re-centre per child. The owner avatar/name are **not** here any more -- they live in the header (see above).
-- `SiteIdentity` locks its width to the avatar and absolutely positions the name to its right. That's what keeps the avatar on the centre line no matter how long the display name is; the name is clipped with an ellipsis instead of pushing the avatar off-axis.
-- The header's `.nav-right` (search + toggles) sits on the **content column's** centre line, which is the page centre because the header uses the shell's geometry. Below 640px the search box goes full-width instead and centring is dropped on purpose. Header controls are `align-items: center` on `.nav` -- different control heights (36px search, 38px language, 32px theme) all land on one horizontal centre line.
-- **The footer is always visible**, not just at the end of the document. Two declarations make it so and neither works alone: `body { display: flex; flex-direction: column }` + `.shell { flex: 1 }` (pushes the footer to the viewport bottom on short pages) and `.site-footer { position: sticky; bottom: 0 }` (pulls it back into view on long pages, where its natural position is far below the fold). `z-index: 90` keeps it under the header (100) and the search dropdown (1000).
-- **No layout drift on client-side navigation.** Two things keep the shell still when ClientRouter swaps the page, and both are load-bearing:
-  - `html { scrollbar-gutter: stable }`. Without it a page that fits in one viewport (`/pages/about`) has no scrollbar, so its `clientWidth` is ~15px wider than a long page's and the centred shell shifts sideways mid-navigation.
-  - `.rail`'s sticky `top` must equal its **resting** position: `--rail-sticky-top: calc(var(--nav-height) + 1px + var(--shell-pad-top))`. The `+1px` is the header's bottom border. If the two differ, the rail jumps by that difference when scroll resets to 0. Both values derive from `--shell-pad-top` -- change that one variable, never the padding and the sticky offset separately.
+详见 NOTES.md SPA 漂移的两个独立根因章节。
 
-  `check:shell` asserts both, but it only sees them because it launches Chrome **without** Playwright's default `--hide-scrollbars` (which forces scrollbar width to 0 and hides the whole class of bug). Any new layout-checking script must do the same. It also asserts the header and footer don't move across a client-side navigation.
+## 组件样式覆盖（ LiveSearch 等）
 
-## Overriding EmDash's own components
+第三方组件的 scoped 样式特异性可能压过主题：
 
-`LiveSearch` (`emdash/ui/search`) ships scoped styles on its input. `.emdash-live-search-input[data-astro-cid-…]` is specificity (0,2,0) and beats the theme's `:global(.site-search-input)` at (0,1,0) -- so `padding`, `font-size`, `border-radius` and `background` written in `Base.astro` were **silently dead** until they were forced. Two ways out, in order of preference:
+1. **优先设组件自己的 custom property**：`--emdash-search-bg`、`--emdash-math-*` 等，自定义属性不参与 specificity 比较。
+2. **硬编码的值才允许 `!important`**：`border` / `border-radius` / `padding` / `font-size`。
 
-1. **Set the component's own custom property** on the element. `--emdash-search-bg` is read by the component's rule, and custom properties don't compete on specificity: `--emdash-search-bg: var(--color-surface)` on `.site-search-input` wins with no `!important`. `LiveSearch.astro`'s style block lists every knob it exposes.
-2. `!important` for the values it hard-codes (`border`, `border-radius`, `padding`, `font-size`).
+`check:shell` 断言的是**计算样式**而非源码，这类失败肉眼不可见。
 
-Because these failures are invisible in the source, `check:shell` asserts the search box's **computed** border width and background colour rather than reading the CSS.
+详细见 NOTES.md scoped 样式失效章节。
 
 ## Images
 
-`/_image` (Astro's endpoint, wrapped by EmDash) does server-side cropping -- `?w=96&h=96&fit=cover&f=webp` turns a 1200×800 JPEG into a 3.7KB square WebP. Use it rather than scaling a large image down in CSS. Helpers live in `src/utils/media.ts`.
+`/_image` 做服务端裁剪：`?w=96&h=96&fit=cover&f=webp` 把 1200×800 JPEG 转成 3.7KB WebP。
 
-**`sharp` is a direct dependency for a reason.** Astro lists it as an optional peer; under pnpm's strict node_modules layout a transitive-only `sharp` resolves in dev (Vite's resolver is looser) but **not** in the production build, where `/_image` returns 500 with `Could not find Sharp`. Don't remove it from `dependencies`.
+**`sharp` 必须是直接依赖**：生产构建下 `/_image` 返回 500 `Could not find Sharp`。dev 正常不代表生产没事，必须 `build && start` 验证。
 
-## Client-side navigation
+## ClientRouter（客户端导航 + prefetch）
 
-`Base.astro` renders `<ClientRouter />` (from `astro:transitions`), so in-site clicks swap the document client-side instead of doing a full page load. The site is still an MPA -- first paint, crawler HTML, RSS and hreflang are all server-rendered.
+`<ClientRouter />` 让站内点击只换 document，不整页刷新。首屏 SSR、爬虫 HTML、RSS、hreflang 全部保留。
 
-Two things this breaks if you're not careful:
+- **模块脚本跑一次 → `astro:page-load` 驱动初始化**：theme switcher / nav drawer / TOC 都用 `onclick`（重复执行不叠加）。
+- **Failure is silent**：退回到整页刷新也不报错。`pnpm check:spa` 通过 window 标记存活来检测。
+- Prefetch 默认开（悬停 80ms 触发），客户端导航后仍工作。
 
-- **Module scripts run once.** Anything binding to nodes that get swapped must re-init on `astro:page-load` and assign listeners with `onclick` (not `addEventListener`) so repeat runs don't stack. The theme switcher, the nav drawer, and the TOC all do this.
-- **Failure is silent.** The page still navigates, the content is still right, and `curl` looks normal -- it just quietly reverts to full page loads. `pnpm check:spa` catches this by planting a marker on `window` and checking it survives a click.
-
-The TOC was the victim of the first rule: it built its list once on module execution, so navigating article → list → article client-side left the TOC empty. `check:spa` now walks exactly that path and asserts the list is populated and not duplicated.
-
-Prefetch is on by default with `<ClientRouter />` (`init({ prefetchAll: true })`) -- no config needed.
+TOC 的 bug 修复：抽组件 + `disconnect()` observer + 重建前清空容器幂等。
 
 ## Schema
 
-- `posts` collection: `title`, `featured_image`, `content` (Portable Text), `excerpt` (text).
-- `pages` collection: `title`, `content` (Portable Text). Used for `/about` etc.
+- `posts`: `title`, `featured_image`, `content` (Portable Text), `excerpt`.
+- `pages`: `title`, `content` (Portable Text)。
 - Taxonomies: `category`, `tag`.
-- Single `primary` menu (Home, About, Posts by default).
+- Menu: single `primary` menu.
 
-Site settings have `title` and `tagline` -- both render in the header / footer.
+Site settings: `title` + `tagline`（全局单值，无 locale）。
 
-## Visual character
+## Visual character & Customisation
 
-Single typeface: **Public Sans** on `--font-body`, used for everything including headings (`--font-heading` defaults to the body face; tighter letter-spacing on h1/h2). **JetBrains Mono** on `--font-mono` for inline code and code blocks. Body and headings share the same family; weight and size carry the hierarchy (`--font-weight-heading` 600, `--font-weight-display` 600 for h1/page titles).
+品牌色为柑橘橙 `#e86233`，一页一橙原则。字体单一字族 Public Sans（标题字号层级），JetBrains Mono 用于代码。令牌在 `src/styles/tokens.css`，覆盖到 `theme.css`，改视觉只动这里。双模式用 `light-dark()`，不维护独立暗色板。
 
-The brand colour is `#e86233` (a citrus orange, `--color-brand`) -- used for links, the post-card title hover, and the search input focus ring. There's also a secondary text colour (`--color-text-secondary`) and a `--color-muted` for meta info. Don't add a second accent.
-
-The layout is a **three-column document shell**, owned by `Base.astro` and applied site-wide: a 200px left rail (site navigation), a 680px content column, and a 200px right rail (the article TOC). Rails are sticky, and the sticky header carries the owner avatar + name on the left, the search box on the content column's centre line, and the language/theme toggles beside it; the footer is pinned to the viewport bottom. The right rail's track is reserved on **every** page but its contents render only on article pages -- that keeps the content column at the same x everywhere instead of re-centring page to page. Breakpoints: below 1200px the right rail is dropped, below 1000px the left rail is dropped and its navigation moves into a hamburger drawer in the header.
-
-The bylines / date / reading time / tags meta sits as a single row directly under the title, using inline Tabler icons. The article hero image sits **above** the title, inside the content column.
-
-## Customisation
-
-Design tokens live in `src/styles/tokens.css` with their default values. To restyle the site, override tokens in `src/styles/theme.css` -- declarations there are unlayered, so they always beat the `@layer base` defaults. Don't edit `tokens.css` or `Base.astro` for visual changes.
-
-Colours are defined with `light-dark(<light>, <dark>)`, so each token carries both modes. Overriding with a plain colour changes light and dark at once; use `light-dark()` in the override to keep them distinct. There is no separate dark palette to maintain.
-
-Webfonts are configured in `astro.config.mjs` under `fonts:`. To swap the body face, change the `name:` for the entry bound to `cssVariable: "--font-body"`. Good alternatives: Geist, IBM Plex Sans, Söhne (if you have a licence), Public Sans. If you want a serif-bodied blog, swap to a humanist serif like Source Serif, Crimson Pro, or Lora -- but then also raise `--font-size-base` to `1.0625rem` for readability. To give headings their own face (or use a system font) without touching the font pipeline, override `--font-heading` or `--font-body` in `theme.css`.
-
-CSS variables worth knowing (see `tokens.css` for the full list):
-
-- `--color-brand`, `--color-brand-hover`, `--color-on-brand`, `--color-brand-ring`
-- `--color-bg`, `--color-bg-subtle`, `--color-surface`, `--color-text`, `--color-text-secondary`, `--color-muted`, `--color-border`, `--color-border-subtle`
-- `--font-body`, `--font-heading`, `--font-mono`
-- `--font-weight-heading` (600) / `--font-weight-display` (600) -- heading weights; lower them if you switch to a serif
-- `--tracking-tight` / `--tracking-snug` / `--tracking-wide` / `--tracking-wider` -- letter-spacing tokens used across headings and meta labels
-- `--content-width` (680px) -- article body column
-- `--wide-width` (1200px) -- max container (header, footer)
-- `--rail-width` (200px) -- left and right rail of the three-column shell
-- `--avatar-size-{xs,sm,md,lg}` -- byline avatars at each scale; `lg` (32px) is the header avatar
+详见 DESIGN.md §4–7 颜色 / 字体 / 尺度章节。
 
 ## What not to do
 
-- Don't add a second accent colour or coloured section backgrounds. The page should be black, white, and one orange.
-- Don't replace Public Sans with a display sans (Bebas, Anton, etc.). Headings rely on weight contrast, not novelty faces.
-- Don't collapse the three-column shell on desktop, and don't let the right rail's track disappear on non-article pages -- the reserved track is what keeps the content column from jumping between pages.
-- Don't put the post meta back into a left column -- it belongs on one row under the title.
-- Don't let page components declare their own outer `max-width` / horizontal padding -- the shell owns column width and page gutters.
-- Don't reach for a byline's `avatarMediaId` when building an image URL -- it 404s. Use `avatarStorageKey` via `mediaUrl()`.
-- Don't use stock blog copy ("Welcome to my blog", "Stay tuned for more"). Write a real tagline that says what this blog is about.
-- Don't seed the home page with three identical placeholder posts. If you only have one real post, show one real post.
-- Comments are enabled on posts and rendered on the post detail page. Configure moderation before publishing the site, or remove `commentsEnabled` and the comments UI together.
+- 不加第二个 accent 色、不加彩色区块背景。
+- 不换展示型字体替代 Public Sans。
+- 不让页面组件声明外层 max-width/padding，不让右栏轨道消失。
+- 不用 `avatarMediaId` 拼 URL，用 `avatarStorageKey` via `mediaUrl()`。
+- 不用 stock blog copy，示例内容不三连占位 post。
+- 评论功能需配置 moderation 再发布，或用 `commentsEnabled=false` 移除 UI。
+
+---
+
+本文档已同步到 AGENTS.md 的版本控制：版式描述、字体、品牌色、令牌清单、i18n、客户端导航、三栏外壳与图片四节都已更新。改动版式时记得一并维护。

@@ -1,62 +1,54 @@
-# EmDash Blog Template
+# EmDash Blog Template — 本地私有部署版
 
-A clean, minimal blog built with [EmDash](https://github.com/emdash-cms/emdash). Runs on any Node.js server with SQLite and local file storage.
+一个干净的最小化博客，基于 [EmDash](https://github.com/emdash-cms/emdash) + Astro。运行于任何 Node.js 服务器，SQLite 存储，本地文件系统存储媒体。
 
-![Blog template homepage](https://raw.githubusercontent.com/emdash-cms/emdash/main/assets/templates/blog/latest/homepage-light-desktop.jpg)
+这是 **私有部署变体**：已移除官方模板的 Cloudflare 一键部署按钮与上游资产图引用（站点主题已改柑橘色、三栏布局）。
 
-## What's Included
+## 特性
 
-- Featured post hero on the homepage
-- Post archive with reading time estimates
-- Category and tag archives
-- Full-text search
-- RSS feed
-- SEO metadata and JSON-LD
-- Dark/light mode
+- 精选文章置顶 + 最新文章列表
+- 分类法 / 标签归档 + 全文搜索
+- RSS feed + SEO metadata
+- 暗色模式 + 双语内容（中文默认 / 英文 `/en`）
 
-## Pages
+## 页面结构
 
-| Page | Route |
+| 页面 | 路由 |
 |---|---|
-| Homepage | `/` |
+| Home | `/` |
 | All posts | `/posts` |
-| Single post | `/posts/:slug` |
-| Category archive | `/category/:slug` |
-| Tag archive | `/tag/:slug` |
+| Post detail | `/posts/:slug` |
+| Category/Tag archive | `/category/:slug` / `/tag/:slug` |
 | Search | `/search` |
 | Static pages | `/pages/:slug` |
-| 404 | fallback |
 
-## Screenshots
+所有公开路由都有英文变体（如 `/en/posts`）。
 
-| | Desktop | Mobile |
-|---|---|---|
-| Light | ![homepage light desktop](https://raw.githubusercontent.com/emdash-cms/emdash/main/assets/templates/blog/latest/homepage-light-desktop.jpg) | ![homepage light mobile](https://raw.githubusercontent.com/emdash-cms/emdash/main/assets/templates/blog/latest/homepage-light-mobile.jpg) |
-| Dark | ![homepage dark desktop](https://raw.githubusercontent.com/emdash-cms/emdash/main/assets/templates/blog/latest/homepage-dark-desktop.jpg) | ![homepage dark mobile](https://raw.githubusercontent.com/emdash-cms/emdash/main/assets/templates/blog/latest/homepage-dark-mobile.jpg) |
+## 基础设施
 
-## Infrastructure
+- **Runtime**: Node.js
+- **Database**: SQLite (local file)
+- **Storage**: Local filesystem
+- **Framework**: Astro with `@astrojs/node`
 
-- **Runtime:** Node.js
-- **Database:** SQLite (local file)
-- **Storage:** Local filesystem
-- **Framework:** Astro with `@astrojs/node`
-
-## Getting Started
+## 快速开始
 
 ```bash
 pnpm install
 pnpm dev
 ```
 
-Open http://localhost:4321/_emdash/admin and complete the setup wizard. EmDash runs database migrations and applies the blog seed during setup. The site is available at http://localhost:4321.
+访问 `http://localhost:4321/_emdash/admin` 完成设置向导。EmDash 会跑迁移并应用 seed。站点在 `http://localhost:4321`。
 
-## Want Cloudflare Instead?
+生产构建验证（必须路径）：
 
-See the [Cloudflare variant](../blog-cloudflare) for a version that deploys to Cloudflare Workers with D1 and R2.
+```bash
+pnpm build && pnpm start   # 默认 4321；换端口用 PORT=4400 pnpm start
+```
 
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/emdash-cms/templates/tree/main/blog-cloudflare)
+## 相关文档
 
-## See Also
-
-- [All templates](../)
-- [EmDash documentation](https://docs.emdashcms.com/)
+- [AGENTS.md](./AGENTS.md) — Agent 会话规则、关键文件清单
+- [NOTES.md](./NOTES.md) — 踩坑叙事层（被推翻的做法、Windows 特异性坑）
+- [DESIGN.md](./DESIGN.md) — 统一设计语言（令牌规范、禁令、视觉原则）
+- [EmDash docs](https://docs.emdashcms.com/) （MCP server 可用）
