@@ -160,16 +160,13 @@ const isLoggedIn = !!Astro.locals.user;
 					**子组件的** scope 属性，父组件的 .nav-left 之类规则够不着它。
 				*/}
 				<div class="nav-left">
-					{
-						ownerByline && (
-							<SiteIdentity
-								displayName={ownerByline.displayName}
-								avatarStorageKey={ownerByline.avatarStorageKey}
-								avatarAlt={ownerByline.avatarAlt}
-								href={localePath(lang, "/")}
-							/>
-						)
-					}
+					{/* 署名缺失时（未包含示例内容）名字回退到站点标题，头像回退到默认图。 */}
+					<SiteIdentity
+						displayName={ownerByline?.displayName ?? siteTitle}
+						avatarStorageKey={ownerByline?.avatarStorageKey}
+						avatarAlt={ownerByline?.avatarAlt}
+						href={localePath(lang, "/")}
+					/>
 				</div>
 
 				<div class="nav-right">
