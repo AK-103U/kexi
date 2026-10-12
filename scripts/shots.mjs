@@ -17,7 +17,7 @@
  * 三栏外壳的两个关键行为（<1200 收右栏、<1000 收左栏）只在窄断点可见，
  * 混在一个目录里必须一眼能看出每张图是哪个视口拍的。
  *
- * 注意服务器只监听 IPv6，所以 base URL 默认用 [::1] 而不是 localhost。
+ * 默认选择本机曾使用的 IPv6 回环地址；与启动日志不符时通过 --base 指定。
  */
 import { chromium } from "playwright-core";
 import { mkdirSync, existsSync } from "node:fs";
@@ -58,7 +58,7 @@ const PAGES = {
 
 /**
  * 断点。名字会进文件名，改名字等于改产物名。
- * 三个值分别落在三栏外壳的三档布局里（见 AGENTS.md「The three-column shell」）：
+ * 三个值分别落在三栏外壳的三档布局里（见 DESIGN.md「布局与内容层级」）：
  *   desktop 1440 → 三栏齐全
  *   tablet  1100 → 两栏，右栏轨道收起（断点在 1199）
  *   mobile  390  → 单栏，左栏收起、导航进汉堡抽屉（断点在 999）
