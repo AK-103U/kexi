@@ -16,7 +16,7 @@
 
 只在一种语言的文章详情显示署名，起初看起来像页面没有渲染。排查发现 `SeedByline` 没有语言字段，迁移 `040` 的 `_emdash_bylines.locale` 默认值取决于执行时的语言配置；当时 CLI 未加载 Astro 配置，行落在 `en`，内容署名 hydration 又按请求语言筛选。
 
-为此当时添加 `seed-bylines-i18n.mjs` 补齐翻译组缺失的语言。该脚本依赖 Node 的 `node:sqlite` 直写 `data.db`，在 Cloudflare 迁移中已移除：seed 应用时按运行时 i18n 配置的 `defaultLocale` 写入行语言，由应用内初始化触发时署名落在默认语言（`zh`）。`SeedByline` 类型没有语言字段，EmDash 的署名 hydration 严格按请求语言、没有回退，因此非默认语言的署名需要在后台建对应翻译行。当前用法见 [开发指南](./docs/development.md#seed-与本地内容)。
+为此当时添加 `seed-bylines-i18n.mjs` 补齐翻译组缺失的语言。该脚本依赖 Node 的 `node:sqlite` 直写 `data.db`，在 Cloudflare 迁移中已移除：seed 应用时按运行时 i18n 配置的 `defaultLocale` 写入行语言，由应用内初始化触发时署名落在默认语言（`zh`）。`SeedByline` 类型没有语言字段，EmDash 的署名 hydration 严格按请求语言、没有读取回退。现在由主题层 `src/utils/bylines.ts` 补回退（人名与头像），决定见 [ADR 0003](./docs/adr/0003-byline-locale-fallback.md)，当前用法见 [开发指南](./docs/development.md#seed-与本地内容)。
 
 当时还观察到：开启默认语言路由前缀会使后台 404；缺少 `site` 配置时语言替代链接为空；非默认语言的 `entry.id` 带前缀，直接拼文章 URL 会多一层 `en`。这些发现已转为开发指南中的当前用法。
 

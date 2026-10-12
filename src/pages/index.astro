@@ -8,6 +8,7 @@ import { Image } from "emdash/ui";
 import Base from "../layouts/Base.astro";
 import PostCard from "../components/PostCard.astro";
 import { getReadingTime } from "../utils/reading-time";
+import { resolveEntryBylines, readEntryLocale } from "../utils/bylines";
 import { mediaUrl } from "../utils/media";
 import { resolveBlogSiteIdentity } from "../utils/site-identity";
 import { formatDate, localePath, pageLang, useTranslations } from "../i18n/ui";
@@ -66,7 +67,19 @@ const featuredTags = featuredPost
 			label: t.label,
 		}))
 	: [];
-const featuredBylines = featuredPost?.data.bylines ?? [];
+
+// 署名回退：非默认语言下补齐缺失语言行的人名与头像（见 utils/bylines.ts）。
+const bylinesByEntry = await resolveEntryBylines(
+	"posts",
+	[...(featuredPost ? [featuredPost] : []), ...gridPosts].map((p) => ({
+		id: p.data.id,
+		locale: readEntryLocale(p.data, lang),
+		bylines: p.data.bylines ?? [],
+	})),
+);
+const featuredBylines = featuredPost
+	? (bylinesByEntry.get(featuredPost.data.id) ?? [])
+	: [];
 
 const gridPostsWithTags = gridPosts.map((post) => ({
 	post,
@@ -74,7 +87,7 @@ const gridPostsWithTags = gridPosts.map((post) => ({
 		slug: t.slug,
 		label: t.label,
 	})),
-	bylines: post.data.bylines ?? [],
+	bylines: bylinesByEntry.get(post.data.id) ?? [],
 }));
 ---
 

@@ -10,6 +10,7 @@ import { Comments, CommentForm } from "emdash/ui/comments";
 import Base from "../../layouts/Base.astro";
 import TableOfContents from "../../components/TableOfContents.astro";
 import { getReadingTime } from "../../utils/reading-time";
+import { resolveEntryBylines, readEntryLocale } from "../../utils/bylines";
 import { resolveBlogSiteIdentity } from "../../utils/site-identity";
 import { mediaUrl } from "../../utils/media";
 import { siteConfig } from "../../i18n/config";
@@ -84,8 +85,19 @@ const seo = getSeoMeta(post, {
 	defaultOgImage: featuredImageUrl,
 });
 
-// Bylines are already hydrated by getEmDashEntry
-const bylines = post.data.bylines ?? [];
+// Bylines are already hydrated by getEmDashEntry。非默认语言下若缺少该
+// 署名的语言行，hydrate 会整条丢弃；这里按内容行自身语言做一次回退，
+// 只补人名与头像（见 utils/bylines.ts）。
+const bylines =
+	(
+		await resolveEntryBylines("posts", [
+			{
+				id: post.data.id,
+				locale: readEntryLocale(post.data, lang),
+				bylines: post.data.bylines ?? [],
+			},
+		])
+	).get(post.data.id) ?? [];
 
 // Get reading time
 const readingTime = getReadingTime(post.data.content);

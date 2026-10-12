@@ -2,6 +2,7 @@
 import { getEmDashCollection, getTermsForEntries } from "emdash";
 import Base from "../../layouts/Base.astro";
 import { getReadingTime } from "../../utils/reading-time";
+import { resolveEntryBylines, readEntryLocale } from "../../utils/bylines";
 import { mediaUrl } from "../../utils/media";
 import { formatDate, localePath, pageLang, useTranslations } from "../../i18n/ui";
 
@@ -38,10 +39,20 @@ const tagsByEntry = await getTermsForEntries(
 	{ locale: lang },
 );
 
+// 署名回退：非默认语言下补齐缺失语言行的人名与头像（见 utils/bylines.ts）。
+const bylinesByEntry = await resolveEntryBylines(
+	"posts",
+	posts.map((post) => ({
+		id: post.data.id,
+		locale: readEntryLocale(post.data, lang),
+		bylines: post.data.bylines ?? [],
+	})),
+);
+
 const postsWithTags = posts.map((post) => ({
 	post,
 	tags: tagsByEntry.get(post.data.id) ?? [],
-	bylines: post.data.bylines ?? [],
+	bylines: bylinesByEntry.get(post.data.id) ?? [],
 }));
 ---
 
