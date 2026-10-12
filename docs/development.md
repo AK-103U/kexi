@@ -1,20 +1,20 @@
 # 开发指南
 
-本项目使用 Astro 服务端渲染、EmDash、SQLite 和本地媒体存储。安装与启动见 [README](../README.md)，视觉约定见 [DESIGN](../DESIGN.md)，检查方法见 [验证指南](./verification.md)。
+本项目使用 Astro 服务端渲染、EmDash，并部署到 Cloudflare Workers，内容存储在 D1，媒体存储在 R2。安装、本地开发和部署见 [README](../README.md)，视觉约定见 [DESIGN](../DESIGN.md)，检查方法见 [验证指南](./verification.md)。部署选择与边界见 [ADR 0002](./adr/0002-emdash-theme-on-cloudflare.md)。
 
 ## 实现入口
 
 | 任务 | 主要位置 |
 |---|---|
 | 运行时、数据库、存储、插件和字体配置 | [astro.config.mjs](../astro.config.mjs) |
+| Worker 入口、资源绑定和定时任务 | [src/worker.ts](../src/worker.ts)、[wrangler.jsonc](../wrangler.jsonc) |
 | 内容集合、分类法和演示内容 | [seed/seed.json](../seed/seed.json) |
 | 页面语言、路径和界面文案 | [src/i18n/config.ts](../src/i18n/config.ts)、[ui.ts](../src/i18n/ui.ts) 与同目录字典 |
 | 公开页外壳、头部、页脚和客户端导航 | [Base.astro](../src/layouts/Base.astro) |
 | 页面查询与正文渲染 | [src/pages](../src/pages/) |
 | 上传媒体和头像 URL | [media.ts](../src/utils/media.ts) |
-| 署名语言补齐与头像设置 | [scripts](../scripts/) 中的 `seed-*.mjs` |
 
-[src/live.config.ts](../src/live.config.ts) 注册 EmDash loader；[emdash-env.d.ts](../emdash-env.d.ts) 是生成的内容类型。修改集合后重新生成类型，不手工维护生成文件。
+[src/live.config.ts](../src/live.config.ts) 注册 EmDash loader；[emdash-env.d.ts](../emdash-env.d.ts) 是生成的内容类型，[worker-configuration.d.ts](../worker-configuration.d.ts) 是生成的绑定类型。修改集合或绑定后重新生成对应类型，不手工维护生成文件。
 
 ## 内容查询与渲染
 
@@ -24,7 +24,7 @@
 
 内容标识需要区分：`entry.data.id` 是数据库 ULID，用于内容 API；生成页面链接使用 `entry.data.slug` 配合 `localePath()`。`entry.id` 在非默认语言下可能带 `en/` 前缀，直接拼接会产生 `/posts/en/foo` 这样的错误路径。
 
-图片字段是对象，使用 `emdash/ui` 的 `<Image image={...} />`。媒体直链使用存储键（storageKey），通过 `mediaUrl()` 构造；署名头像读取 `avatarStorageKey`，媒体 ID 和 `avatarMediaId` 用于数据库关联，不能替代存储键拼文件 URL。`avatarUrl()` 通过 `/_image` 裁剪头像，本项目的 Node 图片处理依赖直接安装的 `sharp`。
+图片字段是对象，使用 `emdash/ui` 的 `<Image image={...} />`。媒体直链使用存储键（storageKey），通过 `mediaUrl()` 构造；署名头像读取 `avatarStorageKey`，媒体 ID 和 `avatarMediaId` 用于数据库关联，不能替代存储键拼文件 URL。`avatarUrl()` 通过 `/_image` 裁剪头像，在 Cloudflare 下由 Images binding 处理，不依赖 `sharp`。站主未设置头像时回退到内置的 `public/default-avatar.webp`，站主可在后台为自己的署名上传头像。
 
 启用 Astro 路由缓存时，将查询结果的 `cacheHint` 交给 `Astro.cache.set()`。页面共同读取的菜单和站点设置使用相应的 `WithCacheHint` 查询；新增缓存页面时检查它读取的内容是否都能参与失效。
 
@@ -63,13 +63,11 @@ UI 字典在 [zh.json](../src/i18n/zh.json) 与 [en.json](../src/i18n/en.json)�
 ```bash
 pnpm exec emdash seed --validate
 pnpm exec emdash seed
-pnpm seed:bylines
-pnpm seed:avatar
 ```
 
-第一条只校验；后三条会写入数据库。CLI 可以通过 `--on-conflict update` 显式更新已有 seed 记录，但也会覆盖相应内容，使用前确认变更范围。开发中需要重建时，先停服务并备份数据库及媒体，再准备空库；重建会丢失原库中的账号、内容和编辑状态。
+第一条只校验；第二条会写入数据库。CLI 可以通过 `--on-conflict update` 显式更新已有 seed 记录，但也会覆盖相应内容，使用前确认变更范围。开发中需要重建时，先停服务并删除 `.wrangler/state/v3/d1` 下的本地数据库，再重新初始化；重建会丢失本地账号、内容和编辑状态。
 
-`seed:bylines` 为每个署名（Byline）翻译组补齐配置中的语言，文案覆盖来自 [bylines-i18n.json](../seed/bylines-i18n.json)。`seed:avatar` 为站主署名关联已有媒体，默认复用 `building-long-term.jpg`。两者都支持 `--db`，头像脚本还支持 `--byline` 和 `--media`。脚本直写 SQLite，完成后重启服务刷新进程内缓存。
+seed 应用时按运行时 i18n 配置的 `defaultLocale` 写入行语言，因此由应用内首次请求或设置向导触发时，署名会落在默认语言（`zh`）。EmDash 的署名 hydration 严格按请求语言、没有回退，所以只在默认语言有署名行时，非默认语言的署名会为空。需要在英文页显示署名时，在后台为署名建对应语言的翻译行；`SeedByline` 类型本身没有语言字段。
 
 Portable Text 节点保留 `_key`。演示内容的 `status: "published"` 在应用时确定发布时间，不能依赖未定义的 `published_at` seed 属性。widget 选项使用 `props`；当前 seed 仍有历史 `settings` 写法，已记录在 [未决事项](./research/open-directions.md#当前待处理的问题)。
 

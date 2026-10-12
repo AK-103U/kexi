@@ -1,6 +1,6 @@
 # 站点设计
 
-本文维护 `emdash-lab` 当前的视觉与布局约定。令牌数值由样式文件维护；跨项目迁移和未采用的方案见 [未决事项](./docs/research/open-directions.md)，检查方式见 [验证指南](./docs/verification.md)。
+本文维护 `kexi` 当前的视觉与布局约定。令牌数值由样式文件维护；跨项目迁移和未采用的方案见 [未决事项](./docs/research/open-directions.md)，检查方式见 [验证指南](./docs/verification.md)。
 
 ## 视觉基线
 

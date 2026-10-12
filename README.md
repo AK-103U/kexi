@@ -1,30 +1,52 @@
-# EmDash Lab
+# Kexi
 
-基于 [EmDash](https://github.com/emdash-cms/emdash) 与 Astro 的本地博客主题，使用 Node、SQLite 和本地文件系统存储媒体。公开页采用三栏布局与柑橘橙主题，支持明暗模式、中文默认页面和英文 `/en` 变体。
+Kexi 是面向 Cloudflare 的 EmDash 博客主题，作为完整的 Astro 项目维护，可用 `create-astro` 脚手架分发。内容管理、编辑器、认证、媒体、搜索、评论、草稿、修订和预览复用 EmDash；主题负责前台 UI、响应式布局和内容呈现。
 
-提供文章列表与详情、分类和标签归档、搜索、静态页面及 RSS。后台入口为 `/_emdash/admin`。
+公开页采用三栏布局与柑橘橙主题，支持明暗模式、中文默认页面和英文 `/en` 变体。提供文章列表与详情、分类和标签归档、搜索、静态页面及 RSS。后台入口为 `/_emdash/admin`。
+
+生产环境使用 Cloudflare Workers、D1 和 R2。项目范围和部署边界见 [ADR 0002](docs/adr/0002-emdash-theme-on-cloudflare.md)。
 
 ## 本地开发
 
-需要 Node 24 和 pnpm 11。数学插件是 npm 上发布的 `@ak-103u/emdash-plugin-math`（`^0.1.0`），从 registry 安装，无本地目录依赖。
+需要 Node 22.12 或更高版本和 pnpm。
 
 ```bash
 pnpm install
 pnpm dev
 ```
 
-使用启动日志中的地址访问站点，通常为 `http://localhost:4321`。进入 `http://localhost:4321/_emdash/admin` 完成设置向导。需要演示内容、补齐双语署名或设置站主头像时，按 [开发指南](./docs/development.md#seed-与本地内容) 操作。
-
-## 生产运行
+访问 `http://localhost:4321/_emdash/admin` 完成初始化。开发环境通过 Cloudflare 适配器在本地模拟 D1、R2 和 KV，状态保存在 `.wrangler/`，**不需要 Cloudflare 账号或 `wrangler login`**。初始化时可以选择是否导入模板示例内容。
 
 ```bash
+pnpm typecheck
 pnpm build
-pnpm start
 ```
 
-生产进程默认使用 `4321` 端口。更换端口的方法见 [验证指南](./docs/verification.md#生产路径)。部署前在 [src/i18n/config.ts](./src/i18n/config.ts) 设置站点的公开 `siteUrl`，并为 [astro.config.mjs](./astro.config.mjs) 指定的数据库和媒体目录保留持久存储。
+## 部署到 Cloudflare
 
-当前使用 `data.db` 和 `uploads/`。构建验证后检查图片端点、语言变体和实际页面；完整检查入口见 [验证指南](./docs/verification.md)。
+部署前，在 [wrangler.jsonc](./wrangler.jsonc) 中设置该站点的 Worker、D1 数据库和 R2 存储桶名称。当前默认名称为 `kexi`、`kexi` 和 `kexi-media`；不同站点应使用各自的资源名称。部署前在 [src/i18n/config.ts](./src/i18n/config.ts) 设置站点的公开 `siteUrl`。
+
+```bash
+pnpm wrangler login
+pnpm deploy
+```
+
+首次部署时，Wrangler 会连接或创建配置中的资源，以及适配器需要的会话存储。Cloudflare 账号需要启用 R2。发布后访问站点的 `/_emdash/admin` 完成初始化。
+
+保留 Cron Trigger 和 Worker 的 `scheduled` 处理器，用于定时发布和维护任务。修改绑定后运行 `pnpm types:worker` 更新 Worker 类型。生产路径的完整检查入口见 [验证指南](./docs/verification.md#生产路径)。
+
+## 项目文件
+
+- `src/pages/`：首页、文章、普通页面、分类、标签、搜索、RSS 和 404。
+- `src/layouts/Base.astro`：三栏外壳、页头、页脚、客户端导航和 EmDash 接入。
+- `src/components/`：文章卡片、站主身份、侧栏、目录等。
+- `src/styles/`：设计令牌与主题覆盖。
+- `seed/seed.json`：初始内容模型和可选示例内容。
+- `astro.config.mjs`：Astro、EmDash、D1 和 R2 配置。
+- `src/worker.ts`：Cloudflare Worker 入口及定时任务。
+- `wrangler.jsonc`：Worker 名称和资源绑定。
+
+Seed 用于首次初始化，修改后不会自动迁移已初始化的站点。现有站点的内容模型通过 EmDash 管理；修改初始化基线时同步更新 seed 和生成的类型。
 
 ## 文档入口
 

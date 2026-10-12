@@ -2,6 +2,8 @@
 
 记录 2026 年 10 月 8 日至 10 日探索中的故障证据、被推翻的假设和未解问题。历史量测与上游行为受当时环境和版本限制，不能当作本轮重新验证的结果。当前机制见 [开发指南](./docs/development.md)，视觉约定见 [DESIGN](./DESIGN.md)，检查步骤见 [验证指南](./docs/verification.md)。
 
+其中 SQLite、`sharp`、`data.db` 和 Node 服务器相关的记录属于迁移到 Cloudflare 前的旧线路，保留作为排查参考，不再是当前部署方式。部署选择的当前决定见 [ADR 0002](./docs/adr/0002-emdash-theme-on-cloudflare.md)。
+
 ## Seed 初始化的误判
 
 首次请求后没有演示文章，曾被误判为 seed 未生效。当时查询 `ec_posts` 是零行，手动执行 CLI 后才出现示例内容：自动应用主要负责结构，CLI 默认包含内容。
@@ -14,7 +16,7 @@
 
 只在一种语言的文章详情显示署名，起初看起来像页面没有渲染。排查发现 `SeedByline` 没有语言字段，迁移 `040` 的 `_emdash_bylines.locale` 默认值取决于执行时的语言配置；当时 CLI 未加载 Astro 配置，行落在 `en`，内容署名 hydration 又按请求语言筛选。
 
-为此添加 [seed-bylines-i18n.mjs](./scripts/seed-bylines-i18n.mjs)，补齐翻译组缺失的语言。脚本直接写数据库后，开发进程缓存仍保留旧结果，重启才能看到改变。站主署名查询的回退行为与内容署名 hydration 需要分别判断。
+为此当时添加 `seed-bylines-i18n.mjs` 补齐翻译组缺失的语言。该脚本依赖 Node 的 `node:sqlite` 直写 `data.db`，在 Cloudflare 迁移中已移除：seed 应用时按运行时 i18n 配置的 `defaultLocale` 写入行语言，由应用内初始化触发时署名落在默认语言（`zh`）。`SeedByline` 类型没有语言字段，EmDash 的署名 hydration 严格按请求语言、没有回退，因此非默认语言的署名需要在后台建对应翻译行。当前用法见 [开发指南](./docs/development.md#seed-与本地内容)。
 
 当时还观察到：开启默认语言路由前缀会使后台 404；缺少 `site` 配置时语言替代链接为空；非默认语言的 `entry.id` 带前缀，直接拼文章 URL 会多一层 `en`。这些发现已转为开发指南中的当前用法。
 
@@ -34,7 +36,9 @@ Astro 7 当时通过项目进程锁阻止第二个开发服务，即使换端口
 
 当时 Node 将 `/tmp/xxx` 解析到当前盘的根目录路径。临时文件使用明确的临时目录；排查后清理临时路由、脚本及测试草稿。
 
-## SQLite 写锁与保存失败
+## SQLite 写锁与保存失败（旧 Node 线路）
+
+以下记录发生在迁移到 Cloudflare 前，使用 Node 服务器和 SQLite。当前部署使用 D1，不再有本地 `data.db` 或 SQLite 写锁，保留仅作参考。
 
 2026 年 10 月 10 日，在后台修改代码块语言时自动保存失败。带 `data` 的写请求返回 500，GET 仍正常，响应体只有：
 

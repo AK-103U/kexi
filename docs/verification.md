@@ -9,7 +9,7 @@
 | Astro 页面、TypeScript、内容类型 | `pnpm typecheck` |
 | 头部、页脚、三栏布局或样式覆盖 | `pnpm check:shell` 与对应页面截图 |
 | 客户端导航、语言切换、主题切换或目录 | `pnpm check:spa` |
-| 图片处理、字体或构建配置 | `pnpm build` 后运行 `pnpm start`，检查实际端点 |
+| 图片处理、字体或构建配置 | `pnpm build` 后本地验证图片端点、字体和页面 |
 | Seed 结构 | `pnpm exec emdash seed --validate` |
 
 `check:shell` 和 `check:spa` 包含演示文章路径与站点文案断言，需要相应演示内容。若数据库已换成原创内容，先调整测试样本；脚本通过并不等于它覆盖了所有页面或模式。
@@ -57,14 +57,19 @@ node scripts/shots.mjs --base http://localhost:4321 --only post --full
 
 ## 生产路径
 
+生产环境部署到 Cloudflare Workers。构建后先用本地预览验证，再部署：
+
 ```bash
 pnpm build
-pnpm start
+pnpm preview   # 本地预览构建产物
+pnpm deploy    # astro build && wrangler deploy
 ```
 
-先结束占用相同端口的开发服务，或者给生产进程指定其他端口。Bash 使用 `PORT=4400 pnpm start`，PowerShell 使用 `$env:PORT = "4400"; pnpm start`。
+`pnpm deploy` 需要 Cloudflare 账号和 `wrangler login`，并会连接或创建 `wrangler.jsonc` 中的 D1、R2 资源。首次部署后访问站点的 `/_emdash/admin` 完成初始化，并在后台设置公开站点 URL。
 
-确认公开页面、语言变体和 `/_image` 返回正确内容。`sharp` 是本项目直接依赖；历史上开发模式正常、生产图片端点却报 `Could not find Sharp`，所以图片相关修改需要验证生产路径。浏览器检查脚本也可以指向生产地址。
+确认公开页面、语言变体和 `/_image` 返回正确内容。Cloudflare 下图片走 Images binding，不是 `sharp`；绑定缺失时内网媒体路由会返回原图而非缩放变体。生产验证也可以指向部署后的 `workers.dev` 地址或自定义域名。
+
+部署配置、预览部署和定时任务的细节见 [官方 Cloudflare 部署文档](https://docs.emdashcms.com/deployment/cloudflare/)。
 
 ## 国际化字典
 
@@ -74,4 +79,4 @@ pnpm start
 
 默认开发地址优先使用启动日志给出的 URL。本机历史上默认监听 IPv6，`localhost` 可用，硬编码 `127.0.0.1` 可能连接失败。`pnpm dev --host 127.0.0.1` 显式监听 IPv4；需要局域网访问时使用 `pnpm dev --host`。
 
-遇到 500 时先保留服务端日志和请求响应。SQLite 写锁、媒体下载超时、署名语言缺失等已知问题见 [探索笔记](../NOTES.md)，现有待处理项见 [未决事项](./research/open-directions.md)。
+本地开发由 Cloudflare 适配器在 `.wrangler/` 模拟 D1、R2 和 KV。修改绑定后运行 `pnpm types:worker` 重新生成 `worker-configuration.d.ts`。遇到 500 时先保留服务端日志和请求响应。已知问题见 [探索笔记](../NOTES.md)，现有待处理项见 [未决事项](./research/open-directions.md)。

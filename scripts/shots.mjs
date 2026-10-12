@@ -1,5 +1,5 @@
 /**
- * 截图 emdash-lab 的关键路由，明暗两模式。
+ * 截图 kexi 的关键路由，明暗两模式。
  *
  * 为什么不用官方 `pnpm screenshots`：
  *   1. 它依赖 `lsof`（本机 Windows 没有）来查/杀端口占用
