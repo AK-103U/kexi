@@ -2,8 +2,7 @@
 # strictDepBuilds (pnpm >=10.26 / 11) passes.
 allowBuilds:
   esbuild: true
-  sharp: true
-  workerd: false
+  workerd: true
 
 # Supply-chain hardening: cooldown on brand-new releases (EmDash exempt)
 # and no non-registry transitive sources. (No trustPolicy: no-downgrade --
@@ -12,4 +11,5 @@ minimumReleaseAge: 1440
 minimumReleaseAgeExclude:
   - emdash
   - "@emdash-cms/*"
+  - "@cloudflare/workers-types"
 blockExoticSubdeps: true

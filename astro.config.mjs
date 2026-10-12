@@ -1,8 +1,8 @@
-import node from "@astrojs/node";
+import cloudflare from "@astrojs/cloudflare";
 import react from "@astrojs/react";
+import { d1, r2 } from "@emdash-cms/cloudflare";
 import { defineConfig, fontProviders } from "astro/config";
-import emdash, { local } from "emdash/astro";
-import { sqlite } from "emdash/db";
+import emdash from "emdash/astro";
 import { mathPlugin } from "@ak-103u/emdash-plugin-math";
 import { siteConfig } from "./src/i18n/config.ts";
 
@@ -21,9 +21,7 @@ export default defineConfig({
 		defaultLocale: siteConfig.defaultLocale,
 		locales: [...siteConfig.locales],
 	},
-	adapter: node({
-		mode: "standalone",
-	}),
+	adapter: cloudflare(),
 	image: {
 		layout: "constrained",
 		responsiveStyles: true,
@@ -31,11 +29,9 @@ export default defineConfig({
 	integrations: [
 		react(),
 		emdash({
-			database: sqlite({ url: "file:./data.db" }),
-			storage: local({
-				directory: "./uploads",
-				baseUrl: "/_emdash/api/media/file",
-			}),
+			// D1 与 R2 绑定名需与 wrangler.jsonc 一致。
+			database: d1({ binding: "DB", session: "auto" }),
+			storage: r2({ binding: "MEDIA" }),
 			plugins: [mathPlugin()],
 		}),
 	],

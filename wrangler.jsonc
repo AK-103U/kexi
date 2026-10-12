@@ -1,0 +1,25 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "kexi",
+  "main": "./src/worker.ts",
+  "compatibility_date": "2026-02-24",
+  "compatibility_flags": ["nodejs_compat"],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "kexi"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "MEDIA",
+      "bucket_name": "kexi-media"
+    }
+  ],
+  // 沙箱插件需要 Worker Loader（Workers 付费计划）。当前数学插件是 native 插件，无需启用：
+  // "worker_loaders": [{ "binding": "LOADER" }],
+  // 通用维护任务定时触发
+  "triggers": {
+    "crons": ["* * * * *"]
+  }
+}
