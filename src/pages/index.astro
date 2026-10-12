@@ -248,7 +248,8 @@ const gridPostsWithTags = gridPosts.map((post) => ({
 	.featured-image img {
 		width: 100%;
 		height: auto;
-		aspect-ratio: 4 / 3;
+		/* 插件未启用时用内置 4:3；启用后由注入的变量接管。 */
+		aspect-ratio: var(--ratio-featured, 4 / 3);
 		object-fit: cover;
 		transition: transform 0.4s ease;
 	}
@@ -445,7 +446,11 @@ const gridPostsWithTags = gridPosts.map((post) => ({
 
 	/* Responsive —— 列数由 Base.astro 的外壳决定，这里只调卡片自身。 */
 	@media (max-width: 900px) {
-		.featured-image img {
+		/*
+			窄屏收扁主图是内置行为。插件接管后不再套用，让管理员选的比例
+			在所有宽度下一致生效。
+		*/
+		html:not([data-image-ratios]) .featured-image img {
 			aspect-ratio: 16 / 9;
 		}
 	}

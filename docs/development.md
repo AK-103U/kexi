@@ -26,6 +26,8 @@
 
 图片字段是对象，使用 `emdash/ui` 的 `<Image image={...} />`。媒体直链使用存储键（storageKey），通过 `mediaUrl()` 构造；署名头像读取 `avatarStorageKey`，媒体 ID 和 `avatarMediaId` 用于数据库关联，不能替代存储键拼文件 URL。`avatarUrl()` 通过 `/_image` 裁剪头像，在 Cloudflare 下由 Images binding 处理，不依赖 `sharp`。站主未设置头像时回退到内置的 `public/default-avatar.webp`，站主可在后台为自己的署名上传头像。
 
+图片显示比例由本地插件 `@ak-103u/emdash-plugin-image-ratios` 控制，管理员在后台「插件」页调整首页主图、文章配图和首页卡片三处比例，可选择预设、自定义数值或原图比例。插件默认关闭，关闭时主题不注入任何覆盖、沿用内置比例；启用后主题把设置翻译成 CSS 自定义属性（`--ratio-*`）并在 `<html>` 加 `data-image-ratios`。主题侧读取逻辑在 [src/utils/image-ratios.ts](../src/utils/image-ratios.ts)，插件说明见其 README。
+
 启用 Astro 路由缓存时，将查询结果的 `cacheHint` 交给 `Astro.cache.set()`。页面共同读取的菜单和站点设置使用相应的 `WithCacheHint` 查询；新增缓存页面时检查它读取的内容是否都能参与失效。
 
 ## 国际化

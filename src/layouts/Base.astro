@@ -12,6 +12,7 @@ import SiteRail from "../components/SiteRail.astro";
 import { type Lang } from "../i18n/config";
 import { htmlLang, localePath, useTranslations } from "../i18n/ui";
 import { OWNER_BYLINE_SLUG, resolveBlogSiteIdentity } from "../utils/site-identity";
+import { resolveImageRatios } from "../utils/image-ratios";
 import "../styles/tokens.css";
 import "../styles/theme.css";
 
@@ -47,11 +48,13 @@ const {
 	content,
 } = Astro.props;
 const t = useTranslations(lang);
-const [settingsResult, menuResult, ownerByline] = await Promise.all([
+const [settingsResult, menuResult, ownerByline, imageRatios] = await Promise.all([
 	getSiteSettingsWithCacheHint(),
 	getMenuWithCacheHint("primary", { locale: lang }),
 	// 左栏的站主身份。走 locale fallback 链，中英各取各的 displayName。
 	getBylineBySlug(OWNER_BYLINE_SLUG, { locale: lang }),
+	// 图片比例由 image-ratios 插件控制；关闭时返回空，不注入任何覆盖。
+	resolveImageRatios(),
 ]);
 if (Astro.cache?.enabled) {
 	Astro.cache.set(settingsResult.cacheHint);
@@ -98,7 +101,10 @@ const isLoggedIn = !!Astro.locals.user;
 ---
 
 <!doctype html>
-<html lang={htmlLang(lang)}>
+<html
+	lang={htmlLang(lang)}
+	{...(imageRatios.enabled ? { "data-image-ratios": "" } : {})}
+>
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -106,6 +112,12 @@ const isLoggedIn = !!Astro.locals.user;
 		<Font cssVariable="--font-mono" />
 		<title>{fullTitle}</title>
 		<EmDashHead page={pageCtx} />
+		{/*
+			图片比例：由 image-ratios 插件注入的 CSS 自定义属性。插件关闭时
+			imageRatios.css 为空字符串，下面这段不输出任何内容，三处图片沿用
+			各自样式里的 fallback 值（即内置比例）。
+		*/}
+		{imageRatios.css && <style is:global set:html={imageRatios.css} />}
 		{/*
 			客户端接管站内导航（含语言切换）：不再整页刷新，且带过渡动画。
 			底层仍是 MPA —— 首屏 SSR、SEO、hreflang、RSS 全部保留。
