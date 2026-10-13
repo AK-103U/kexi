@@ -73,7 +73,7 @@ Portable Text 节点保留 `_key`。演示内容的 `status: "published"` 在应
 
 ## 上游资料与操作 skill
 
-EmDash API、配置与插件能力可以查询 [官方文档](https://docs.emdashcms.com/)；文档 MCP 地址为 `https://docs.emdashcms.com/mcp`，连接方式见 [官方说明](https://docs.emdashcms.com/docs-mcp)。判断已安装版本的行为时同时核对本地依赖源码。
+EmDash API、配置与插件能力可以查询 [官方文档](https://docs.emdashcms.com/)；文档 MCP 地址为 `https://docs.emdashcms.com/mcp`，连接方式见 [官方说明](https://docs.emdashcms.com/docs-mcp)。项目级 MCP 配置在 [.pi/mcp.json](../.pi/mcp.json)，pi 信任本项目后即可用 `search_docs` 查询，无需其他工具的配置。判断已安装版本的行为时同时核对本地依赖源码。
 
 按任务使用已有 skill：[站点开发](../.agents/skills/building-emdash-site/SKILL.md)、[插件开发](../.agents/skills/creating-plugins/SKILL.md)、[CLI 与编辑流程](../.agents/skills/emdash-cli/SKILL.md)。它们描述 EmDash 通用能力，本指南记录当前站点的实现。
 

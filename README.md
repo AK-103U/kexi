@@ -45,6 +45,7 @@ pnpm deploy
 - `astro.config.mjs`：Astro、EmDash、D1 和 R2 配置。
 - `src/worker.ts`：Cloudflare Worker 入口及定时任务。
 - `wrangler.jsonc`：Worker 名称和资源绑定。
+- `.pi/mcp.json`：项目级 MCP 配置，接入 EmDash 文档服务 `emdash-docs`。
 
 Seed 用于首次初始化，修改后不会自动迁移已初始化的站点。现有站点的内容模型通过 EmDash 管理；修改初始化基线时同步更新 seed 和生成的类型。
 
@@ -60,4 +61,4 @@ Seed 用于首次初始化，修改后不会自动迁移已初始化的站点。
 | [NOTES.md](./NOTES.md) | 历史故障、排查证据与被推翻的假设 |
 | [未决事项](./docs/research/open-directions.md) | 待处理问题、迁移参考和可选方向 |
 
-EmDash 通用能力见 [官方文档](https://docs.emdashcms.com/)，文档 MCP 的接入方式见 [官方说明](https://docs.emdashcms.com/docs-mcp)。
+EmDash 通用能力见 [官方文档](https://docs.emdashcms.com/)，文档 MCP 的接入方式见 [官方说明](https://docs.emdashcms.com/docs-mcp)。项目已在 [.pi/mcp.json](./.pi/mcp.json) 接入文档 MCP，pi 信任本项目后可用 `search_docs` 查询。

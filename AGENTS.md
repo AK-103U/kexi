@@ -45,4 +45,4 @@ Kexi 是部署到 Cloudflare 的 EmDash 博客主题。项目范围和部署边�
 
 已有 skill 位于 `.agents/skills/`，按任务使用：[站点开发](./.agents/skills/building-emdash-site/SKILL.md)、[插件开发](./.agents/skills/creating-plugins/SKILL.md)、[CLI 与编辑流程](./.agents/skills/emdash-cli/SKILL.md)。
 
-核对 EmDash 能力时查 [官方文档](https://docs.emdashcms.com/) 与已安装版本源码。文档 MCP 地址为 `https://docs.emdashcms.com/mcp`；可用时通过 `search_docs` 查询。
+核对 EmDash 能力时查 [官方文档](https://docs.emdashcms.com/) 与已安装版本源码。文档 MCP 地址为 `https://docs.emdashcms.com/mcp`，项目级配置在 [.pi/mcp.json](./.pi/mcp.json)；pi 信任本项目后可用 `search_docs` 查询。
