@@ -79,4 +79,4 @@ pnpm deploy    # astro build && wrangler deploy
 
 默认开发地址优先使用启动日志给出的 URL。本机历史上默认监听 IPv6，`localhost` 可用，硬编码 `127.0.0.1` 可能连接失败。`pnpm dev --host 127.0.0.1` 显式监听 IPv4；需要局域网访问时使用 `pnpm dev --host`。
 
-本地开发由 Cloudflare 适配器在 `.wrangler/` 模拟 D1、R2 和 KV。修改绑定后运行 `pnpm types:worker` 重新生成 `worker-configuration.d.ts`。遇到 500 时先保留服务端日志和请求响应。已知问题见 [探索笔记](../NOTES.md)，现有待处理项见 [未决事项](./research/open-directions.md)。
+本地开发由 Cloudflare 适配器在 `.wrangler/` 模拟 D1、R2 和 KV。修改绑定后运行 `pnpm types:worker` 重新生成 `worker-configuration.d.ts`。遇到 500 时先保留服务端日志和请求响应。已知问题见 [探索笔记](../NOTES.md)。

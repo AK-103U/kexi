@@ -63,7 +63,7 @@ db.close();
 
 `postId` 指向实验库中的现有条目。WAL 模式下读请求可继续成功，因此“能打开页面、保存失败”并不能证明字段校验有问题。再遇到类似现象时，结合写请求延迟、响应体和服务端堆栈确认，HTML 500 本身不足以断定写锁。
 
-重启开发服务当时恢复了写入，但首次事故的持锁者仍未定位。检查时 `_emdash_transfer_operations` 与 `_emdash_media_usage_activation` 没有可解释该现象的状态。曾观察到 WAL 约 `3.97MB`、主库约 `1.69MB`；这是排查线索，体积本身不能证明谁持锁或 checkpoint 为什么延后。此项保留在 [未决事项](./docs/research/open-directions.md#当前待处理的问题)。
+重启开发服务当时恢复了写入，但首次事故的持锁者仍未定位。检查时 `_emdash_transfer_operations` 与 `_emdash_media_usage_activation` 没有可解释该现象的状态。曾观察到 WAL 约 `3.97MB`、主库约 `1.69MB`；这是排查线索，体积本身不能证明谁持锁或 checkpoint 为什么延后。
 
 ## 代码块高亮的错误前提
 
@@ -96,5 +96,3 @@ db.close();
 
 - `notes-on-simplicity.jpg` 的白纸纹理在小尺寸圆头像中辨识度很差，换成深色代码图后更清楚。文件名无法替代实际尺寸下的对照。
 - 当时独立模板与上游 monorepo 的组件组织不同。判断缺文件时应先查当前模板的实际依赖关系，按需移植；旧文件清单和行数比较已经不适合作为当前判断依据。
-
-可选产品方向、字体与配色实验、跨项目迁移参考已移到 [未决事项与迁移设想](./docs/research/open-directions.md)。
