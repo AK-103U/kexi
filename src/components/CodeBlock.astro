@@ -1,0 +1,96 @@
+---
+/**
+ * 正文代码块的语法着色组件。
+ *
+ * EmDash 的 Portable Text 渲染把 `code` 类型的块交给这里，由 Astro 内置的
+ * `<Code />` 组件调用 Shiki（与 VS Code、GitHub 同一套 TextMate 语法）着色，
+ * 不引入额外依赖。
+ *
+ * 明暗模式：Shiki 的 dual themes 输出 `light-dark()` 行内样式，
+ * 与 `tokens.css` / `theme.css` 的 `light-dark()` 体系一致，
+ * 由 `color-scheme` 自动切换，不需要 `!important` 覆盖。
+ *
+ * 接入方式见 `posts/[slug].astro` 与 `pages/[slug].astro`：
+ * `components={{ type: { code: CodeBlock } }}`。只覆盖 `code` 一种类型，
+ * 其余内置类型（image、table、embed 等）由 mergeComponents 按键浅合并保留。
+ *
+ * 代码块的呈现（内边距、边框、圆角、字体）由本组件负责，
+ * 页面不再重复声明 `pre` 规则。
+ */
+import type { CodeLanguage } from "astro";
+import { Code } from "astro:components";
+
+interface Props {
+	node: {
+		_type: "code";
+		_key: string;
+		code: string;
+		language?: string;
+		filename?: string;
+	};
+}
+
+const { node } = Astro.props;
+
+if (!node?.code) {
+	return null;
+}
+
+const { code, language, filename } = node;
+---
+
+<div class="code-block">
+	{filename && <div class="code-block-filename">{filename}</div>}
+	<Code
+		code={code}
+		lang={(language ?? "plaintext") as CodeLanguage}
+		themes={{ light: "github-light", dark: "github-dark" }}
+		defaultColor="light-dark()"
+	/>
+</div>
+
+<style>
+	.code-block {
+		margin: 2em 0;
+	}
+
+	/* 文件名栏。与下方代码区拼成一个整体圆角。 */
+	.code-block-filename {
+		padding: 0.5rem 1rem;
+		background: var(--color-surface);
+		border: 1px solid var(--color-border);
+		border-bottom: none;
+		border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+		font-family: var(--font-mono);
+		font-size: var(--font-size-xs);
+		color: var(--color-text-secondary);
+	}
+
+	/*
+	 * 代码区。背景与前景由 Shiki 的行内 light-dark() 提供，
+	 * 这里只负责几何与字体；显式 margin: 0 避免与 .code-block 的外边距
+	 * 依赖 margin collapsing。
+	 */
+	.code-block :global(pre) {
+		margin: 0;
+		padding: var(--spacing-5);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-lg);
+		overflow-x: auto;
+		font-family: var(--font-mono);
+		font-size: var(--font-size-sm);
+		line-height: 1.6;
+	}
+
+	.code-block-filename + :global(pre) {
+		border-top: none;
+		border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+	}
+
+	/* 抵消行内 code 的背景与内边距，避免叠加在代码区上。 */
+	.code-block :global(pre code) {
+		background: none;
+		padding: 0;
+		font-size: inherit;
+	}
+</style>

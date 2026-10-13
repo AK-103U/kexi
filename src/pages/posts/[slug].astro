@@ -8,6 +8,7 @@ import {
 import { Image, PortableText } from "emdash/ui";
 import { Comments, CommentForm } from "emdash/ui/comments";
 import Base from "../../layouts/Base.astro";
+import CodeBlock from "../../components/CodeBlock.astro";
 import TableOfContents from "../../components/TableOfContents.astro";
 import { getReadingTime } from "../../utils/reading-time";
 import { resolveEntryBylines, readEntryLocale } from "../../utils/bylines";
@@ -263,7 +264,10 @@ const commentFormLabels = {
 		</header>
 
 		<div class="article-content">
-			<PortableText value={post.data.content} />
+			<PortableText
+				value={post.data.content}
+				components={{ type: { code: CodeBlock } }}
+			/>
 		</div>
 
 		<div class="article-comments">
@@ -468,18 +472,10 @@ const commentFormLabels = {
 		font-style: italic;
 	}
 
-	.article-content :global(pre) {
-		margin: 2em 0;
-		padding: var(--spacing-5);
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-lg);
-		overflow-x: auto;
-		font-family: var(--font-mono);
-		font-size: var(--font-size-sm);
-		line-height: 1.6;
-	}
-
+	/*
+	 * 代码块的几何与字体由 CodeBlock.astro 负责（含 Shiki 行内明暗配色），
+	 * 页面不再重复声明 pre 规则，避免特异性相同的两份样式互相覆盖。
+	 */
 	.article-content :global(code) {
 		font-family: var(--font-mono);
 		font-size: 0.9em;

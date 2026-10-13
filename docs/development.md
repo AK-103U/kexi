@@ -12,6 +12,7 @@
 | 页面语言、路径和界面文案 | [src/i18n/config.ts](../src/i18n/config.ts)、[ui.ts](../src/i18n/ui.ts) 与同目录字典 |
 | 公开页外壳、头部、页脚和客户端导航 | [Base.astro](../src/layouts/Base.astro) |
 | 页面查询与正文渲染 | [src/pages](../src/pages/) |
+| 正文代码块渲染与语法着色 | [CodeBlock.astro](../src/components/CodeBlock.astro) |
 | 上传媒体和头像 URL | [media.ts](../src/utils/media.ts) |
 | 署名语言回退 | [bylines.ts](../src/utils/bylines.ts) |
 | 项目级 MCP 配置（EmDash 文档服务） | [.pi/mcp.json](../.pi/mcp.json) |
@@ -46,7 +47,11 @@ UI 字典在 [zh.json](../src/i18n/zh.json) 与 [en.json](../src/i18n/en.json)�
 
 ## 代码块
 
-正文中的代码块由 EmDash 内置组件渲染，输出 `language-*` 类与源码，不做语法着色。曾经的自定义 Shiki 高亮方案已移除，配色和令牌一并回退；后续实现另行决定。
+正文中的代码块由 [CodeBlock.astro](../src/components/CodeBlock.astro) 渲染，内部用 Astro 内置的 `<Code />` 调用 Shiki 着色，输出 `github-light` / `github-dark` 双主题，用 `light-dark()` 跟随站点明暗模式。不新增依赖：Shiki 与 GitHub 主题由 Astro 提供。
+
+EmDash 的 Portable Text 渲染把 `code` 类型的块交给该组件，页面用 `components={{ type: { code: CodeBlock } }}` 接入。`mergeComponents` 按键浅合并，只覆盖 `code`，`image`、`table` 等内置类型保持不变。
+
+正文是 Portable Text，没有 Markdown AST，因此 Astro 的 `markdown.shikiConfig` 不参与正文着色；调整代码块渲染时改组件，而不是改 Markdown 配置。决定与边界见 [ADR 0004](./adr/0004-code-block-syntax-highlighting.md)。
 
 ## 客户端导航
 
