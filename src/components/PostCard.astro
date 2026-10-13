@@ -121,8 +121,7 @@ const formattedDate = date ? formatDate(date, lang) : null;
 	}
 
 	.card-image {
-		/* 插件未启用时用内置 16:10；启用后由注入的变量接管。 */
-		aspect-ratio: var(--ratio-card, 16 / 10);
+		aspect-ratio: 16 / 10;
 		overflow: hidden;
 		border-radius: var(--radius-lg);
 		background: var(--color-surface);
@@ -131,11 +130,7 @@ const formattedDate = date ? formatDate(date, lang) : null;
 
 	.card-image img {
 		width: 100%;
-		/*
-			默认填满固定比例的容器。插件选「原图比例」时容器不再定高，
-			改由图片自身撑高，此时变量值为 auto。
-		*/
-		height: var(--card-img-height, 100%);
+		height: 100%;
 		object-fit: cover;
 		transition: transform 0.3s ease;
 	}

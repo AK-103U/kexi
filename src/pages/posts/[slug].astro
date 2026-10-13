@@ -306,9 +306,7 @@ const commentFormLabels = {
 	.article-hero img {
 		width: 100%;
 		height: auto;
-		/* 插件未启用时保持内置行为（最多 420px）；启用后由变量接管。 */
-		aspect-ratio: var(--ratio-hero, auto);
-		max-height: var(--hero-max-height, 420px);
+		max-height: 420px;
 		object-fit: cover;
 	}
 
