@@ -71,7 +71,7 @@ pnpm exec emdash seed
 
 seed 应用时按运行时 i18n 配置的 `defaultLocale` 写入行语言，因此由应用内首次请求或设置向导触发时，署名会落在默认语言（`zh`）。EmDash 的署名 hydration 严格按请求语言、没有读取回退，非默认语言缺少署名行时整条 credit 会被丢弃。主题层在 `src/utils/bylines.ts` 补回退：内容行语言不是默认语言时，用默认语言的署名行补齐人名和头像，`roleLabel` 仍取当前语言的值；首页、文章列表、文章详情和分类／标签归档页都走这条回退；背景和边界见 [ADR 0003](./adr/0003-byline-locale-fallback.md)。`bio` 与自定义字段不参与回退，需要在后台为署名建对应语言的翻译行；`SeedByline` 类型本身没有语言字段。
 
-Portable Text 节点保留 `_key`。演示内容的 `status: "published"` 在应用时确定发布时间，不能依赖未定义的 `published_at` seed 属性。widget 选项使用 `props`；当前 seed 仍有历史 `settings` 写法，已记录在 [未决事项](./research/open-directions.md#当前待处理的问题)。
+Portable Text 节点保留 `_key`。演示内容的 `status: "published"` 在应用时确定发布时间，不能依赖未定义的 `published_at` seed 属性。widget 选项字段是 `props`，不是 `settings`；写错字段不会报错，只是选项静默不生效，`emdash seed --validate` 会给出警告。
 
 ## 上游资料与操作 skill
 
