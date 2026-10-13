@@ -28,15 +28,15 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = resolve(ROOT, "shots");
 
 /**
- * 与官方 templates/screenshots.json 的 blog 条目对齐，外加几个 lab 特有的。
+ * 与官方 templates/screenshots.json 的 blog 条目对齐。
  * 无后缀 = 默认语言（zh，无前缀）；`En` 后缀 = 英文（/en 前缀）。
+ * 这里的路径必须与 seed/seed.json 的实际内容一致 —— 引用不存在的文章
+ * 会稳定产出 404 截图，把真正的回归混进噪声里。
  */
 const PAGES = {
   homepage: "/",
   posts: "/posts",
   post: "/posts/building-for-the-long-term",
-  math: "/posts/math-plugin-verification",
-  clash: "/posts/claude-clash-direct-routing",
   about: "/pages/about",
   search: "/search?q=test",
   category: "/category/development",
@@ -47,8 +47,6 @@ const PAGES = {
   homepageEn: "/en",
   postsEn: "/en/posts",
   postEn: "/en/posts/building-for-the-long-term",
-  mathEn: "/en/posts/math-plugin-verification",
-  clashEn: "/en/posts/claude-clash-direct-routing",
   aboutEn: "/en/pages/about",
   searchEn: "/en/search?q=test",
   categoryEn: "/en/category/development",

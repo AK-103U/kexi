@@ -36,7 +36,8 @@ Kexi 是部署到 Cloudflare 的 EmDash 博客主题。项目范围和部署边�
 - 优先复用 EmDash 查询接口及 `emdash/ui` 组件，定制 UI、布局和内容呈现。
 - CMS 内容页面保持服务端渲染；保留 SEO、插件页面贡献、预览和可视化编辑接入。
 - 站点信息和导航读取 CMS 设置与菜单，不另建重复的配置来源。
-- `entry.id` 用于 URL，`entry.data.id` 用于需要数据库 ID 的接口。
+- 生成内容链接用 `entry.data.slug` 配合 `localePath()`；`entry.id` 是带语言前缀的 slug，不是裸 slug。
+- `entry.data.id` 用于需要数据库 ID 的接口。
 - 排序和分页在数据库查询中完成；多个条目的关联数据优先批量读取。
 - 使用页面缓存时传递查询返回的 `cacheHint`。
 - Seed 仅用于初始化，不作为上线后的迁移方式。

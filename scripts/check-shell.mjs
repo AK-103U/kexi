@@ -106,8 +106,25 @@ if (await av.count()) {
 	check("头像存在", true);
 	check("圆形", radius === "50%", radius);
 	check("渲染 32px", Math.abs(box.width - 32) < 1, `${box.width.toFixed(0)}px`);
-	check("服务端裁剪（naturalWidth ≥ 96）", natural >= 96, `naturalWidth=${natural}`);
-	check("走 /_image 端点", src?.startsWith("/_image?") ?? false, src?.slice(0, 60));
+	/*
+	 * seed 的站主署名没有上传头像，页头按设计回退到内置默认头像
+	 * （public/default-avatar.webp）。管理员上传头像后才改走 /_image
+	 * 做服务端裁剪 —— 两种状态都合法，断言按实际分支检查，
+	 * 不能假定一定存在自定义头像（此前正是因此长期误报）。
+	 */
+	if (src?.startsWith("/_image?")) {
+		check(
+			"自定义头像走 /_image 服务端裁剪（naturalWidth ≥ 96）",
+			natural >= 96,
+			`naturalWidth=${natural}`,
+		);
+	} else {
+		check(
+			"未上传头像时回退到内置默认头像",
+			src === "/default-avatar.webp",
+			src ?? "(无 src)",
+		);
+	}
 } else {
 	check("头像存在", false, "页头没有 .site-identity-avatar");
 }
@@ -115,8 +132,13 @@ await p2.close();
 
 // ---------- 4. 中英各自正确 ----------
 console.log("\n=== 中英对照 ===");
+/*
+ * 署名 displayName 是专有名词，seed 只按默认语言（zh）写入一行；英文页
+ * 靠主题层回退复用同一行（见 ADR 0003）。所以两种语言都应显示 seed 里的
+ * 值 —— 英文页若回退失效会退到站点标题，断言即失败，这一条仍有效。
+ */
 for (const [name, url, expect] of [
-	["中文首页", "/", "EmDash 编辑部"],
+	["中文首页", "/", "EmDash Editorial"],
 	["英文首页", "/en", "EmDash Editorial"],
 ]) {
 	const p = await browser.newPage({ viewport: { width: 1440, height: 900 } });

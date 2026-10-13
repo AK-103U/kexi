@@ -4,7 +4,7 @@
 
 ## 当前待处理的问题
 
-- **Widget seed 旧字段**：`seed/seed.json` 的部分 widget 使用 `settings`，当前 EmDash 选项字段是 `props`。原校验出现过 `settings: not applied; widget options belong in "props"`。需要确认相关 widget 是否仍在使用，再更新 seed 并验证；修改文件不会自动修复现有库。
+- **Widget seed 旧字段**：`seed/seed.json` 的部分 widget 使用 `settings`，当前 EmDash 选项字段是 `props`。`pnpm exec emdash seed --validate` 会对 `widgetAreas[0].widgets[3]` 和 `[4]` 输出 `settings: not applied; widget options belong in "props"`。这两项属于 `sidebar` widget area，而主题当前并未渲染任何 widget area（`src/` 无 `getWidgetArea`／`WidgetArea` 引用），所以选项实际未生效。需要先决定是否启用侧栏 widget，再同步修正 seed 并验证；修改文件不会自动修复现有库。
 - **SQLite 原始持锁者（旧线路）**：迁移到 Cloudflare 前在 Node + SQLite 下复现了写锁导致保存失败，但首次事故的持锁进程尚未定位。当前部署使用 D1，不再有本地 SQLite 写锁；此条仅作历史记录，证据和复现方式见 [探索笔记](../../NOTES.md#sqlite-写锁与保存失败旧-node-线路)。
 - **字典完整性检查**：当前中文 key 类型不能保证英文字典完整。是否增加专门检查，可在下一次国际化改动时评估；目前按 [验证指南](../verification.md#国际化字典) 核对。
 

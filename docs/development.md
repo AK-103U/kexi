@@ -13,6 +13,8 @@
 | 公开页外壳、头部、页脚和客户端导航 | [Base.astro](../src/layouts/Base.astro) |
 | 页面查询与正文渲染 | [src/pages](../src/pages/) |
 | 上传媒体和头像 URL | [media.ts](../src/utils/media.ts) |
+| 署名语言回退 | [bylines.ts](../src/utils/bylines.ts) |
+| 项目级 MCP 配置（EmDash 文档服务） | [.pi/mcp.json](../.pi/mcp.json) |
 
 [src/live.config.ts](../src/live.config.ts) 注册 EmDash loader；[emdash-env.d.ts](../emdash-env.d.ts) 是生成的内容类型，[worker-configuration.d.ts](../worker-configuration.d.ts) 是生成的绑定类型。修改集合或绑定后重新生成对应类型，不手工维护生成文件。
 
@@ -22,7 +24,7 @@
 
 公开内容页保持 `output: "server"`。内容来自 CMS，正文使用结构化富文本（Portable Text），由 `PortableText` 分发给 Astro 组件。Astro 的 Markdown 高亮配置和 rehype 插件不参与这条正文渲染路径。
 
-内容标识需要区分：`entry.data.id` 是数据库 ULID，用于内容 API；生成页面链接使用 `entry.data.slug` 配合 `localePath()`。`entry.id` 在非默认语言下可能带 `en/` 前缀，直接拼接会产生 `/posts/en/foo` 这样的错误路径。
+内容标识需要区分。`entry.data.slug` 是裸 slug，生成页面链接用它配合 `localePath()`；`entry.data.id` 是数据库 ULID，用于内容 API。`entry.id` 由 loader 的 `entryIdForRow()` 构造：默认语言下等于裸 slug，非默认语言下为 `{locale}/{slug}`，因此不能直接拼 URL（会得到 `/posts/en/foo` 这样的路径）；它只在需要「语言限定的唯一键」时使用。
 
 图片字段是对象，使用 `emdash/ui` 的 `<Image image={...} />`。媒体直链使用存储键（storageKey），通过 `mediaUrl()` 构造；署名头像读取 `avatarStorageKey`，媒体 ID 和 `avatarMediaId` 用于数据库关联，不能替代存储键拼文件 URL。`avatarUrl()` 通过 `/_image` 裁剪头像，在 Cloudflare 下由 Images binding 处理，不依赖 `sharp`。站主未设置头像时回退到内置的 `public/default-avatar.webp`，站主可在后台为自己的署名上传头像。
 
@@ -36,7 +38,7 @@
 
 本项目查询内容、菜单、分类法和搜索时显式传 `{ locale: lang }`。匿名请求的上下文不能代替页面明确选择的语言。链接使用 `localePath(lang, path)`，语言切换器保留查询串。
 
-列表按请求语言读取，不混入其他语言的内容。详情查询支持回退：EmDash 将默认语言加到回退链末尾，因此英文可回退到中文；当前文章和页面详情还手动补充中文到英文的查询，并显示回退提示。内容每种语言各有一行，演示数据通过 `translationOf` 关联，同一翻译组使用共同 slug。站点设置和 widget areas 是全局数据，界面文案由本项目字典处理。
+列表按请求语言读取，不混入其他语言的内容。详情查询支持回退：EmDash 将默认语言加到回退链末尾，因此英文可回退到中文；当前文章和页面详情还手动补充中文到英文的查询，并显示回退提示（文章用 `post.translatedNotice`，页面用 `page.translatedNotice`）。内容每种语言各有一行，演示数据通过 `translationOf` 关联，同一翻译组使用共同 slug。站点设置和 widget areas 是全局数据，界面文案由本项目字典处理。
 
 UI 字典在 [zh.json](../src/i18n/zh.json) 与 [en.json](../src/i18n/en.json)。`MessageKey` 从中文推导，约束调用时使用的 key；当前类型声明**不保证英文覆盖全部中文 key**。修改文案时同步两份字典并核对 key 和插值参数。缺失翻译在开发模式下警告，显示原 key。
 
@@ -67,7 +69,7 @@ pnpm exec emdash seed
 
 第一条只校验；第二条会写入数据库。CLI 可以通过 `--on-conflict update` 显式更新已有 seed 记录，但也会覆盖相应内容，使用前确认变更范围。开发中需要重建时，先停服务并删除 `.wrangler/state/v3/d1` 下的本地数据库，再重新初始化；重建会丢失本地账号、内容和编辑状态。
 
-seed 应用时按运行时 i18n 配置的 `defaultLocale` 写入行语言，因此由应用内首次请求或设置向导触发时，署名会落在默认语言（`zh`）。EmDash 的署名 hydration 严格按请求语言、没有读取回退，非默认语言缺少署名行时整条 credit 会被丢弃。主题层在 `src/utils/bylines.ts` 补回退：内容行语言不是默认语言时，用默认语言的署名行补齐人名和头像，`roleLabel` 仍取当前语言的值；背景和边界见 [ADR 0003](./adr/0003-byline-locale-fallback.md)。`bio` 与自定义字段不参与回退，需要在后台为署名建对应语言的翻译行；`SeedByline` 类型本身没有语言字段。
+seed 应用时按运行时 i18n 配置的 `defaultLocale` 写入行语言，因此由应用内首次请求或设置向导触发时，署名会落在默认语言（`zh`）。EmDash 的署名 hydration 严格按请求语言、没有读取回退，非默认语言缺少署名行时整条 credit 会被丢弃。主题层在 `src/utils/bylines.ts` 补回退：内容行语言不是默认语言时，用默认语言的署名行补齐人名和头像，`roleLabel` 仍取当前语言的值；首页、文章列表、文章详情和分类／标签归档页都走这条回退；背景和边界见 [ADR 0003](./adr/0003-byline-locale-fallback.md)。`bio` 与自定义字段不参与回退，需要在后台为署名建对应语言的翻译行；`SeedByline` 类型本身没有语言字段。
 
 Portable Text 节点保留 `_key`。演示内容的 `status: "published"` 在应用时确定发布时间，不能依赖未定义的 `published_at` seed 属性。widget 选项使用 `props`；当前 seed 仍有历史 `settings` 写法，已记录在 [未决事项](./research/open-directions.md#当前待处理的问题)。
 
