@@ -67,11 +67,13 @@ db.close();
 
 ## 代码块高亮的错误前提
 
-起初以为修改 Astro 的 Markdown 配置即可高亮正文。检查发现 EmDash 正文使用结构化富文本（Portable Text），没有 Markdown AST；因此 rehype 方案不会进入正文渲染路径。
+起初以为修改 Astro 的 Markdown 配置即可高亮正文。检查发现 EmDash 正文使用结构化富文本（Portable Text），没有 Markdown AST；因此 rehype 方案不会进入正文渲染路径。这一条仍然是当前事实，也是后续实现必须走组件覆盖的原因。
 
 当时 EmDash 内置公开页代码组件只输出 `language-*` 类与源码，底色硬编码为 `#1e1e1e`；上游 `fix(editor): highlight code blocks in editors (#2606)` 与相关 e2e 只改变编辑器高亮，公开页测试仍期待没有 `hljs-` span。
 
-本站一度增加自定义 `CodeBlock.astro` 与 scope 映射，在服务端用 Shiki 着色，配色取自其他项目的遗留色板。后决定撤掉这套方案，回到 EmDash 内置渲染，相关组件、主题映射、令牌和 ADR 一并移除。重新采用语法着色时需要另做决定，并重新验证。
+本站一度增加自定义 `CodeBlock.astro` 与 scope 映射，在服务端用 Shiki 着色，配色取自其他项目的遗留色板。后决定撤掉这套方案，回到 EmDash 内置渲染，相关组件、主题映射、令牌和 ADR 一并移除。
+
+2026 年 10 月重新引入语法着色，做法与当年不同：改用 Astro 内置的 `<Code />` 组件（Shiki 与 GitHub 主题由 Astro 提供），不再自建着色管线，也不再引入外部色板。当前实现、边界和代价见 [ADR 0004](./docs/adr/0004-code-block-syntax-highlighting.md)。当年“改 Markdown 配置无效”的结论依然成立，重新实现时仍必须走组件覆盖。
 
 ## 布局漂移与验证盲区
 
