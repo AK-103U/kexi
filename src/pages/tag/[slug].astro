@@ -8,6 +8,7 @@ import {
 import Base from "../../layouts/Base.astro";
 import PostCard from "../../components/PostCard.astro";
 import { getReadingTime } from "../../utils/reading-time";
+import { resolveEntryBylines, readEntryLocale } from "../../utils/bylines";
 import { localePath, pageLang, useTranslations } from "../../i18n/ui";
 
 interface Props {
@@ -54,9 +55,21 @@ const tagsByEntry = await getTermsForEntries(
 	"tag",
 	{ locale: lang },
 );
+
+// 署名回退：非默认语言下补齐缺失语言行的人名与头像（见 utils/bylines.ts）。
+// 归档页与首页一样渲染 PostCard，必须传入 bylines，否则卡片署名恒为空。
+const bylinesByEntry = await resolveEntryBylines(
+	"posts",
+	posts.map((post) => ({
+		id: post.data.id,
+		locale: readEntryLocale(post.data, lang),
+		bylines: post.data.bylines ?? [],
+	})),
+);
 const filteredPosts = posts.map((post) => ({
 	post,
 	tags: tagsByEntry.get(post.data.id) ?? [],
+	bylines: bylinesByEntry.get(post.data.id) ?? [],
 }));
 ---
 
@@ -76,7 +89,7 @@ const filteredPosts = posts.map((post) => ({
 				<p class="no-posts">{t("tag.empty")}</p>
 			) : (
 				<div class="posts-grid">
-					{filteredPosts.map(({ post, tags }) => (
+					{filteredPosts.map(({ post, tags, bylines }) => (
 						<PostCard
 							lang={lang}
 							title={post.data.title}
@@ -86,6 +99,7 @@ const filteredPosts = posts.map((post) => ({
 							date={post.data.publishedAt ?? undefined}
 							readingTime={getReadingTime(post.data.content)}
 							tags={tags.map((tag) => ({ slug: tag.slug, label: tag.label }))}
+							bylines={bylines}
 							edit={post.edit}
 						/>
 					))}

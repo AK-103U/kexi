@@ -40,6 +40,9 @@
 		"onThisPage": "On this page",
 		"translatedNotice": "This article is not yet available in English. Showing the Chinese original."
 	},
+	"page": {
+		"translatedNotice": "This page is not yet available in English. Showing the Chinese original."
+	},
 	"category": {
 		"label": "Category",
 		"title": "{name} posts",

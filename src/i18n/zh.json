@@ -40,6 +40,9 @@
 		"onThisPage": "本页目录",
 		"translatedNotice": "本文暂无中文版本，以下为英文原文。"
 	},
+	"page": {
+		"translatedNotice": "本页暂无中文版本，以下为英文原文。"
+	},
 	"category": {
 		"label": "分类",
 		"title": "{name} 分类",

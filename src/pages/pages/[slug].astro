@@ -9,13 +9,14 @@ import { PortableText } from "emdash/ui";
 import Base from "../../layouts/Base.astro";
 import { resolveBlogSiteIdentity } from "../../utils/site-identity";
 import { siteConfig } from "../../i18n/config";
-import { pageLang } from "../../i18n/ui";
+import { pageLang, useTranslations } from "../../i18n/ui";
 
 interface Props {
 	locale?: string;
 }
 
 const lang = pageLang(Astro.props, Astro);
+const t = useTranslations(lang);
 
 const slug = decodeSlug(Astro.params.slug);
 
@@ -40,6 +41,9 @@ const cacheHint =
 	page === primary.entry
 		? primary.cacheHint
 		: (secondary?.cacheHint ?? primary.cacheHint);
+/** 非空表示当前显示的是另一语言的内容，用于渲染提示条。 */
+const fallbackLocale =
+	page === primary.entry ? primary.fallbackLocale : "en";
 
 if (Astro.cache?.enabled) Astro.cache.set(cacheHint);
 const { siteTitle } = resolveBlogSiteIdentity(await getSiteSettings());
@@ -62,6 +66,11 @@ const seo = getSeoMeta(page, {
 	<article class="page-article">
 		<header class="page-header">
 			<h1 class="page-title" {...page.edit.title}>{page.data.title}</h1>
+			{
+				fallbackLocale && (
+					<p class="page-fallback-notice">{t("page.translatedNotice")}</p>
+				)
+			}
 		</header>
 
 		<div class="page-content" {...page.edit.content}>
@@ -84,6 +93,14 @@ const seo = getSeoMeta(page, {
 		font-size: clamp(var(--font-size-2xl), 4vw, var(--font-size-4xl));
 		font-weight: var(--font-weight-display);
 		line-height: var(--leading-tight);
+	}
+
+	/* 当前显示的是回退语言的原文时，给出提示（与文章页一致） */
+	.page-fallback-notice {
+		margin-top: var(--spacing-4);
+		font-size: var(--font-size-sm);
+		color: var(--color-muted);
+		font-style: italic;
 	}
 
 	.page-content :global(p) {
