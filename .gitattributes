@@ -1,0 +1,18 @@
+# 统一行尾为 LF。
+#
+# 仓库中的文本文件都以 LF 提交。此前工作区出现的 CRLF 来自编辑器/跨平台
+# 写入，会产生整文件级的伪改动（`git diff` 内容为空，`git status` 却显示
+# 已修改）。`text=auto eol=lf` 会在提交时把 CRLF 规范化为 LF，并让检出写
+# 回 LF，从而阻止 CRLF 进入历史。
+* text=auto eol=lf
+
+# 二进制文件不做行尾转换。
+*.webp binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.avif binary
+*.woff binary
+*.woff2 binary
