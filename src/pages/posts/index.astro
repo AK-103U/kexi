@@ -78,6 +78,11 @@ const postsWithTags = posts.map((post) => ({
 								href={localePath(lang, `/posts/${post.data.slug}`)}
 								class="post-link"
 							>
+								<h2 class="post-title" {...post.edit.title}>
+									{post.data.title}
+								</h2>
+							</a>
+							<div class="post-details">
 								<div class="post-meta">
 									{bylines.length > 0 && (
 										<>
@@ -118,20 +123,19 @@ const postsWithTags = posts.map((post) => ({
 										})}
 									</span>
 								</div>
-								<h2 class="post-title" {...post.edit.title}>{post.data.title}</h2>
-							</a>
-							{tags.length > 0 && (
-								<div class="post-tags">
-									{tags.slice(0, 3).map((tag) => (
-										<a
-											href={localePath(lang, `/tag/${tag.slug}`)}
-											class="post-tag"
-										>
-											{tag.label}
-										</a>
-									))}
-								</div>
-							)}
+								{tags.length > 0 && (
+									<div class="post-tags">
+										{tags.slice(0, 3).map((tag) => (
+											<a
+												href={localePath(lang, `/tag/${tag.slug}`)}
+												class="post-tag"
+											>
+												{tag.label}
+											</a>
+										))}
+									</div>
+								)}
+							</div>
 						</article>
 					))}
 				</div>
@@ -203,13 +207,21 @@ const postsWithTags = posts.map((post) => ({
 		color: inherit;
 	}
 
+	.post-details {
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		column-gap: var(--spacing-3);
+		row-gap: var(--spacing-2);
+	}
+
 	.post-meta {
 		display: flex;
 		align-items: center;
+		flex-wrap: wrap;
 		gap: var(--spacing-3);
 		font-size: var(--font-size-sm);
 		color: var(--color-muted);
-		margin-bottom: var(--spacing-2);
 	}
 
 	.meta-dot {
@@ -273,7 +285,6 @@ const postsWithTags = posts.map((post) => ({
 		display: flex;
 		flex-wrap: wrap;
 		gap: var(--spacing-2);
-		margin-top: var(--spacing-4);
 	}
 
 	.post-tag {
