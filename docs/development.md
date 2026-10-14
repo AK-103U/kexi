@@ -45,7 +45,7 @@ UI 字典在 [zh.json](../src/i18n/zh.json) 与 [en.json](../src/i18n/en.json)�
 
 默认语言保持无前缀。历史上启用 `routing.prefixDefaultLocale: true` 曾导致后台路由 404，记录见 [探索笔记](../NOTES.md#语言配置与署名)。当前不配置 Astro 的路由级 `i18n.fallback`，详情回退由内容查询处理。
 
-页面字体按语言选择：中文正文和标题使用 Lato，英文使用 Public Sans。`Base.astro` 按语言加载对应字体；Lato 不含中文字形，中文页的汉字由系统字体回退呈现。字体及字重配置见 `astro.config.mjs`。
+页面字体按语言选择：中文正文和标题使用 Lato，英文使用 Public Sans。`Base.astro` 按语言加载对应字体；Lato 不含中文字形，中文页的汉字由系统字体回退呈现。字体及字重配置见 `astro.config.mjs`。文章 `excerpt` 字段不在公开页面界面渲染，仍保留给 SEO 描述作为后备值，并作为 RSS 条目描述；编辑器单独填写的 SEO 描述优先。
 
 正文分隔线使用 EmDash Portable Text 的 `break` 块或 HTML `<hr>` 显式插入，不会自动加在每个 H2 前。Astro Markdown 的 `---` 也会输出 `<hr>`；中文页面会将这类分隔线渲染为居中 `100px × 2px` 短线，上下间距 `40px`。
 

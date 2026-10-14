@@ -7,7 +7,6 @@ import { mediaUrl } from "../utils/media";
 interface Props {
 	lang: Lang;
 	title: string;
-	excerpt?: string;
 	featuredImage?: MediaValue | string;
 	href: string;
 	date?: Date;
@@ -20,7 +19,6 @@ interface Props {
 const {
 	lang,
 	title,
-	excerpt,
 	featuredImage,
 	href,
 	date,
@@ -92,7 +90,6 @@ const formattedDate = date ? formatDate(date, lang) : null;
 				{readingTime && <span>{t("post.min", { n: readingTime })}</span>}
 			</div>
 			<h2 class="card-title" {...edit?.title}>{title}</h2>
-			{excerpt && <p class="card-excerpt" {...edit?.excerpt}>{excerpt}</p>}
 		</div>
 	</a>
 	{
@@ -186,15 +183,6 @@ const formattedDate = date ? formatDate(date, lang) : null;
 		color: var(--color-brand);
 	}
 
-	.card-excerpt {
-		font-size: var(--font-size-base);
-		line-height: var(--leading-relaxed);
-		color: var(--color-text-secondary);
-		display: -webkit-box;
-		-webkit-line-clamp: 2;
-		-webkit-box-orient: vertical;
-		overflow: hidden;
-	}
 
 	.card-tags {
 		display: flex;

@@ -254,13 +254,6 @@ const commentFormLabels = {
 					<p class="article-fallback-notice">{t("post.translatedNotice")}</p>
 				)
 			}
-			{
-				post.data.excerpt && (
-					<p class="article-excerpt" {...post.edit.excerpt}>
-						{post.data.excerpt}
-					</p>
-				)
-			}
 		</header>
 
 		<div class="article-content">
@@ -421,11 +414,6 @@ const commentFormLabels = {
 		margin-bottom: var(--spacing-4);
 	}
 
-	.article-excerpt {
-		font-size: var(--font-size-xl);
-		line-height: var(--leading-relaxed);
-		color: var(--color-text-secondary);
-	}
 
 	/* 当前显示的是回退语言的原文时，给出提示 */
 	.article-fallback-notice {

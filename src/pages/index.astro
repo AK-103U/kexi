@@ -164,9 +164,6 @@ const gridPostsWithTags = gridPosts.map((post) => ({
 								>
 									<h1 class="featured-title" {...featuredPost.edit.title}>{featuredPost.data.title}</h1>
 								</a>
-								{featuredPost.data.excerpt && (
-									<p class="featured-excerpt" {...featuredPost.edit.excerpt}>{featuredPost.data.excerpt}</p>
-								)}
 								{featuredTags.length > 0 && (
 									<div class="featured-tags">
 										{featuredTags.map((tag) => (
@@ -200,7 +197,6 @@ const gridPostsWithTags = gridPosts.map((post) => ({
 								<PostCard
 									lang={lang}
 									title={post.data.title ?? t("common.untitled")}
-									excerpt={post.data.excerpt}
 									featuredImage={post.data.featured_image}
 									href={localePath(lang, `/posts/${post.data.slug}`)}
 									date={post.data.publishedAt ?? undefined}
@@ -335,11 +331,6 @@ const gridPostsWithTags = gridPosts.map((post) => ({
 		color: var(--color-brand);
 	}
 
-	.featured-excerpt {
-		font-size: var(--font-size-lg);
-		line-height: var(--leading-relaxed);
-		color: var(--color-text-secondary);
-	}
 
 	.featured-tags {
 		display: flex;

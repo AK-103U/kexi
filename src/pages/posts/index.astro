@@ -119,9 +119,6 @@ const postsWithTags = posts.map((post) => ({
 									</span>
 								</div>
 								<h2 class="post-title" {...post.edit.title}>{post.data.title}</h2>
-								{post.data.excerpt && (
-									<p class="post-excerpt" {...post.edit.excerpt}>{post.data.excerpt}</p>
-								)}
 							</a>
 							{tags.length > 0 && (
 								<div class="post-tags">
@@ -271,11 +268,6 @@ const postsWithTags = posts.map((post) => ({
 		color: var(--color-brand);
 	}
 
-	.post-excerpt {
-		font-size: var(--font-size-lg);
-		line-height: var(--leading-relaxed);
-		color: var(--color-text-secondary);
-	}
 
 	.post-tags {
 		display: flex;
