@@ -17,6 +17,8 @@
 	},
 	"footer": {
 		"rss": "RSS Feed",
+		"socialLinks": "Social links and RSS",
+		"contactLinks": "Contact and site links",
 		"poweredBy": "Powered by <a href=\"https://emdashcms.com\">EmDash</a>"
 	},
 	"home": {

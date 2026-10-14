@@ -10,7 +10,8 @@
 | Worker 入口、资源绑定和定时任务 | [src/worker.ts](../src/worker.ts)、[wrangler.jsonc](../wrangler.jsonc) |
 | 内容集合、分类法和演示内容 | [seed/seed.json](../seed/seed.json) |
 | 页面语言、路径和界面文案 | [src/i18n/config.ts](../src/i18n/config.ts)、[ui.ts](../src/i18n/ui.ts) 与同目录字典 |
-| 公开页外壳、头部、页脚和客户端导航 | [Base.astro](../src/layouts/Base.astro) |
+| 公开页外壳、头部和客户端导航 | [Base.astro](../src/layouts/Base.astro) |
+| 页脚布局、CMS 联系链接和社交链接 | [SiteFooter.astro](../src/components/SiteFooter.astro)、[Base.astro](../src/layouts/Base.astro) |
 | 页面查询与正文渲染 | [src/pages](../src/pages/) |
 | 正文代码块渲染与语法着色 | [CodeBlock.astro](../src/components/CodeBlock.astro) |
 | 上传媒体和头像 URL | [media.ts](../src/utils/media.ts) |
@@ -30,6 +31,8 @@
 图片字段是对象，使用 `emdash/ui` 的 `<Image image={...} />`。媒体直链使用存储键（storageKey），通过 `mediaUrl()` 构造；署名头像读取 `avatarStorageKey`，媒体 ID 和 `avatarMediaId` 用于数据库关联，不能替代存储键拼文件 URL。`avatarUrl()` 通过 `/_image` 裁剪头像，在 Cloudflare 下由 Images binding 处理，不依赖 `sharp`。站主未设置头像时回退到内置的 `public/default-avatar.webp`，站主可在后台为自己的署名上传头像。
 
 启用 Astro 路由缓存时，将查询结果的 `cacheHint` 交给 `Astro.cache.set()`。页面共同读取的菜单和站点设置使用相应的 `WithCacheHint` 查询；新增缓存页面时检查它读取的内容是否都能参与失效。
+
+页脚的联系链接来自 EmDash `footer` 菜单，社交平台 URL 或账号来自站点设置 `social`；未配置的链接不渲染。RSS 路径由当前语言生成，社交标志使用 `@fortawesome/free-brands-svg-icons` 的路径内联渲染，不请求第三方图标服务。Font Awesome Free Brands 图标来源为 Fonticons, Inc.，按 CC BY 4.0 发布（[Font Awesome Free](https://fontawesome.com/license/free)、[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)）；前台保留本地化的 EmDash 驱动署名，EmDash 链接使用品牌强调色；不显示项目徽章或图标库署名。
 
 ## 国际化
 

@@ -9,6 +9,7 @@ import LanguageSwitcher from "../components/LanguageSwitcher.astro";
 import ThemeSwitcher from "../components/ThemeSwitcher.astro";
 import SiteIdentity from "../components/SiteIdentity.astro";
 import SiteRail from "../components/SiteRail.astro";
+import SiteFooter from "../components/SiteFooter.astro";
 import { type Lang } from "../i18n/config";
 import { htmlLang, localePath, useTranslations } from "../i18n/ui";
 import { OWNER_BYLINE_SLUG, resolveBlogSiteIdentity } from "../utils/site-identity";
@@ -47,15 +48,17 @@ const {
 	content,
 } = Astro.props;
 const t = useTranslations(lang);
-const [settingsResult, menuResult, ownerByline] = await Promise.all([
+const [settingsResult, menuResult, footerMenuResult, ownerByline] = await Promise.all([
 	getSiteSettingsWithCacheHint(),
 	getMenuWithCacheHint("primary", { locale: lang }),
+	getMenuWithCacheHint("footer", { locale: lang }),
 	// 左栏的站主身份。走 locale fallback 链，中英各取各的 displayName。
 	getBylineBySlug(OWNER_BYLINE_SLUG, { locale: lang }),
 ]);
 if (Astro.cache?.enabled) {
 	Astro.cache.set(settingsResult.cacheHint);
 	Astro.cache.set(menuResult.cacheHint);
+	Astro.cache.set(footerMenuResult.cacheHint);
 }
 
 const { siteTitle } = resolveBlogSiteIdentity(
@@ -68,6 +71,7 @@ const titleIncludesSiteName =
 const fullTitle = titleIncludesSiteName ? title : `${title} — ${siteTitle}`;
 
 const menu = menuResult.data;
+const footerMenu = footerMenuResult.data;
 
 // 实时搜索结果链接默认拼成 /{collection}/{slug}，不带语言前缀。
 // 在非默认语言下必须显式给出带前缀的路由模板。
@@ -135,8 +139,8 @@ const isLoggedIn = !!Astro.locals.user;
 			文档式三栏外壳：左栏（身份 + 导航 + 工具 + 搜索）／中栏（正文）／右栏（目录）。
 			右栏的槽在非文章页是空的 —— 轨道照样占位，中栏位置全站恒定不跳。
 
-			左栏是全站唯一的导航入口，控件也只有**一份标记**：桌面侧栏分成身份/外观、主导航和底部工具；
-			<1000px 同一份内容变成贴顶横栏，身份、搜索、语言/主题和汉堡同排，菜单折叠在下方。
+			左栏是全站唯一的导航入口，控件也只有**一份标记**：桌面侧栏分成身份/外观、主导航和底部链接；
+			<1000px 同一份导航变成贴顶横栏，身份、搜索、语言/主题和汉堡同排，页脚链接位于展开菜单底部。
 		*/}
 		<div class="shell">
 			<aside class="rail rail--left">
@@ -206,6 +210,11 @@ const isLoggedIn = !!Astro.locals.user;
 							</a>
 						)
 					}
+					<SiteFooter
+						lang={lang}
+						items={footerMenu?.items ?? []}
+						social={settingsResult.data.social}
+					/>
 				</div>
 
 				<div class="rail-bottom">
@@ -254,33 +263,6 @@ const isLoggedIn = !!Astro.locals.user;
 			</aside>
 		</div>
 
-		<footer class="site-footer">
-			<div class="footer-bottom">
-				<p class="footer-copyright" set:html={t("footer.poweredBy")} />
-				<a
-					class="footer-rss"
-					href={localePath(lang, "/rss.xml")}
-					aria-label={t("footer.rss")}
-					title={t("footer.rss")}
-				>
-					<svg
-						width="16"
-						height="16"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="2"
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						aria-hidden="true"
-					>
-						<path d="M4 11a9 9 0 0 1 9 9"></path>
-						<path d="M4 4a16 16 0 0 1 16 16"></path>
-						<circle cx="5" cy="19" r="1"></circle>
-					</svg>
-				</a>
-			</div>
-		</footer>
 
 		<script>
 			// Theme switcher
@@ -426,11 +408,7 @@ const isLoggedIn = !!Astro.locals.user;
 					scrollbar-gutter: stable;
 				}
 
-				/*
-				 * 列方向 flex：.shell 吃掉剩余高度，页脚因此被顶到 body 底部。
-				 * 这是页脚 sticky 的前提 —— 没有它，短页面（如 /pages/about）
-				 * 的页脚会停在视口中部，下面的空白全露出来。
-				 */
+				/* 页面外壳按列排列；最小高度不用于把左栏页脚推到视口底部。 */
 				body {
 					display: flex;
 					flex-direction: column;
@@ -492,7 +470,7 @@ const isLoggedIn = !!Astro.locals.user;
 				flex-direction: column;
 				align-items: stretch;
 				gap: var(--spacing-4);
-				min-height: calc(100vh - var(--rail-sticky-top) - var(--spacing-16));
+				min-height: calc(100vh - var(--rail-sticky-top));
 				padding-right: var(--spacing-2);
 				border-right: 1px solid var(--color-border-subtle);
 				background: var(--color-bg);
@@ -520,6 +498,10 @@ const isLoggedIn = !!Astro.locals.user;
 			}
 
 			.rail-menu {
+				order: 3;
+				display: flex;
+				flex: 1;
+				flex-direction: column;
 				min-width: 0;
 				width: 100%;
 			}
@@ -529,7 +511,7 @@ const isLoggedIn = !!Astro.locals.user;
 			}
 
 			.rail-bottom {
-				margin-top: auto;
+				order: 2;
 				padding-top: var(--spacing-3);
 				border-top: 1px solid var(--color-border-subtle);
 			}
@@ -646,13 +628,6 @@ const isLoggedIn = !!Astro.locals.user;
 			 */
 			.shell {
 				display: grid;
-				/*
-				 * 吃掉 body 剩余高度，把页脚顶到底部。
-				 * 页脚是 `sticky; bottom: 0` —— 它只会把「已经掉到视口下方」的
-				 * 页脚拉回来，**不会**把「停在半空」的页脚推下去。短页面
-				 * （/pages/about）靠的就是这一行。
-				 */
-				flex: 1;
 				grid-template-columns:
 					var(--rail-width) minmax(0, var(--content-width))
 					var(--rail-width);
@@ -827,70 +802,7 @@ const isLoggedIn = !!Astro.locals.user;
 				color: var(--color-text);
 			}
 
-			/*
-			 * 这里曾经有一条 main { min-height: calc(100vh - nav-height - 300px) }。
-			 * 在「页头 + 单列内容」的旧版式里它给短页面兜一个最小高度，免得页脚
-			 * 浮在半空。现在这活由 .shell { flex: 1 } 干，而且干得更准 —— 它按真实
-			 * 剩余空间算，不靠 300px 这种猜出来的数字。两条并存只会在窄屏上多顶出
-			 * 一段空白，所以删掉。
-			 */
-			/*
-			 * 页脚常驻视口底部。
-			 *
-			 * 两件事合起来才成立：
-			 *  1. `.shell` 吃掉剩余高度（body 是列向 flex）—— 短页面（如
-			 *     /pages/about）的页脚因此落到视口底边，而不是停在半空。
-			 *  2. `position: sticky; bottom: 0` —— 长页面里页脚的自然位置在
-			 *     文档末尾、远在视口之下，sticky 把它拉进视口底部常驻。
-			 * 只有 1 会在长页面里看不见页脚，只有 2 会在短页面里留一条空白。
-			 *
-			 * 与左栏一样是「静态范围」：它不随页面高度变化，切页时不漂移。
-			 */
-			.site-footer {
-				position: sticky;
-				bottom: 0;
-				/* 左栏是 100，搜索结果下拉是 1000 —— 页脚在两者之下 */
-				z-index: 90;
-				background: var(--color-bg-subtle);
-				border-top: 1px solid var(--color-border-subtle);
-			}
-
-			/* 页脚就一行：版权 + RSS，高度贴着内容走。 */
-			.footer-bottom {
-				display: flex;
-				align-items: center;
-				justify-content: center;
-				gap: var(--spacing-3);
-				max-width: var(--wide-width);
-				margin: 0 auto;
-				padding: var(--spacing-3) var(--spacing-6);
-			}
-
-			.footer-copyright {
-				font-size: var(--font-size-sm);
-				color: var(--color-muted);
-			}
-
-			.footer-copyright a {
-				color: var(--color-text-secondary);
-			}
-
-			.footer-rss {
-				display: inline-flex;
-				align-items: center;
-				color: var(--color-muted);
-				transition: color var(--transition-fast);
-			}
-
-			.footer-rss:hover {
-				color: var(--color-brand);
-			}
-
-			.footer-rss svg {
-				width: 16px;
-				height: 16px;
-			}
-
+			/* SiteFooter 位于左栏菜单的 flex 末尾，由组件自身的自动上边距推至栏底；不吸附视口。 */
 			/*
 			 * 三栏 → 两栏：视口装不下 200+680+200+gap+padding 时先收右栏。
 			 * 左栏还在，中栏位置不变 —— 这正是「右栏留空不渲染」的延伸。
@@ -1032,6 +944,12 @@ const isLoggedIn = !!Astro.locals.user;
 
 				.rail--left[data-nav-open="true"] .rail-menu {
 					display: flex;
+				}
+
+				/* 页脚是左栏的收尾分组，只有菜单展开时出现，顺序位于导航之后。 */
+				:global(.rail-menu > .site-footer) {
+					margin-top: auto;
+					width: min(100%, 360px);
 				}
 			}
 

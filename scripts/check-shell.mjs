@@ -424,47 +424,75 @@ check(
 );
 await p4.close();
 
-// ---------- 6b. 页脚常驻 ----------
-//
-// 页脚是 sticky bottom:0 + .shell flex:1 —— 前者把长页面里掉到视口下方的
-// 页脚拉回来，后者把短页面的页脚顶到底。缺任何一个，位置都会随页面高度变，
-// 那正是用户看到的「页脚漂移」。
-console.log("\n=== 页脚常驻 ===");
+// ---------- 6b. 左栏页脚位置 ----------
+console.log("\n=== 左栏页脚位置 ===");
 const p6 = await browser.newPage({ viewport: { width: 1440, height: 900 } });
-const footGeom = {};
-for (const [name, url] of Object.entries(PAGES)) {
-	await p6.goto(BASE + url, { waitUntil: "networkidle" });
-	await p6.waitForTimeout(200);
-	footGeom[name] = await p6.evaluate(() => {
-		const b = document.querySelector(".site-footer").getBoundingClientRect();
-		return { y: +b.y.toFixed(1), h: +b.height.toFixed(1), vh: window.innerHeight };
-	});
+const sideFooters = [];
+for (const width of [1440, 1100]) {
+	await p6.setViewportSize({ width, height: 900 });
+	await p6.goto(BASE + "/posts/building-for-the-long-term", { waitUntil: "networkidle" });
+	sideFooters.push(await p6.evaluate(() => {
+		const rail = document.querySelector(".rail--left").getBoundingClientRect();
+		const footer = document.querySelector(".site-footer").getBoundingClientRect();
+		const menu = document.querySelector(".rail-menu").getBoundingClientRect();
+		return {
+			railX: rail.x,
+			railBottom: rail.bottom,
+			footerBottom: footer.bottom,
+			menuBottom: menu.bottom,
+			footerX: footer.x,
+			position: getComputedStyle(document.querySelector(".site-footer")).position,
+			visible: footer.width > 0 && getComputedStyle(document.querySelector(".rail-menu")).display !== "none",
+		};
+	}));
 }
-const footYs = Object.entries(footGeom).map(([k, v]) => `${k}=${v.y.toFixed(0)}`);
 check(
-	"页脚贴视口底（各页）",
-	Object.values(footGeom).every((f) => Math.abs(f.y + f.h - f.vh) < 1),
-	footYs.join(" "),
-);
-check(
-	"页脚 y 各页一致（不随页面高度漂移）",
-	new Set(Object.values(footGeom).map((f) => Math.round(f.y))).size === 1,
-	footYs.join(" "),
+	"桌面页脚位于左栏导航区底部且不吸附视口",
+	sideFooters.every(({ railX, railBottom, footerBottom, footerX, position, visible }) =>
+		visible && position === "static" && Math.abs(footerBottom - railBottom) < 1 && Math.abs(footerX - railX) < 1,
+	),
+	sideFooters.map(({ railX, railBottom, footerBottom, footerX, position }) =>
+		`rail=${railX.toFixed(1)}–${railBottom.toFixed(1)} footer=${footerX.toFixed(1)}–${footerBottom.toFixed(1)} ${position}`
+	).join(" / "),
 );
 
-// 滚动中也要贴着（长页面里页脚自然位置在文档末尾）
+await p6.setViewportSize({ width: 390, height: 844 });
 await p6.goto(BASE + "/posts/building-for-the-long-term", { waitUntil: "networkidle" });
-await p6.evaluate(() => window.scrollTo(0, 1200));
-await p6.waitForTimeout(300);
-const scrolledFoot = await p6.evaluate(() => {
-	const b = document.querySelector(".site-footer").getBoundingClientRect();
-	return { y: +b.y.toFixed(1), h: +b.height.toFixed(1), vh: window.innerHeight };
+await p6.locator(".nav-burger").click();
+const mobileFooter = await p6.evaluate(() => {
+	const menu = document.querySelector(".rail-menu").getBoundingClientRect();
+	const footer = document.querySelector(".site-footer").getBoundingClientRect();
+	return {
+		menuBottom: menu.bottom,
+		footerBottom: footer.bottom,
+		footerY: footer.y,
+		visible: footer.width > 0,
+		open: document.querySelector(".nav-burger").getAttribute("aria-expanded") === "true",
+	};
 });
 check(
-	"滚动中页脚仍在视口底",
-	Math.abs(scrolledFoot.y + scrolledFoot.h - scrolledFoot.vh) < 1,
-	`y=${scrolledFoot.y} h=${scrolledFoot.h}`,
+	"移动端展开菜单后页脚出现在导航下方",
+	mobileFooter.open && mobileFooter.visible && mobileFooter.footerY > 56 && mobileFooter.footerBottom <= mobileFooter.menuBottom + 1,
+	`y=${mobileFooter.footerY.toFixed(1)} bottom=${mobileFooter.footerBottom.toFixed(1)} menu=${mobileFooter.menuBottom.toFixed(1)}`,
 );
+const footerContents = await p6.evaluate(() => ({
+	rss: [...document.querySelectorAll(".footer-icon-link")].some((link) => link.getAttribute("href")?.endsWith("/rss.xml")),
+	socialIcons: [...document.querySelectorAll('.footer-icon-link[target="_blank"]')].map((link) => ({
+		label: link.getAttribute("aria-label"),
+		icon: link.querySelector("svg") !== null,
+		visibleName: link.textContent.trim(),
+	})),
+	badges: document.querySelectorAll(".footer-badge").length,
+	emdash: document.querySelector(".footer-credit")?.textContent.trim(),
+}));
+check("侧栏页脚以图标显示 RSS", footerContents.rss);
+check(
+	"已配置社交链接使用带无障碍名称的内联图标、不显示平台文字",
+	footerContents.socialIcons.length > 0 && footerContents.socialIcons.every((item) => item.label && item.icon && !item.visibleName),
+	footerContents.socialIcons.map(({ label, icon, visibleName }) => `${label}:svg=${icon}/text=${visibleName || "∅"}`).join(" / "),
+);
+check("侧栏页脚不渲染项目或平台徽章", footerContents.badges === 0, `${footerContents.badges} 个徽章`);
+check("页脚品牌署名只显示 EmDash", footerContents.emdash === "EmDash", footerContents.emdash ?? "未找到");
 await p6.close();
 
 // ---------- 7. SPA 导航不漂移 ----------
@@ -490,6 +518,7 @@ const geom = () =>
 			railL: box(".rail--left"),
 			shell: box(".shell"),
 			footer: box(".site-footer"),
+			footerX: box(".site-footer").x,
 			scrollY: Math.round(window.scrollY),
 		};
 	});
@@ -514,16 +543,16 @@ check(
 	Math.abs(afterAbout.railL.x - rest.railL.x) < 1,
 	`x ${rest.railL.x} → ${afterAbout.railL.x}`,
 );
-// 左栏与页脚是「静态范围」：不随页面高度变化，切页时位置稳定。
+// 左栏保持 sticky；页脚随侧栏自然排列，左栏对齐不应因页面改变。
 check(
 	"切到 /pages/about 左栏 y 不变化",
 	Math.abs(afterAbout.railL.y - rest.railL.y) < 1,
 	`y ${rest.railL.y} → ${afterAbout.railL.y}`,
 );
 check(
-	"切到 /pages/about 页脚不移动（常驻）",
-	Math.abs(afterAbout.footer.y - rest.footer.y) < 1,
-	`y ${rest.footer.y} → ${afterAbout.footer.y}`,
+	"切到 /pages/about 后页脚仍与左栏左边缘对齐",
+	Math.abs(afterAbout.footerX - afterAbout.railL.x) < 1,
+	`页脚 x=${afterAbout.footerX} / 左栏 x=${afterAbout.railL.x}`,
 );
 
 // b) 滚动不该移动 rail —— sticky 位必须与静止位重合
@@ -557,11 +586,10 @@ check(
 	Math.abs(afterScrollNav.main.x - rest.main.x) < 1,
 	`x ${rest.main.x} → ${afterScrollNav.main.x}`,
 );
-// 页脚常驻底部，切页后应保持原位。
 check(
-	"滚动状态下切页，页脚 y 不弹动",
-	Math.abs(afterScrollNav.footer.y - rest.footer.y) < 1,
-	`静止 ${rest.footer.y} / 滚动时 ${scrolled.footer.y} / 切页后 ${afterScrollNav.footer.y}`,
+	"滚动状态下切页，页脚仍与左栏左边缘对齐",
+	Math.abs(afterScrollNav.footerX - afterScrollNav.railL.x) < 1,
+	`页脚 x=${afterScrollNav.footerX} / 左栏 x=${afterScrollNav.railL.x}`,
 );
 check("切页后 scrollY 归零（对照条件成立）", afterScrollNav.scrollY === 0);
 await p5.close();

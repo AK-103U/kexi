@@ -1,0 +1,279 @@
+---
+import {
+	faFacebookF,
+	faGithub,
+	faInstagram,
+	faLinkedinIn,
+	faXTwitter,
+	faYoutube,
+} from "@fortawesome/free-brands-svg-icons";
+import { type Lang } from "../i18n/config";
+import { localePath, useTranslations } from "../i18n/ui";
+
+interface FooterMenuItem {
+	label: string;
+	url: string;
+	target?: string | null;
+}
+
+interface SocialSettings {
+	twitter?: string;
+	github?: string;
+	facebook?: string;
+	instagram?: string;
+	linkedin?: string;
+	youtube?: string;
+}
+
+interface Props {
+	lang: Lang;
+	items: FooterMenuItem[];
+	social?: SocialSettings;
+}
+
+const { lang, items, social } = Astro.props;
+const t = useTranslations(lang);
+
+const socialPlatforms = [
+	{ key: "twitter", label: "X", baseUrl: "https://x.com/", icon: faXTwitter },
+	{ key: "github", label: "GitHub", baseUrl: "https://github.com/", icon: faGithub },
+	{ key: "facebook", label: "Facebook", baseUrl: "https://facebook.com/", icon: faFacebookF },
+	{ key: "instagram", label: "Instagram", baseUrl: "https://instagram.com/", icon: faInstagram },
+	{ key: "linkedin", label: "LinkedIn", baseUrl: "https://linkedin.com/", icon: faLinkedinIn },
+	{ key: "youtube", label: "YouTube", baseUrl: "https://youtube.com/", icon: faYoutube },
+] as const;
+
+function socialHref(baseUrl: string, value: string, keepAt = false): string | null {
+	const input = value.trim();
+	if (!input) return null;
+
+	const candidate = input.startsWith("www.") ? `https://${input}` : input;
+	try {
+		const url = new URL(candidate);
+		if (url.protocol === "https:" || url.protocol === "http:") return url.href;
+	} catch {
+		// EmDash settings may store a handle instead of a full URL.
+	}
+
+	if (/^[a-z][a-z\d+.-]*:/i.test(input) || input.startsWith("//")) return null;
+	const handle = (keepAt ? input : input.replace(/^@/, "")).replace(/^\/+/, "");
+	if (!handle) return null;
+	const safePath = handle.split("/").map(encodeURIComponent).join("/");
+	return `${baseUrl}${safePath}`;
+}
+
+const socialLinks = socialPlatforms.flatMap(({ key, label, baseUrl, icon }) => {
+	const value = social?.[key];
+	if (!value) return [];
+	const href = socialHref(baseUrl, value, key === "youtube");
+	if (!href) return [];
+	const [width, height, , , pathData] = icon.icon;
+	const paths = Array.isArray(pathData) ? pathData : [pathData];
+	return [{ label, href, width, height, paths }];
+});
+
+---
+
+<footer class="site-footer">
+	<div class="footer-inner">
+		<div class="footer-groups">
+			<nav class="footer-socials" aria-label={t("footer.socialLinks")}>
+				<ul class="footer-icon-list">
+					<li>
+						<a
+							class="footer-icon-link"
+							href={localePath(lang, "/rss.xml")}
+							aria-label={t("footer.rss")}
+							title={t("footer.rss")}
+						>
+							<svg
+								width="16"
+								height="16"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								aria-hidden="true"
+							>
+								<path d="M4 11a9 9 0 0 1 9 9"></path>
+								<path d="M4 4a16 16 0 0 1 16 16"></path>
+								<circle cx="5" cy="19" r="1"></circle>
+							</svg>
+						</a>
+					</li>
+					{socialLinks.map((link) => (
+						<li>
+							<a
+								class="footer-icon-link"
+								href={link.href}
+								aria-label={link.label}
+								title={link.label}
+								target="_blank"
+								rel="noopener noreferrer"
+							>
+								<svg
+									viewBox={`0 0 ${link.width} ${link.height}`}
+									fill="currentColor"
+									aria-hidden="true"
+								>
+									{link.paths.map((path) => <path d={path} />)}
+								</svg>
+							</a>
+						</li>
+					))}
+				</ul>
+			</nav>
+
+			{
+				items.length > 0 && (
+					<nav class="footer-links" aria-label={t("footer.contactLinks")}>
+						<ul class="footer-link-list">
+							{items.map((item) => (
+								<li>
+									<a
+										class="footer-link"
+										href={item.url}
+										target={item.target ?? undefined}
+										rel={item.target === "_blank" ? "noopener noreferrer" : undefined}
+									>
+										{item.label}
+									</a>
+								</li>
+							))}
+						</ul>
+					</nav>
+				)
+			}
+
+			<p class="footer-credit" set:html={t("footer.poweredBy")} />
+		</div>
+	</div>
+</footer>
+
+<style>
+	.site-footer {
+		width: 100%;
+		min-width: 0;
+		margin-top: auto;
+		padding-top: var(--spacing-3);
+		border-top: 1px solid var(--color-border-subtle);
+	}
+
+	.footer-inner {
+		width: 100%;
+		min-width: 0;
+	}
+
+	.footer-groups {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+		gap: var(--spacing-3);
+	}
+
+	.footer-icon-list,
+	.footer-link-list {
+		list-style: none;
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		column-gap: var(--spacing-3);
+		row-gap: var(--spacing-2);
+	}
+
+	.footer-icon-list {
+		column-gap: var(--spacing-1);
+	}
+
+	.footer-icon-link {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 28px;
+		height: 28px;
+		border-radius: var(--radius);
+		color: var(--color-text-secondary);
+		transition:
+			color var(--transition-fast),
+			background var(--transition-fast);
+	}
+
+	.footer-icon-link:hover,
+	.footer-icon-link:focus-visible {
+		color: var(--color-brand);
+		background: var(--color-surface);
+	}
+
+	.footer-icon-link svg {
+		width: 18px;
+		height: 18px;
+	}
+
+	.footer-link {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--spacing-1);
+		max-width: 100%;
+		font-size: var(--font-size-xs);
+		line-height: var(--leading-normal);
+		color: var(--color-text-secondary);
+		text-decoration: none;
+		transition: color var(--transition-fast);
+	}
+
+	.footer-link:hover,
+	.footer-link:focus-visible {
+		color: var(--color-brand);
+		text-decoration: underline;
+		text-underline-offset: 0.2em;
+	}
+
+	.footer-icon-link:focus-visible,
+	.footer-link:focus-visible {
+		outline: 2px solid var(--color-brand);
+		outline-offset: 2px;
+	}
+
+	.footer-link svg {
+		flex: 0 0 auto;
+		width: 15px;
+		height: 15px;
+	}
+
+	.footer-credit {
+		font-size: var(--font-size-xs);
+		line-height: var(--leading-normal);
+		color: var(--color-muted);
+	}
+
+	.footer-credit a {
+		color: var(--color-brand);
+		text-decoration: none;
+	}
+
+	.footer-credit a:hover,
+	.footer-credit a:focus-visible {
+		color: var(--color-brand-hover);
+		text-decoration: underline;
+		text-underline-offset: 0.2em;
+	}
+
+	@media (max-width: 999px) {
+		.site-footer {
+			width: min(100%, 360px);
+			padding-top: var(--spacing-4);
+		}
+
+		.footer-icon-list,
+		.footer-link-list {
+			column-gap: var(--spacing-4);
+			row-gap: var(--spacing-3);
+		}
+
+		.footer-link {
+			font-size: var(--font-size-sm);
+		}
+	}
+</style>

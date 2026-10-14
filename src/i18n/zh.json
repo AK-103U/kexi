@@ -17,6 +17,8 @@
 	},
 	"footer": {
 		"rss": "RSS 订阅",
+		"socialLinks": "社交链接与 RSS",
+		"contactLinks": "联系与站点链接",
 		"poweredBy": "由 <a href=\"https://emdashcms.com\">EmDash</a> 驱动"
 	},
 	"home": {
