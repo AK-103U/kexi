@@ -9,7 +9,7 @@ import Base from "../layouts/Base.astro";
 import PostCard from "../components/PostCard.astro";
 import { getReadingTime } from "../utils/reading-time";
 import { resolveEntryBylines, readEntryLocale } from "../utils/bylines";
-import { mediaUrl } from "../utils/media";
+import { avatarUrl } from "../utils/media";
 import { resolveBlogSiteIdentity } from "../utils/site-identity";
 import { formatDate, localePath, pageLang, useTranslations } from "../i18n/ui";
 
@@ -126,7 +126,7 @@ const gridPostsWithTags = gridPosts.map((post) => ({
 														<span class="featured-byline">
 															{credit.byline.avatarStorageKey && (
 																<img
-																	src={mediaUrl(credit.byline.avatarStorageKey)}
+																	src={avatarUrl(credit.byline.avatarStorageKey, 96)}
 																	alt={credit.byline.displayName}
 																	class="featured-byline-avatar"
 																/>
@@ -294,7 +294,7 @@ const gridPostsWithTags = gridPosts.map((post) => ({
 		width: var(--avatar-size-md);
 		height: var(--avatar-size-md);
 		border-radius: 50%;
-		object-fit: cover;
+		object-fit: contain;
 	}
 
 	.featured-byline-name {

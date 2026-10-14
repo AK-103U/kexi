@@ -12,11 +12,9 @@ export function mediaUrl(storageKey: string): string {
 }
 
 /**
- * 方形头像 URL：经 Astro 的图片端点做**服务端裁剪**，
- * 而不是让浏览器把 1200×800 的原图缩成 40px。
- * 在 Cloudflare 下由 Images binding 处理，不依赖 `sharp`。
- *
- * `fit=cover` 中心裁方，输出 webp —— 实测 172KB JPEG → 3.7KB（96px）。
+ * 方形头像 URL：经 Astro 图片端点服务端缩放到方形画布，完整保留原图，
+ * 避免 `cover` 把横向 Logo 或图标中心裁切。浏览器无需缩放大图；
+ * 在 Cloudflare 下由 Images binding 处理，不依赖 `sharp`。输出 webp。
  */
 export function avatarUrl(
 	storageKey: string,
@@ -27,7 +25,7 @@ export function avatarUrl(
 		href: mediaUrl(storageKey),
 		w: String(size),
 		h: String(size),
-		fit: "cover",
+		fit: "contain",
 		f: format,
 		q: "85",
 	});

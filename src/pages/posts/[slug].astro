@@ -13,7 +13,7 @@ import TableOfContents from "../../components/TableOfContents.astro";
 import { getReadingTime } from "../../utils/reading-time";
 import { resolveEntryBylines, readEntryLocale } from "../../utils/bylines";
 import { resolveBlogSiteIdentity } from "../../utils/site-identity";
-import { mediaUrl } from "../../utils/media";
+import { avatarUrl } from "../../utils/media";
 import { siteConfig } from "../../i18n/config";
 import { formatDate, localePath, pageLang, useTranslations } from "../../i18n/ui";
 
@@ -170,7 +170,7 @@ const commentFormLabels = {
 									<div class="byline">
 										{credit.byline.avatarStorageKey && (
 											<img
-												src={mediaUrl(credit.byline.avatarStorageKey)}
+												src={avatarUrl(credit.byline.avatarStorageKey, 96)}
 												alt={credit.byline.displayName}
 												class="byline-avatar"
 											/>
@@ -381,7 +381,7 @@ const commentFormLabels = {
 		width: var(--avatar-size-sm);
 		height: var(--avatar-size-sm);
 		border-radius: 50%;
-		object-fit: cover;
+		object-fit: contain;
 	}
 
 	.byline-info {

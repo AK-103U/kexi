@@ -3,7 +3,7 @@ import { getEmDashCollection, getTermsForEntries } from "emdash";
 import Base from "../../layouts/Base.astro";
 import { getReadingTime } from "../../utils/reading-time";
 import { resolveEntryBylines, readEntryLocale } from "../../utils/bylines";
-import { mediaUrl } from "../../utils/media";
+import { avatarUrl } from "../../utils/media";
 import { formatDate, localePath, pageLang, useTranslations } from "../../i18n/ui";
 
 interface Props {
@@ -88,7 +88,7 @@ const postsWithTags = posts.map((post) => ({
 														<span class="post-byline">
 															{credit.byline.avatarStorageKey && (
 																<img
-																	src={mediaUrl(credit.byline.avatarStorageKey)}
+																	src={avatarUrl(credit.byline.avatarStorageKey, 96)}
 																	alt={credit.byline.displayName}
 																	class="post-byline-avatar"
 																/>
@@ -236,7 +236,7 @@ const postsWithTags = posts.map((post) => ({
 		width: var(--avatar-size-sm);
 		height: var(--avatar-size-sm);
 		border-radius: 50%;
-		object-fit: cover;
+		object-fit: contain;
 	}
 
 	.post-byline-name {
