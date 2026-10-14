@@ -87,7 +87,7 @@ for (const w of [1440, 1200, 1199, 1000, 999, 640, 390]) {
 	const expectRight = w >= 1200;
 	const expectBurger = w < 1000;
 	const expectMenu = w >= 1000;
-	const expectRailMode = w >= 1000 ? "sticky" : "fixed";
+	const expectRailMode = "fixed";
 	const counts = await Promise.all(
 		[".site-search-input", ".search-trigger", ".theme-btn", ".lang-toggle", ".nav-burger"].map((sel) =>
 			p.locator(sel).count(),
@@ -500,8 +500,8 @@ await p6.close();
 // 两条曾经真实存在的漂移，都只在「客户端导航」时显形：
 //   a) 短页面（/pages/about，正好一屏高）没有滚动条，clientWidth 比长页面宽
 //      15px，居中的外壳整体横移。
-//   b) 在滚动状态下切页时 scrollY 归零，rail 从 sticky 位弹回静止位。
-// 修法是 html { scrollbar-gutter: stable } 与「sticky top = 外壳上边距」。
+//   b) 在滚动状态下切页时 scrollY 归零，rail 的视口位置应保持不变。
+// 修法是 html { scrollbar-gutter: stable } 与桌面侧栏固定定位。
 console.log("\n=== SPA 导航不漂移 ===");
 const p5 = await browser.newPage({ viewport: { width: 1440, height: 900 } });
 
@@ -543,7 +543,7 @@ check(
 	Math.abs(afterAbout.railL.x - rest.railL.x) < 1,
 	`x ${rest.railL.x} → ${afterAbout.railL.x}`,
 );
-// 左栏保持 sticky；页脚随侧栏自然排列，左栏对齐不应因页面改变。
+// 左栏保持 fixed；页脚随侧栏自然排列，左栏对齐不应因页面改变。
 check(
 	"切到 /pages/about 左栏 y 不变化",
 	Math.abs(afterAbout.railL.y - rest.railL.y) < 1,
@@ -555,10 +555,7 @@ check(
 	`页脚 x=${afterAbout.footerX} / 左栏 x=${afterAbout.railL.x}`,
 );
 
-// b) 滚动不该移动 rail —— sticky 位必须与静止位重合
-//
-// 这条要量的是「滚动时」与「静止时」的差，不是「切页后」与「静止时」的差：
-// 后者两边都是静止位，恒真，抓不到 bug（试过，旧的 sticky top 也能蒙混过去）。
+// b) 滚动不该移动 rail —— 固定定位必须与静止位重合
 // 不变量是：rail 无论在滚动中还是切页后，位置都该与静止时一致。
 await p5.goto(BASE + "/posts/notes-on-simplicity", { waitUntil: "networkidle" });
 await p5.waitForTimeout(300);
@@ -567,7 +564,7 @@ await p5.evaluate(() => window.scrollTo(0, 900));
 await p5.waitForTimeout(400);
 const scrolled = await geom();
 check(
-	"滚动时左栏不移动（sticky 位 = 静止位）",
+	"滚动时左栏不移动（fixed 位 = 静止位）",
 	Math.abs(scrolled.railL.y - postRest.railL.y) < 1,
 	`静止 ${postRest.railL.y} → 滚动 900 后 ${scrolled.railL.y}`,
 );

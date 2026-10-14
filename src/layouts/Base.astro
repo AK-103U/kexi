@@ -470,7 +470,6 @@ const isLoggedIn = !!Astro.locals.user;
 				flex-direction: column;
 				align-items: stretch;
 				gap: var(--spacing-4);
-				min-height: calc(100vh - var(--rail-sticky-top));
 				padding-right: var(--spacing-2);
 				border-right: 1px solid var(--color-border-subtle);
 				background: var(--color-bg);
@@ -503,7 +502,10 @@ const isLoggedIn = !!Astro.locals.user;
 				flex: 1;
 				flex-direction: column;
 				min-width: 0;
+				min-height: 0;
 				width: 100%;
+				overflow-y: auto;
+				overscroll-behavior: contain;
 			}
 
 			:global(.rail-menu > .rail-content) {
@@ -633,13 +635,10 @@ const isLoggedIn = !!Astro.locals.user;
 					var(--rail-width);
 				gap: var(--spacing-6);
 				justify-content: center;
-				/* 必须 start：stretch 会让 rail 撑满行高，sticky 就没有可滚动的余量 */
+				/* 固定左栏使用独立定位；网格其余轨道仍从 start 对齐。 */
 				align-items: start;
 				/*
-				 * rail 的静止位 = 这里的上边距，而 .rail 的 sticky top 必须与之相等
-				 * —— 否则在滚动状态下切页（scrollY 归零）时，rail 会从 sticky 位弹回
-				 * 静止位，那 17px 的跳动每次导航都看得见。
-				 * 两个值都从 --shell-pad-top 推出来，改一处即可。
+				 * 左栏固定位置与外壳上边距一致；两个值都从 --shell-pad-top 推出，改一处即可。
 				 *
 				 * 页头取消后这里不再需要 + --nav-height；--nav-height 现在描述的是
 				 * <1000px 那条贴顶横栏的高度（见媒体查询）。
@@ -647,7 +646,7 @@ const isLoggedIn = !!Astro.locals.user;
 				--shell-pad-top: var(--spacing-12);
 				--rail-sticky-top: var(--shell-pad-top);
 				/*
-				 * 正文标题的锚点留白（scroll-margin-top）。桌面跟着 rail 的 sticky 位，
+				 * 正文标题的锚点留白（scroll-margin-top）。桌面沿用左栏顶部位置，
 				 * <1000px 则要额外让开贴顶横栏 —— 见下面对应的媒体查询。
 				 * 自定义属性会继承到 .shell 里的标题上，所以页面样式直接用它。
 				 */
@@ -656,17 +655,29 @@ const isLoggedIn = !!Astro.locals.user;
 			}
 
 			/*
-			 * 左栏自身。
-			 *
-			 * 关键约束：**不能给左栏加 overflow: auto**。搜索结果下拉是
-			 * `.site-search`（position: relative）里的绝对定位元素，一旦祖先
-			 * 建立滚动容器，超出左栏宽度的下拉就会被裁掉 —— 而下拉本来就需要
-			 * 比左栏更宽。菜单长了就让它跟着页面滚，靠 sticky 维持可见。
+			 * 左栏固定在视口；::before 保留网格第一列，因此正文与右栏仍按原列排布。
+			 * 搜索下拉位于 rail-bottom，不受菜单滚动区域裁切；长菜单只在侧栏内部滚动。
 			 */
+			.shell::before {
+				content: "";
+				grid-column: 1;
+				grid-row: 1;
+			}
+
 			.rail {
 				align-self: start;
 				position: sticky;
 				top: var(--rail-sticky-top);
+			}
+
+			.rail--left {
+				position: fixed;
+				top: var(--rail-sticky-top);
+				left: calc((100% - (var(--rail-width) + var(--rail-width) + var(--content-width) + var(--spacing-6) + var(--spacing-6) + var(--spacing-6) + var(--spacing-6))) / 2 + var(--spacing-6));
+				width: var(--rail-width);
+				height: calc(100vh - var(--rail-sticky-top));
+				height: calc(100dvh - var(--rail-sticky-top));
+				min-height: 0;
 			}
 
 			.shell-main {
@@ -813,6 +824,10 @@ const isLoggedIn = !!Astro.locals.user;
 					grid-template-columns: var(--rail-width) minmax(0, var(--content-width));
 				}
 
+				.rail--left {
+					left: calc((100% - (var(--rail-width) + var(--content-width) + var(--spacing-6) + var(--spacing-6) + var(--spacing-6))) / 2 + var(--spacing-6));
+				}
+
 				.rail--right {
 					display: none;
 				}
@@ -826,11 +841,16 @@ const isLoggedIn = !!Astro.locals.user;
 			@media (max-width: 999px) {
 				.shell {
 					grid-template-columns: minmax(0, var(--content-width));
-					/* 只改 --shell-pad-top，桌面侧栏的 sticky 位仍与静止位一致 */
+
+					/* 只改 --shell-pad-top，桌面固定侧栏位置仍与外壳上边距一致 */
 					--shell-pad-top: var(--spacing-8);
 					--shell-anchor-offset: var(--nav-height);
 					padding: calc(var(--nav-height) + var(--spacing-6)) var(--spacing-4)
 						var(--spacing-12);
+				}
+
+				.shell::before {
+					display: none;
 				}
 
 				.rail--left {
@@ -843,6 +863,8 @@ const isLoggedIn = !!Astro.locals.user;
 					grid-template-areas: "identity search tools burger";
 					grid-template-columns: auto minmax(0, 1fr) auto auto;
 					grid-template-rows: var(--nav-height);
+					width: auto;
+					height: auto;
 					column-gap: var(--spacing-1);
 					row-gap: 0;
 					align-items: center;
