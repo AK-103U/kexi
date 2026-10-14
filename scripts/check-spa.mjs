@@ -102,8 +102,7 @@ await page.goto(`${BASE}/posts/building-for-the-long-term`, { waitUntil: "networ
 const tocOnLoad = await page.locator(".toc-link").count();
 check("整页加载文章页 TOC 有内容", tocOnLoad > 0, `${tocOnLoad} 条`);
 
-// 站内有多份指向 /posts 的链接（页头导航、左栏、移动抽屉），
-// 这里只点当前可见的那一份。
+// 公开外壳只有一份左栏导航；这里只点当前可见的 /posts 链接。
 await page.locator('a[href="/posts"]:visible').first().click(); // → 列表页
 await page.waitForURL(`${BASE}/posts`, { timeout: 10000 });
 await page.waitForTimeout(600);

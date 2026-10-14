@@ -11,7 +11,9 @@
 		"lightMode": "Switch to light mode",
 		"darkMode": "Switch to dark mode",
 		"toggleTheme": "Toggle theme",
-		"openMenu": "Open navigation menu"
+		"openMenu": "Open navigation menu",
+		"closeMenu": "Close navigation menu",
+		"sitePreferences": "Site preferences"
 	},
 	"footer": {
 		"rss": "RSS Feed",

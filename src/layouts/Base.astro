@@ -127,17 +127,44 @@ const isLoggedIn = !!Astro.locals.user;
 	</head>
 	<body>
 		<EmDashBodyStart page={pageCtx} />
-		<header class="site-header">
-			<nav class="nav">
+		{/*
+			文档式三栏外壳：左栏（身份 + 导航 + 工具 + 搜索）／中栏（正文）／右栏（目录）。
+			右栏的槽在非文章页是空的 —— 轨道照样占位，中栏位置全站恒定不跳。
+
+			左栏是全站唯一的导航入口，控件也只有**一份标记**：桌面侧栏分成身份/外观、主导航和底部工具；
+			<1000px 同一份内容变成贴顶横栏，身份、搜索、语言/主题和汉堡同排，菜单折叠在下方。
+		*/}
+		<div class="shell">
+			<aside class="rail rail--left">
+				<div class="rail-top">
+					{/* 署名缺失时名字回退到站点标题，头像回退到默认图。 */}
+					<div class="rail-identity">
+						<SiteIdentity
+							displayName={ownerByline?.displayName ?? siteTitle}
+							avatarStorageKey={ownerByline?.avatarStorageKey}
+							avatarAlt={ownerByline?.avatarAlt}
+							href={localePath(lang, "/")}
+						/>
+					</div>
+					<div class="rail-tools" role="group" aria-label={t("header.sitePreferences")}>
+						<LanguageSwitcher lang={lang} />
+						<ThemeSwitcher lang={lang} />
+					</div>
+				</div>
+
+				{/* 汉堡：只在 <1000px 出现，控制下面的折叠菜单。 */}
 				<button
 					type="button"
 					class="nav-burger"
 					data-nav-toggle
+					data-label-open={t("header.openMenu")}
+					data-label-close={t("header.closeMenu")}
 					aria-expanded="false"
-					aria-controls="nav-drawer"
+					aria-controls="rail-menu"
 					aria-label={t("header.openMenu")}
 				>
 					<svg
+						class="nav-burger-icon nav-burger-icon--menu"
 						viewBox="0 0 24 24"
 						fill="none"
 						stroke="currentColor"
@@ -150,78 +177,68 @@ const isLoggedIn = !!Astro.locals.user;
 						<line x1="4" y1="12" x2="20" y2="12"></line>
 						<line x1="4" y1="18" x2="20" y2="18"></line>
 					</svg>
+					<svg
+						class="nav-burger-icon nav-burger-icon--close"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						aria-hidden="true"
+					>
+						<line x1="6" y1="6" x2="18" y2="18"></line>
+						<line x1="18" y1="6" x2="6" y2="18"></line>
+					</svg>
 				</button>
 
-				{/*
-					站主身份在页头左侧，与左栏共用同一条中轴 —— 靠的是
-					`.nav` 与 `.shell` 用同一套列几何（第 1 列就是左栏那一列），
-					而不是任何手算偏移。见下方 `.nav` 的注释。
-					外面这层 div 是必要的：SiteIdentity 根节点上带的 class 是
-					**子组件的** scope 属性，父组件的 .nav-left 之类规则够不着它。
-				*/}
-				<div class="nav-left">
-					{/* 署名缺失时（未包含示例内容）名字回退到站点标题，头像回退到默认图。 */}
-					<SiteIdentity
-						displayName={ownerByline?.displayName ?? siteTitle}
-						avatarStorageKey={ownerByline?.avatarStorageKey}
-						avatarAlt={ownerByline?.avatarAlt}
-						href={localePath(lang, "/")}
-					/>
+				{/* 菜单桌面纵排；窄屏折叠在顶部栏下方。 */}
+				<div class="rail-menu" id="rail-menu">
+					<SiteRail items={menu?.items ?? []} pathname={Astro.url.pathname} />
+					{
+						isLoggedIn && (
+							<a href="/_emdash/admin" class="nav-admin">
+								{t("header.admin")}
+							</a>
+						)
+					}
 				</div>
 
-				<div class="nav-right">
-					<LiveSearch
-						placeholder={t("header.searchPlaceholder")}
-						locale={lang}
-						class="site-search"
-						inputClass="site-search-input"
-						resultsClass="site-search-results"
-						resultClass="site-search-result"
-						collections={["posts", "pages"]}
-						routeMap={searchRouteMap}
-						searchPage={localePath(lang, "/search")}
-					/>
-					<div class="nav-toggles">
-						<LanguageSwitcher lang={lang} />
-						<ThemeSwitcher lang={lang} />
+				<div class="rail-bottom">
+					<div class="rail-search" id="rail-search-control" data-search-open="false">
+						<button
+							type="button"
+							class="search-trigger"
+							data-search-toggle
+							aria-expanded="false"
+							aria-controls="rail-search-control"
+							aria-label={t("header.searchPlaceholder")}
+						>
+							<svg
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								aria-hidden="true"
+							>
+								<circle cx="11" cy="11" r="7"></circle>
+								<path d="m20 20-4-4"></path>
+							</svg>
+						</button>
+						<LiveSearch
+							placeholder={t("header.searchPlaceholder")}
+							locale={lang}
+							class="site-search"
+							inputClass="site-search-input"
+							resultsClass="site-search-results"
+							resultClass="site-search-result"
+							collections={["posts", "pages"]}
+							routeMap={searchRouteMap}
+							searchPage={localePath(lang, "/search")}
+						/>
 					</div>
 				</div>
-				{
-					isLoggedIn && (
-						<a href="/_emdash/admin" class="nav-admin">
-							{t("header.admin")}
-						</a>
-					)
-				}
-			</nav>
-
-			{/* 窄屏导航抽屉：与左栏同一份菜单，但**不含**头像与名字。 */}
-			<div class="nav-drawer" id="nav-drawer" data-nav-drawer hidden>
-				<ul class="nav-drawer-list">
-					{
-						menu?.items.map((item) => (
-							<li>
-								<a
-									href={item.url}
-									target={item.target}
-									rel={item.target === "_blank" ? "noopener noreferrer" : undefined}
-								>
-									{item.label}
-								</a>
-							</li>
-						))
-					}
-				</ul>
-			</div>
-		</header>
-
-		{/*
-			文档式三栏外壳：左栏（站主 + 导航）／中栏（正文）／右栏（目录）。
-			右栏的槽在非文章页是空的 —— 轨道照样占位，中栏位置全站恒定不跳。
-		*/}
-		<div class="shell">
-			<aside class="rail rail--left">
-				<SiteRail items={menu?.items ?? []} pathname={Astro.url.pathname} />
 			</aside>
 
 			<main class="shell-main">
@@ -464,84 +481,158 @@ const isLoggedIn = !!Astro.locals.user;
 		</style>
 
 		<style>
-			.site-header {
-				position: sticky;
-				top: 0;
+			/* 桌面侧栏：品牌与外观在顶部，导航独立成组，工具落在底部。 */
+			.rail--left {
 				z-index: 100;
-				background: color-mix(in srgb, var(--color-bg) 65%, transparent);
-				backdrop-filter: blur(12px);
-				-webkit-backdrop-filter: blur(12px);
+				display: flex;
+				flex-direction: column;
+				align-items: stretch;
+				gap: var(--spacing-4);
+				min-height: calc(100vh - var(--rail-sticky-top) - var(--spacing-16));
+				padding-right: var(--spacing-2);
+				border-right: 1px solid var(--color-border-subtle);
+				background: var(--color-bg);
+			}
+
+			.rail-top {
+				display: flex;
+				flex-direction: column;
+				align-items: stretch;
+				gap: var(--spacing-2);
+				padding-bottom: var(--spacing-3);
 				border-bottom: 1px solid var(--color-border-subtle);
 			}
 
-			.nav {
-				display: grid;
-				/*
-				 * 与 .shell 共用同一套列几何 —— 列宽、gap、水平内边距完全一致，
-				 * 于是页头第 1 列就是左栏那一列：把头像在这一列里居中，它自然
-				 * 落在左栏的中垂线上，不需要任何手算偏移，改 --rail-width /
-				 * --content-width 时两边也不会脱节。
-				 */
-				grid-template-columns:
-					var(--rail-width) minmax(0, var(--content-width))
-					var(--rail-width);
-				gap: var(--spacing-6);
-				justify-content: center;
-				/* 横向中线对齐：不同高度的控件（38px 图标钮、32px 主题钮、
-					搜索框）都以自身中线为准，落在同一条水平线上。 */
-				align-items: center;
-				height: var(--nav-height);
-				padding: 0 var(--spacing-6);
+			.rail-identity {
+				min-width: 0;
 			}
 
-			/* 汉堡按钮：只在 <1000px 出现（左栏隐藏时）。 */
-			.nav-burger {
+			.rail-tools {
+				display: flex;
+				flex-direction: row;
+				align-items: center;
+				justify-content: flex-end;
+				gap: var(--spacing-1);
+			}
+
+			.rail-menu {
+				min-width: 0;
+				width: 100%;
+			}
+
+			:global(.rail-menu > .rail-content) {
+				width: 100%;
+			}
+
+			.rail-bottom {
+				margin-top: auto;
+				padding-top: var(--spacing-3);
+				border-top: 1px solid var(--color-border-subtle);
+			}
+
+			.rail-search {
+				position: relative;
+				display: flex;
+				justify-content: flex-start;
+				width: 100%;
+				min-width: 0;
+			}
+
+			.rail-search:not([data-search-open="true"]) :global(.site-search) {
 				display: none;
-				grid-column: 1;
-				justify-self: start;
+			}
+
+			.rail-search[data-search-open="true"] .search-trigger {
+				display: none;
+			}
+
+			.search-trigger {
+				display: flex;
 				align-items: center;
 				justify-content: center;
-				padding: var(--spacing-1);
-				background: none;
+				width: 38px;
+				height: 38px;
+				padding: 0;
+				background: transparent;
 				border: none;
-				color: var(--color-text);
+				border-radius: var(--radius);
+				color: var(--color-text-secondary);
+				cursor: pointer;
+				transition:
+					color var(--transition-fast),
+					background var(--transition-fast);
+			}
+
+			.search-trigger:hover,
+			.search-trigger:focus-visible {
+				color: var(--color-brand);
+				background: var(--color-surface);
+			}
+
+			.search-trigger svg {
+				width: 20px;
+				height: 20px;
+			}
+
+			/* 汉堡：只在 <1000px 出现（左栏变横栏、菜单折叠时）。 */
+			.nav-burger {
+				display: none;
+				align-items: center;
+				justify-content: center;
+				width: 38px;
+				height: 38px;
+				padding: 0;
+				background: transparent;
+				border: none;
+				color: var(--color-text-secondary);
 				cursor: pointer;
 				border-radius: var(--radius);
+				transition:
+					color var(--transition-fast),
+					background var(--transition-fast);
 			}
-			.nav-burger svg {
+
+			.nav-burger:hover,
+			.nav-burger:focus-visible {
+				color: var(--color-text);
+				background: var(--color-surface);
+			}
+
+			.nav-burger-icon {
 				width: 22px;
 				height: 22px;
 			}
 
-			.nav-burger:hover {
-				color: var(--color-brand);
+			.nav-burger-icon--close {
+				display: none;
 			}
 
-			/* 抽屉：与左栏同一份菜单。 */
-			.nav-drawer {
-				border-top: 1px solid var(--color-border-subtle);
-				background: var(--color-bg);
+			.rail--left[data-nav-open="true"] .nav-burger-icon--menu {
+				display: none;
 			}
 
-			.nav-drawer-list {
-				list-style: none;
-				display: flex;
-				flex-direction: column;
-				max-width: var(--wide-width);
-				margin: 0 auto;
-				padding: var(--spacing-3) var(--spacing-6) var(--spacing-4);
-			}
-
-			.nav-drawer-list a {
+			.rail--left[data-nav-open="true"] .nav-burger-icon--close {
 				display: block;
-				padding: var(--spacing-2) 0;
-				font-size: var(--font-size-base);
-				color: var(--color-text);
-				text-decoration: none;
 			}
 
-			.nav-drawer-list a:hover {
-				color: var(--color-brand);
+			.nav-admin {
+				display: block;
+				margin-top: var(--spacing-3);
+				padding: var(--spacing-3);
+				border-top: 1px solid var(--color-border-subtle);
+				font-size: var(--font-size-sm);
+				color: var(--color-text-secondary);
+				text-decoration: none;
+				transition:
+					color var(--transition-fast),
+					background var(--transition-fast);
+			}
+
+			.nav-admin:hover,
+			.nav-admin:focus-visible {
+				color: var(--color-text);
+				background: var(--color-surface);
+				text-decoration: none;
 			}
 
 			/*
@@ -566,17 +657,33 @@ const isLoggedIn = !!Astro.locals.user;
 				/* 必须 start：stretch 会让 rail 撑满行高，sticky 就没有可滚动的余量 */
 				align-items: start;
 				/*
-				 * rail 的静止位 = 页头高度 + 这里的上边距，而 .rail 的 sticky top
-				 * 必须与之相等 —— 否则在滚动状态下切页（scrollY 归零）时，rail 会
-				 * 从 sticky 位弹回静止位，那 17px 的跳动每次导航都看得见。
+				 * rail 的静止位 = 这里的上边距，而 .rail 的 sticky top 必须与之相等
+				 * —— 否则在滚动状态下切页（scrollY 归零）时，rail 会从 sticky 位弹回
+				 * 静止位，那 17px 的跳动每次导航都看得见。
 				 * 两个值都从 --shell-pad-top 推出来，改一处即可。
+				 *
+				 * 页头取消后这里不再需要 + --nav-height；--nav-height 现在描述的是
+				 * <1000px 那条贴顶横栏的高度（见媒体查询）。
 				 */
 				--shell-pad-top: var(--spacing-12);
-				/* +1px 是 .site-header 的下边框 */
-				--rail-sticky-top: calc(var(--nav-height) + 1px + var(--shell-pad-top));
+				--rail-sticky-top: var(--shell-pad-top);
+				/*
+				 * 正文标题的锚点留白（scroll-margin-top）。桌面跟着 rail 的 sticky 位，
+				 * <1000px 则要额外让开贴顶横栏 —— 见下面对应的媒体查询。
+				 * 自定义属性会继承到 .shell 里的标题上，所以页面样式直接用它。
+				 */
+				--shell-anchor-offset: 0px;
 				padding: var(--shell-pad-top) var(--spacing-6) var(--spacing-16);
 			}
 
+			/*
+			 * 左栏自身。
+			 *
+			 * 关键约束：**不能给左栏加 overflow: auto**。搜索结果下拉是
+			 * `.site-search`（position: relative）里的绝对定位元素，一旦祖先
+			 * 建立滚动容器，超出左栏宽度的下拉就会被裁掉 —— 而下拉本来就需要
+			 * 比左栏更宽。菜单长了就让它跟着页面滚，靠 sticky 维持可见。
+			 */
 			.rail {
 				align-self: start;
 				position: sticky;
@@ -585,50 +692,6 @@ const isLoggedIn = !!Astro.locals.user;
 
 			.shell-main {
 				min-width: 0;
-			}
-
-			/*
-			 * 页头左列 = 左栏那一列。头像在这一列里居中，于是它落在左栏的
-			 * 中垂线上，与下方的导航链接共轴。
-			 */
-			.nav-left {
-				grid-column: 1;
-				display: flex;
-				align-items: center;
-				justify-content: center;
-				min-width: 0;
-			}
-
-			.nav-right {
-				grid-column: 2;
-				/* 列宽是 680px 而内容只有 ~282px：不写 center 会被 stretch
-					撑满整列，搜索框就贴到列左边去了 */
-				justify-self: center;
-				display: flex;
-				align-items: center;
-				/* 搜索框与图标组之间 16px */
-				gap: var(--spacing-4);
-			}
-
-			/* 语言与主题切换挨在一起，任何断点下都并排。 */
-			.nav-toggles {
-				display: flex;
-				align-items: center;
-				/* 图标之间 12–16px */
-				gap: var(--spacing-3);
-			}
-
-			.nav-admin {
-				grid-column: 3;
-				justify-self: end;
-				font-size: var(--font-size-sm);
-				color: var(--color-text-secondary);
-				text-decoration: none;
-				transition: color var(--transition-fast);
-			}
-
-			.nav-admin:hover {
-				color: var(--color-text);
 			}
 
 			/*
@@ -687,7 +750,13 @@ const isLoggedIn = !!Astro.locals.user;
 				position: absolute;
 				top: 100%;
 				left: 0;
-				right: 0;
+				/*
+				 * 搜索结果不再受输入框宽度限制：桌面左栏只有 200px，按输入框宽度
+				 * 会把带摘要的结果挤成一列单字。
+				 */
+				width: max-content;
+				min-width: 100%;
+				max-width: min(360px, calc(100vw - var(--spacing-8)));
 				margin-top: var(--spacing-2);
 				background: var(--color-bg);
 				border: 1px solid var(--color-border);
@@ -771,12 +840,12 @@ const isLoggedIn = !!Astro.locals.user;
 			 *     文档末尾、远在视口之下，sticky 把它拉进视口底部常驻。
 			 * 只有 1 会在长页面里看不见页脚，只有 2 会在短页面里留一条空白。
 			 *
-			 * 与页头一样是「静态范围」：它不随页面高度变化，切页时不漂移。
+			 * 与左栏一样是「静态范围」：它不随页面高度变化，切页时不漂移。
 			 */
 			.site-footer {
 				position: sticky;
 				bottom: 0;
-				/* 页头是 100，搜索结果下拉是 1000 —— 页脚在两者之下 */
+				/* 左栏是 100，搜索结果下拉是 1000 —— 页脚在两者之下 */
 				z-index: 90;
 				background: var(--color-bg-subtle);
 				border-top: 1px solid var(--color-border-subtle);
@@ -821,7 +890,7 @@ const isLoggedIn = !!Astro.locals.user;
 			/*
 			 * 三栏 → 两栏：视口装不下 200+680+200+gap+padding 时先收右栏。
 			 * 左栏还在，中栏位置不变 —— 这正是「右栏留空不渲染」的延伸。
-			 * .nav 跟着改成两列，否则它的第 1 列与左栏不再同一条轴上。
+			 * 左栏保留，只调整网格列数，不改变中栏的列几何。
 			 */
 			@media (max-width: 1199px) {
 				.shell {
@@ -831,132 +900,225 @@ const isLoggedIn = !!Astro.locals.user;
 				.rail--right {
 					display: none;
 				}
-
-				.nav {
-					grid-template-columns: var(--rail-width) minmax(0, var(--content-width));
-				}
-
-				/* 第 3 列没了，管理链接挪进中列右端 */
-				.nav-admin {
-					grid-column: 2;
-					justify-self: end;
-				}
 			}
 
 			/*
-			 * 两栏也装不下 → 单栏，左栏收进页头的汉堡抽屉。
-			 * 页头左侧的头像与名字跟着左栏一起消失 —— 用户既定：窄屏不显示
-			 * 头像与名字，导航改走抽屉（抽屉里同样只有链接）。此时第 1 列让给
-			 * 汉堡，也就没有「与左栏共轴」这回事了。
+			 * 两栏也装不下 → 单栏。左栏不隐藏，而是**改排布**：同一份标记变成贴顶
+			 * 横栏（品牌、搜索、外观控件和汉堡），菜单折进汉堡控制的面板。
+			 * 横栏是 fixed，所以 .shell 的顶部内边距要额外让出它的高度。
 			 */
 			@media (max-width: 999px) {
 				.shell {
 					grid-template-columns: minmax(0, var(--content-width));
-					/* 只改 --shell-pad-top，rail 的 sticky 位跟着走，不会脱节 */
+					/* 只改 --shell-pad-top，桌面侧栏的 sticky 位仍与静止位一致 */
 					--shell-pad-top: var(--spacing-8);
-					padding: var(--shell-pad-top) var(--spacing-4) var(--spacing-12);
+					--shell-anchor-offset: var(--nav-height);
+					padding: calc(var(--nav-height) + var(--spacing-6)) var(--spacing-4)
+						var(--spacing-12);
 				}
 
 				.rail--left {
-					display: none;
+					position: fixed;
+					top: 0;
+					right: 0;
+					left: 0;
+					z-index: 100;
+					display: grid;
+					grid-template-areas: "identity search tools burger";
+					grid-template-columns: auto minmax(0, 1fr) auto auto;
+					grid-template-rows: var(--nav-height);
+					column-gap: var(--spacing-1);
+					row-gap: 0;
+					align-items: center;
+					min-height: 0;
+					padding: 0 var(--spacing-4);
+					background: color-mix(in srgb, var(--color-bg) 82%, transparent);
+					backdrop-filter: blur(12px);
+					-webkit-backdrop-filter: blur(12px);
+					border-right: 0;
+					border-bottom: 1px solid var(--color-border-subtle);
 				}
 
-				/*
-				 * 页头回到「等宽侧列 + 内容宽中列」：汉堡在左、图标组在中、
-				 * 管理链接在右。侧列必须等宽（minmax(0,1fr)），汉堡占的 auto
-				 * 轨道会把中列推偏 —— 实测偏 15px。
-				 */
-				.nav {
-					grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+				/* 让同一份身份与工具成为顶部栏的独立网格项。 */
+				.rail-top,
+				.rail-bottom {
+					display: contents;
 				}
 
-				.nav-left {
-					display: none;
+				.rail-identity {
+					grid-area: identity;
+					width: auto;
+					min-width: 0;
 				}
 
 				.nav-burger {
 					display: inline-flex;
+					grid-area: burger;
+					flex-shrink: 0;
 				}
 
-				/* 第 3 列回来了，管理链接挪回去 */
-				.nav-admin {
-					grid-column: 3;
-					justify-self: end;
-				}
-			}
-
-			@media (max-width: 640px) {
-				.nav {
-					grid-template-columns: auto minmax(0, 1fr) auto;
-					height: auto;
-					column-gap: var(--spacing-3);
-					padding: var(--spacing-3) var(--spacing-4);
+				.rail-search {
+					grid-area: search;
+					width: auto;
+					min-width: 0;
 				}
 
-				/* 移动端：搜索框占满剩余宽度，不再追求中垂线居中。 */
-				.nav-right {
-					grid-column: 2;
-					grid-row: 1;
-					justify-self: stretch;
-					gap: var(--spacing-3);
+				.search-trigger {
+					display: none;
+				}
+
+				.rail-search:not([data-search-open="true"]) :global(.site-search) {
+					display: block;
 				}
 
 				:global(.site-search) {
 					flex: 1;
 					min-width: 0;
-					width: auto;
+					width: 100%;
 					max-width: none;
 				}
 
 				:global(.site-search-input) {
 					width: 100% !important;
-					padding: var(--spacing-1) var(--spacing-2) !important;
-					font-size: var(--font-size-sm) !important;
+				}
+
+				:global(.site-search-results) {
+					right: 0;
+					width: auto;
+					min-width: 0;
+					max-width: none;
+				}
+
+				.rail-tools {
+					grid-area: tools;
+					flex-direction: row;
+					justify-content: flex-end;
+					gap: 0;
+				}
+
+				.rail-menu {
+					display: none;
+					position: absolute;
+					top: var(--nav-height);
+					right: 0;
+					left: 0;
+					z-index: 1;
+					flex-direction: column;
+					align-items: center;
+					justify-content: center;
+					gap: var(--spacing-3);
+					width: auto;
+					height: calc(100vh - var(--nav-height));
+					height: calc(100dvh - var(--nav-height));
+					padding: var(--spacing-6) var(--spacing-4);
+					overflow-y: auto;
+					overscroll-behavior: contain;
+					background: var(--color-bg);
+					border-top: 1px solid var(--color-border-subtle);
+					box-shadow: 0 10px 15px rgba(0, 0, 0, 0.12);
+				}
+
+				:global(.rail-menu > .rail-content) {
+					width: min(100%, 360px);
 				}
 
 				.nav-admin {
-					grid-column: 3;
-					grid-row: 1;
-					justify-self: end;
-					font-size: var(--font-size-xs);
-					white-space: nowrap;
+					width: min(100%, 360px);
+				}
+
+				.rail--left[data-nav-open="true"] .rail-menu {
+					display: flex;
+				}
+			}
+
+			@media (max-width: 640px) {
+				:global(.site-search-input) {
+					padding: var(--spacing-1) var(--spacing-2) !important;
+					font-size: var(--font-size-sm) !important;
+				}
+			}
+
+			@media (max-width: 360px) {
+				:global(.rail-identity .site-identity-name) {
+					display: none;
 				}
 			}
 		</style>
 
 		<script>
-			// ⌘K / Ctrl+K to focus search
+			// ⌘K / Ctrl+K 展开桌面搜索（若收起）并聚焦输入框。
 			document.addEventListener("keydown", (e) => {
-				if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+				if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
 					e.preventDefault();
-					const searchInput = document.querySelector(
-						".site-search-input",
-					) as HTMLInputElement;
-					if (searchInput) {
+					const searchInput = document.querySelector<HTMLInputElement>(".site-search-input");
+					const search = searchInput?.closest<HTMLElement>(".rail-search");
+					if (searchInput && search) {
+						if (window.matchMedia("(min-width: 1000px)").matches) {
+							search.dataset.searchOpen = "true";
+							search
+								.querySelector("[data-search-toggle]")
+								?.setAttribute("aria-expanded", "true");
+						}
 						searchInput.focus();
 					}
 				}
 			});
 
-			// 窄屏导航抽屉。与主题切换同一套 ClientRouter 规矩：
-			// 每次导航后按钮是新节点，所以要在 astro:page-load 重绑，
-			// 且用 onclick 赋值（不是 addEventListener）避免监听器叠加。
-			function setupNavDrawer() {
-				const btn = document.querySelector<HTMLButtonElement>("[data-nav-toggle]");
-				const drawer = document.querySelector<HTMLElement>("[data-nav-drawer]");
-				if (!btn || !drawer) return;
+			// 桌面搜索：图标展开唯一的 LiveSearch 输入框；失焦或 Escape 后收起。
+			// ClientRouter 导航后重新绑定，并恢复收起态。
+			function setupRailSearch() {
+				const search = document.querySelector<HTMLElement>(".rail-search");
+				const button = search?.querySelector<HTMLButtonElement>("[data-search-toggle]");
+				const input = search?.querySelector<HTMLInputElement>(".site-search-input");
+				if (!search || !button || !input) return;
 
-				const setOpen = (open: boolean) => {
-					drawer.hidden = !open;
-					btn.setAttribute("aria-expanded", String(open));
+				const setOpen = (open: boolean, focus = false) => {
+					search.dataset.searchOpen = String(open);
+					button.setAttribute("aria-expanded", String(open));
+					if (open && focus) input.focus();
 				};
 
 				setOpen(false);
-				btn.onclick = () => setOpen(drawer.hasAttribute("hidden"));
+				button.onclick = () => setOpen(search.dataset.searchOpen !== "true", true);
+				input.onblur = () => {
+					queueMicrotask(() => {
+						if (!search.contains(document.activeElement)) setOpen(false);
+					});
+				};
 			}
 
-			setupNavDrawer();
-			document.addEventListener("astro:page-load", setupNavDrawer);
+			setupRailSearch();
+			document.addEventListener("astro:page-load", setupRailSearch);
+
+			// 窄屏菜单：左栏在 <1000px 变成贴顶横栏，菜单由汉堡展开。
+			// 与主题切换同一套 ClientRouter 规矩：每次导航后按钮是新节点，
+			// 所以要在 astro:page-load 重绑，且用 onclick 赋值（不是
+			// addEventListener）避免监听器叠加。
+			//
+			// 状态放在 <aside> 的 data-nav-open 上而不是菜单自己身上：
+			// 展开/收起要同时驱动菜单与按钮的 aria-expanded，放在共同祖先上
+			// 只有一个真源。
+			function setupRailMenu() {
+				const rail = document.querySelector<HTMLElement>(".rail--left");
+				const btn = rail?.querySelector<HTMLButtonElement>("[data-nav-toggle]");
+				if (!rail || !btn) return;
+
+				const setOpen = (open: boolean) => {
+					rail.dataset.navOpen = String(open);
+					btn.setAttribute("aria-expanded", String(open));
+					btn.setAttribute(
+						"aria-label",
+						open ? (btn.dataset.labelClose ?? "") : (btn.dataset.labelOpen ?? ""),
+					);
+				};
+
+				// 整页加载与每次客户端导航后都回到收起态。
+				setOpen(false);
+				btn.onclick = () => setOpen(rail.dataset.navOpen !== "true");
+			}
+
+			setupRailMenu();
+			document.addEventListener("astro:page-load", setupRailMenu);
 		</script>
 		<EmDashBodyEnd page={pageCtx} />
 	</body>

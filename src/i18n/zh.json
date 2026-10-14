@@ -11,7 +11,9 @@
 		"lightMode": "切换到亮色模式",
 		"darkMode": "切换到暗色模式",
 		"toggleTheme": "切换主题",
-		"openMenu": "打开导航菜单"
+		"openMenu": "打开导航菜单",
+		"closeMenu": "关闭导航菜单",
+		"sitePreferences": "站点偏好设置"
 	},
 	"footer": {
 		"rss": "RSS 订阅",

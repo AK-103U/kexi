@@ -452,14 +452,14 @@ const commentFormLabels = {
 		font-size: var(--font-size-2xl);
 		margin-top: 2.5em;
 		margin-bottom: 0.75em;
-		scroll-margin-top: calc(var(--nav-height) + var(--spacing-4));
+		scroll-margin-top: calc(var(--shell-anchor-offset, var(--spacing-12)) + var(--spacing-4));
 	}
 
 	.article-content :global(h3) {
 		font-size: var(--font-size-xl);
 		margin-top: 2em;
 		margin-bottom: 0.5em;
-		scroll-margin-top: calc(var(--nav-height) + var(--spacing-4));
+		scroll-margin-top: calc(var(--shell-anchor-offset, var(--spacing-12)) + var(--spacing-4));
 	}
 
 	.article-content :global(blockquote) {

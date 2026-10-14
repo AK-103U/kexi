@@ -49,11 +49,6 @@
 	--font-weight-display: 600;
 }
 
-/* Keep the signed-in Admin link separated from the primary navigation. */
-.nav-admin {
-	margin-inline-start: var(--spacing-5);
-}
-
 /*
  * math 插件的主题接口。插件把颜色、内边距、圆角都暴露成
  * --emdash-math-* 自定义属性，主题在这里覆盖即可，不用碰插件源码，

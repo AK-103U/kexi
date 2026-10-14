@@ -2,13 +2,9 @@
 /**
  * 左栏内容：站点导航。
  *
- * 站主身份（头像 + 名字）不在这里 —— 它在页头的左侧，见 `SiteIdentity.astro`。
- * 两处共用同一条中轴：页头的头像与这里的导航链接都落在左栏的垂直中垂线上
- * （页头靠 `.nav-left` 的偏移对齐，见 `Base.astro`）。
- *
- * 只渲染内容，不渲染 `<aside>` —— 外层容器与 sticky 定位属于 `Base.astro`
- * 的三栏外壳。全站渲染，不只是文章页；窄屏由外壳整块隐藏，导航改走页头的
- * 汉堡抽屉，所以这里不需要自己的响应式逻辑。
+ * 只渲染链接列表，不渲染 `<aside>` —— 外层容器与 sticky 定位属于 `Base.astro`
+ * 的三栏外壳。全站渲染，不只是文章页；窄屏时左栏整块改成贴顶横栏，菜单折进
+ * 汉堡控制的面板；桌面和移动端共用整行左对齐的导航项。
  *
  * 当前页高亮：菜单项的 URL 自带语言前缀（en 菜单写 `/en/posts`），
  * 所以两边都过一遍 `stripLocale` 再比，`/en/posts` 与 `/posts` 就能对上。
@@ -62,16 +58,13 @@ function isCurrent(url: string): boolean {
 </div>
 
 <style>
-	/*
-	 * 容器层统一收口：左栏里的一切沿容器中垂线对齐。
-	 * 放在这里而不是各子块上，是为了让「整条左栏一条中轴」这件事
-	 * 只有一个声明处，加新块时自动跟随。
-	 */
+	/* 侧栏导航采用整行点击区域，与品牌、工具组保持左侧共同起点。 */
 	.rail-content {
 		display: flex;
 		flex-direction: column;
-		align-items: center;
-		text-align: center;
+		align-items: stretch;
+		width: 100%;
+		text-align: left;
 	}
 
 	.rail-nav-list {
@@ -79,23 +72,49 @@ function isCurrent(url: string): boolean {
 		display: flex;
 		flex-direction: column;
 		gap: var(--spacing-1);
+		width: 100%;
 	}
 
 	.rail-nav-link {
 		display: block;
-		padding: var(--spacing-1) 0;
+		width: 100%;
+		padding: var(--spacing-2) var(--spacing-3);
+		border-radius: var(--radius);
 		font-size: var(--font-size-sm);
+		line-height: var(--leading-snug);
 		color: var(--color-text-secondary);
 		text-decoration: none;
-		transition: color var(--transition-fast);
+		transition:
+			color var(--transition-fast),
+			background var(--transition-fast);
 	}
 
-	.rail-nav-link:hover {
+	.rail-nav-link:hover,
+	.rail-nav-link:focus-visible {
 		color: var(--color-text);
+		background: var(--color-surface);
+		text-decoration: none;
+	}
+
+	.rail-nav-link:focus-visible {
+		outline: 2px solid var(--color-brand);
+		outline-offset: 2px;
 	}
 
 	.rail-nav-link.is-current {
-		color: var(--color-text);
-		font-weight: 500;
+		color: var(--color-brand);
+		background: var(--color-surface);
+		font-weight: 600;
+	}
+
+	@media (max-width: 999px) {
+		.rail-nav-list {
+			gap: var(--spacing-1);
+		}
+
+		.rail-nav-link {
+			padding: var(--spacing-2) var(--spacing-3);
+			font-size: var(--font-size-base);
+		}
 	}
 </style>
