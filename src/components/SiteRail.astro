@@ -26,6 +26,8 @@ interface Props {
 const { items, pathname } = Astro.props;
 
 const current = stripLocale(pathname);
+// 品牌身份链接已返回首页，主导航不重复显示默认语言或语言前缀下的根路径项。
+const visibleItems = items.filter((item) => stripLocale(item.url) !== "/");
 
 /** `/` 只做精确匹配，否则所有路径都会命中首页。 */
 function isCurrent(url: string): boolean {
@@ -39,7 +41,7 @@ function isCurrent(url: string): boolean {
 	<nav class="rail-nav">
 		<ul class="rail-nav-list">
 			{
-				items.map((item) => (
+				visibleItems.map((item) => (
 					<li>
 						<a
 							href={item.url}

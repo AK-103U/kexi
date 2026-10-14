@@ -22,7 +22,7 @@
 
 ## 内容查询与渲染
 
-集合和字段以 seed 为准。当前有 `posts`、`pages` 两个集合，分类法名为 `category`、`tag`，导航菜单名为 `primary`。查询名称使用 seed 的 `name`，例如 `category`，而不是 `categories`。
+集合和字段以 seed 为准。当前有 `posts`、`pages` 两个集合，分类法名为 `category`、`tag`，导航菜单名为 `primary`。主导航从 CMS 菜单读取，但根路径项不渲染，因为侧栏品牌身份本身链接到首页。查询名称使用 seed 的 `name`，例如 `category`，而不是 `categories`。
 
 公开内容页保持 `output: "server"`。内容来自 CMS，正文使用结构化富文本（Portable Text），由 `PortableText` 分发给 Astro 组件。Astro 的 Markdown 高亮配置和 rehype 插件不参与这条正文渲染路径。
 
