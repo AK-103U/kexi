@@ -45,6 +45,8 @@ UI 字典在 [zh.json](../src/i18n/zh.json) 与 [en.json](../src/i18n/en.json)�
 
 默认语言保持无前缀。历史上启用 `routing.prefixDefaultLocale: true` 曾导致后台路由 404，记录见 [探索笔记](../NOTES.md#语言配置与署名)。当前不配置 Astro 的路由级 `i18n.fallback`，详情回退由内容查询处理。
 
+页面字体按语言选择：中文正文和标题使用 Lato，英文使用 Public Sans。`Base.astro` 按语言加载对应字体；Lato 不含中文字形，中文页的汉字由系统字体回退呈现。字体及字重配置见 `astro.config.mjs`。
+
 ## 代码块
 
 正文中的代码块由 [CodeBlock.astro](../src/components/CodeBlock.astro) 渲染，内部用 Astro 内置的 `<Code />` 调用 Shiki 着色，输出 `github-light` / `github-dark` 双主题，用 `light-dark()` 跟随站点明暗模式。不新增依赖：Shiki 与 GitHub 主题由 Astro 提供。

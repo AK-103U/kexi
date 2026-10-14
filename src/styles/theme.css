@@ -49,6 +49,90 @@
 	--font-weight-display: 600;
 }
 
+/* 中文页面使用 Lato 字体栈，并保留自然字距；Lato 不含中文字形，汉字回退到系统字体。 */
+html[lang^="zh"] {
+	--font-body: var(--font-lato);
+	--font-heading: var(--font-lato);
+	--tracking-tight: normal;
+	--tracking-snug: normal;
+}
+
+/*
+ * 中文文章试用参考博客的排印尺度，但保留 Base 外壳提供的正文宽度；
+ * H2/H3 不复用参考站依赖卡片内边距的外扩，留在 Kexi 正文栏内。
+ * 英文页面保留 Kexi 当前参数。
+ */
+html[lang^="zh"] :is(.article-title, .page-title) {
+	font-size: 24px;
+	line-height: 1.15;
+}
+
+html[lang^="zh"] .article-excerpt {
+	font-size: 20px;
+	line-height: 1.5;
+}
+
+html[lang^="zh"] :is(.article-content, .page-content) {
+	font-size: 17px;
+	line-height: 1.85;
+}
+
+html[lang^="zh"] :is(.article-content, .page-content) p {
+	margin-block: 1.5em;
+}
+
+html[lang^="zh"] :is(.article-content, .page-content) h2 {
+	font-size: 1.5em;
+	line-height: 1.85;
+	margin-block: 0.83em;
+}
+
+html[lang^="zh"] :is(.article-content, .page-content) h3 {
+	font-size: 1.17em;
+	line-height: 1.85;
+	margin-block: 1em;
+}
+
+html[lang^="zh"] :is(.article-content, .page-content) blockquote {
+	margin-block: 1.5em;
+	font-style: normal;
+}
+
+@media (min-width: 700px) {
+	html[lang^="zh"] :is(.article-content, .page-content) blockquote {
+		margin-inline: -30px;
+	}
+}
+
+/*
+ * 中文正文里，EmDash 隔离 HTML 块通过 iframe 自适应高度。浏览器初始高度为
+ * 150px，而短内容的测量高度可能更小；保留这个最小高度，避免首次测量时页面跳动。
+ * 内容较长时仍由 EmDash 的高度同步逻辑继续扩展。英文保留 EmDash 默认样式。
+ */
+html[lang^="zh"] iframe.emdash-html-block {
+	min-height: 150px;
+}
+
+/*
+ * 中文文章与页面中，紧邻 Markdown 段落的普通 HTML 块按正文行距衔接：清除块
+ * 两端和相邻 Markdown 块的额外段距。英文继续使用 EmDash 默认间距；HTML 块
+ * 内部多个段落仍保留正文段落间距。
+ */
+html[lang^="zh"] .article-content .emdash-html-block,
+html[lang^="zh"] .page-content .emdash-html-block {
+	margin: 0;
+}
+
+html[lang^="zh"] article .article-content :is(p, ul, ol, blockquote):has(+ .emdash-html-block),
+html[lang^="zh"] article .page-content :is(p, ul, ol, blockquote):has(+ .emdash-html-block) {
+	margin-bottom: 0;
+}
+
+html[lang^="zh"] .article-content .emdash-html-block :last-child,
+html[lang^="zh"] .page-content .emdash-html-block :last-child {
+	margin-bottom: 0;
+}
+
 /*
  * math 插件的主题接口。插件把颜色、内边距、圆角都暴露成
  * --emdash-math-* 自定义属性，主题在这里覆盖即可，不用碰插件源码，

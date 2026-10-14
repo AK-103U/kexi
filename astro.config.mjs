@@ -6,6 +6,23 @@ import emdash from "emdash/astro";
 import { mathPlugin } from "@ak-103u/emdash-plugin-math";
 import { siteConfig } from "./src/i18n/config.ts";
 
+const latoFont = {
+	provider: fontProviders.google(),
+	name: "Lato",
+	cssVariable: "--font-lato",
+	weights: [300, 400, 700],
+	styles: ["normal"],
+	fallbacks: [
+		"-apple-system",
+		"BlinkMacSystemFont",
+		"Segoe UI",
+		"Droid Sans",
+		"Helvetica Neue",
+		"sans-serif",
+	],
+	optimizedFallbacks: false,
+};
+
 export default defineConfig({
 	// hreflang / sitemap 需要绝对 URL，必须配置 site。
 	site: siteConfig.siteUrl,
@@ -43,6 +60,7 @@ export default defineConfig({
 			weights: [400, 500, 600, 700],
 			fallbacks: ["sans-serif"],
 		},
+		latoFont,
 		{
 			provider: fontProviders.google(),
 			name: "JetBrains Mono",
