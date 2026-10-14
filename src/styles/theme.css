@@ -93,6 +93,29 @@ html[lang^="zh"] :is(.article-content, .page-content) h3 {
 	margin-block: 1em;
 }
 
+/* 标题文本与正文左边界对齐；色条锚在标题前方的留白中，靠近正文，不贴侧栏分隔线。 */
+html[lang^="zh"] :is(.article-content, .page-content) :is(h2, h3) {
+	position: relative;
+}
+
+html[lang^="zh"] :is(.article-content, .page-content) :is(h2, h3)::before {
+	position: absolute;
+	inset-inline-start: calc(-0.5em - 2.5px);
+	top: 0.35em;
+	width: 5px;
+	height: 1.16em;
+	border-radius: 999px;
+	background: var(--color-brand);
+	content: "";
+}
+
+/* 移动端没有侧栏分隔线时，将色条放到内容左侧的外边距中。 */
+@media (max-width: 999px) {
+	html[lang^="zh"] :is(.article-content, .page-content) :is(h2, h3)::before {
+		inset-inline-start: -0.45em;
+	}
+}
+
 html[lang^="zh"] :is(.article-content, .page-content) blockquote {
 	margin-block: 1.5em;
 	font-style: normal;
@@ -131,6 +154,16 @@ html[lang^="zh"] article .page-content :is(p, ul, ol, blockquote):has(+ .emdash-
 html[lang^="zh"] .article-content .emdash-html-block :last-child,
 html[lang^="zh"] .page-content .emdash-html-block :last-child {
 	margin-bottom: 0;
+}
+
+/* 中文正文中显式插入的 EmDash break / HTML hr 使用居中的短分隔线。 */
+html[lang^="zh"] :is(.article-content, .page-content) hr {
+	width: 100px;
+	height: 2px;
+	margin: 40px auto;
+	border: 0;
+	background: var(--color-text-secondary);
+	opacity: 0.55;
 }
 
 /*

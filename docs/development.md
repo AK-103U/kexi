@@ -47,6 +47,8 @@ UI 字典在 [zh.json](../src/i18n/zh.json) 与 [en.json](../src/i18n/en.json)�
 
 页面字体按语言选择：中文正文和标题使用 Lato，英文使用 Public Sans。`Base.astro` 按语言加载对应字体；Lato 不含中文字形，中文页的汉字由系统字体回退呈现。字体及字重配置见 `astro.config.mjs`。
 
+正文分隔线使用 EmDash Portable Text 的 `break` 块或 HTML `<hr>` 显式插入，不会自动加在每个 H2 前。Astro Markdown 的 `---` 也会输出 `<hr>`；中文页面会将这类分隔线渲染为居中 `100px × 2px` 短线，上下间距 `40px`。
+
 ## 代码块
 
 正文中的代码块由 [CodeBlock.astro](../src/components/CodeBlock.astro) 渲染，内部用 Astro 内置的 `<Code />` 调用 Shiki 着色，输出 `github-light` / `github-dark` 双主题，用 `light-dark()` 跟随站点明暗模式。右上角复制按钮用浏览器 Clipboard API 复制当前代码块文本，提供中英标签及成功/失败反馈；不新增依赖。
