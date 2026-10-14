@@ -49,7 +49,7 @@ UI 字典在 [zh.json](../src/i18n/zh.json) 与 [en.json](../src/i18n/en.json)�
 
 ## 代码块
 
-正文中的代码块由 [CodeBlock.astro](../src/components/CodeBlock.astro) 渲染，内部用 Astro 内置的 `<Code />` 调用 Shiki 着色，输出 `github-light` / `github-dark` 双主题，用 `light-dark()` 跟随站点明暗模式。不新增依赖：Shiki 与 GitHub 主题由 Astro 提供。
+正文中的代码块由 [CodeBlock.astro](../src/components/CodeBlock.astro) 渲染，内部用 Astro 内置的 `<Code />` 调用 Shiki 着色，输出 `github-light` / `github-dark` 双主题，用 `light-dark()` 跟随站点明暗模式。右上角复制按钮用浏览器 Clipboard API 复制当前代码块文本，提供中英标签及成功/失败反馈；不新增依赖。
 
 EmDash 的 Portable Text 渲染把 `code` 类型的块交给该组件，页面用 `components={{ type: { code: CodeBlock } }}` 接入。`mergeComponents` 按键浅合并，只覆盖 `code`，`image`、`table` 等内置类型保持不变。
 
@@ -57,7 +57,7 @@ EmDash 的 Portable Text 渲染把 `code` 类型的块交给该组件，页面�
 
 ## 客户端导航
 
-`Base.astro` 使用 `ClientRouter`，首屏仍由服务端生成 HTML，站内点击交给客户端导航。模块脚本只在首次加载执行，替换页面节点后通过 `astro:page-load` 重新绑定主题切换器、抽屉和目录（Table of Contents）。节点事件使用 `onclick` 赋值，目录重建前清空容器并断开旧观察者，避免重复绑定和追加。
+`Base.astro` 使用 `ClientRouter`，首屏仍由服务端生成 HTML，站内点击交给客户端导航。模块脚本只在首次加载执行，替换页面节点后通过 `astro:page-load` 重新绑定主题切换器、抽屉和目录（Table of Contents）。代码复制使用文档级事件委托并做幂等初始化，适配客户端导航且避免重复绑定。节点事件使用 `onclick` 赋值，目录重建前清空容器并断开旧观察者，避免重复绑定和追加。
 
 主题选择保存在 cookie 中，`.light`、`.dark` 类驱动 `color-scheme`；`astro:before-swap` 将选择带到新文档。新增页面交互时检查首次打开和连续导航两个路径，验证方式见 [验证指南](./verification.md)。
 

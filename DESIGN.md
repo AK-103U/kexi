@@ -47,6 +47,6 @@
 
 ## 代码块
 
-正文中的代码块由 [CodeBlock.astro](./src/components/CodeBlock.astro) 渲染，内部用 Astro 内置的 `<Code />` 调用 Shiki 着色，输出 `github-light` / `github-dark` 双主题与 `light-dark()` 行内样式，跟随站点明暗模式。代码块的几何与字体（内边距、边框、圆角、等宽字体）也由该组件负责，页面不重复声明 `pre` 规则。
+正文中的代码块由 [CodeBlock.astro](./src/components/CodeBlock.astro) 渲染，内部用 Astro 内置的 `<Code />` 调用 Shiki 着色，输出 `github-light` / `github-dark` 双主题与 `light-dark()` 行内样式，跟随站点明暗模式。右上角复制按钮用浏览器 Clipboard API 复制当前代码文本，并显示本地化状态；代码块的几何与字体（内边距、边框、圆角、等宽字体）也由该组件负责，页面不重复声明 `pre` 规则。
 
 代码配色来自 Shiki 主题，不写入本文的令牌体系；需要调整配色时更换 Shiki 主题，而不是覆盖 `--color-*`。决定与边界见 [ADR 0004](./docs/adr/0004-code-block-syntax-highlighting.md)。

@@ -37,10 +37,36 @@ if (!node?.code) {
 }
 
 const { code, language, filename } = node;
+const copyLabels = Astro.url.pathname.startsWith("/en/")
+	? { copy: "Copy code", copied: "Copied", failed: "Copy failed" }
+	: { copy: "复制代码", copied: "已复制", failed: "复制失败" };
 ---
 
-<div class="code-block">
+<div class:list={["code-block", { "code-block--has-filename": Boolean(filename) }]}>
 	{filename && <div class="code-block-filename">{filename}</div>}
+	<button
+		class="code-copy-button"
+		type="button"
+		data-code-copy
+		data-copy-state="idle"
+		data-label-copy={copyLabels.copy}
+		data-label-copied={copyLabels.copied}
+		data-label-failed={copyLabels.failed}
+		aria-label={copyLabels.copy}
+		title={copyLabels.copy}
+	>
+		<svg class="copy-icon" viewBox="0 0 24 24" aria-hidden="true">
+			<rect x="8" y="8" width="13" height="13" rx="2" />
+			<path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3" />
+		</svg>
+		<svg class="copied-icon" viewBox="0 0 24 24" aria-hidden="true">
+			<path d="m5 12 4 4L19 6" />
+		</svg>
+		<svg class="failed-icon" viewBox="0 0 24 24" aria-hidden="true">
+			<path d="m7 7 10 10M17 7 7 17" />
+		</svg>
+	</button>
+	<span class="code-copy-status" role="status" aria-live="polite"></span>
 	<Code
 		code={code}
 		lang={(language ?? "plaintext") as CodeLanguage}
@@ -49,14 +75,136 @@ const { code, language, filename } = node;
 	/>
 </div>
 
+<script>
+	function setCopyState(button: HTMLButtonElement, state: "idle" | "copied" | "failed") {
+		button.dataset.copyState = state;
+		const label =
+			state === "copied"
+				? (button.dataset.labelCopied ?? "Copied")
+				: state === "failed"
+					? (button.dataset.labelFailed ?? "Copy failed")
+					: (button.dataset.labelCopy ?? "Copy code");
+		button.setAttribute("aria-label", label);
+		button.title = label;
+		const status = button.parentElement?.querySelector<HTMLElement>(".code-copy-status");
+		if (status) status.textContent = state === "idle" ? "" : label;
+	}
+
+	if (document.documentElement.dataset.codeCopyHandlerInstalled !== "true") {
+		document.documentElement.dataset.codeCopyHandlerInstalled = "true";
+		document.addEventListener("click", async (event) => {
+			const target = event.target;
+			if (!(target instanceof Element)) return;
+			const button = target.closest<HTMLButtonElement>("[data-code-copy]");
+			if (!button || button.disabled) return;
+			const code = button.closest(".code-block")?.querySelector("pre code")?.textContent;
+			if (code == null) return;
+
+			button.disabled = true;
+			try {
+				await navigator.clipboard.writeText(code);
+				setCopyState(button, "copied");
+			} catch {
+				setCopyState(button, "failed");
+			}
+			window.setTimeout(() => {
+				if (!button.isConnected) return;
+				setCopyState(button, "idle");
+				button.disabled = false;
+			}, 1500);
+		});
+	}
+</script>
+
 <style>
 	.code-block {
+		position: relative;
 		margin: 2em 0;
+	}
+
+	.code-copy-button {
+		position: absolute;
+		top: 0.5rem;
+		right: 0.5rem;
+		z-index: 1;
+		display: grid;
+		place-items: center;
+		width: 2rem;
+		height: 2rem;
+		padding: 0;
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius);
+		background: var(--color-surface);
+		color: var(--color-text-secondary);
+		cursor: pointer;
+		transition:
+			color var(--transition-fast),
+			background var(--transition-fast),
+			opacity var(--transition-fast);
+	}
+
+	.code-block--has-filename .code-copy-button {
+		top: 0.25rem;
+	}
+
+	.code-copy-button:hover {
+		background: var(--color-bg-subtle);
+		color: var(--color-text);
+	}
+
+	.code-copy-button:focus-visible {
+		outline: 2px solid var(--color-brand);
+		outline-offset: 2px;
+	}
+
+	.code-copy-button:disabled {
+		cursor: wait;
+		opacity: 0.7;
+	}
+
+	.code-copy-button svg {
+		width: 1rem;
+		height: 1rem;
+		fill: none;
+		stroke: currentColor;
+		stroke-width: 2;
+		stroke-linecap: round;
+		stroke-linejoin: round;
+	}
+
+	.code-copy-button .copied-icon,
+	.code-copy-button .failed-icon {
+		display: none;
+	}
+
+	.code-copy-button[data-copy-state="copied"] .copy-icon,
+	.code-copy-button[data-copy-state="failed"] .copy-icon {
+		display: none;
+	}
+
+	.code-copy-button[data-copy-state="copied"] .copied-icon,
+	.code-copy-button[data-copy-state="failed"] .failed-icon {
+		display: block;
+	}
+
+	.code-copy-status {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip-path: inset(50%);
+		white-space: nowrap;
+		border: 0;
 	}
 
 	/* 文件名栏。与下方代码区拼成一个整体圆角。 */
 	.code-block-filename {
-		padding: 0.5rem 1rem;
+		display: flex;
+		align-items: center;
+		min-height: 2.5rem;
+		padding: 0.5rem calc(1rem + 2.5rem) 0.5rem 1rem;
 		background: var(--color-surface);
 		border: 1px solid var(--color-border);
 		border-bottom: none;
@@ -82,7 +230,7 @@ const { code, language, filename } = node;
 		line-height: 1.6;
 	}
 
-	.code-block-filename + :global(pre) {
+	.code-block-filename ~ :global(pre) {
 		border-top: none;
 		border-radius: 0 0 var(--radius-lg) var(--radius-lg);
 	}
