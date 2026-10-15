@@ -123,6 +123,38 @@
 		--tag-padding-y: 2px; /* vertical padding on tag pills */
 	}
 
+	:root.dark {
+		color-scheme: dark;
+		--lightningcss-light: ;
+		--lightningcss-dark: initial;
+		--color-bg: #0d0d0d;
+		--color-bg-subtle: #141414;
+		--color-text: #ededed;
+		--color-text-secondary: #a0a0a0;
+		--color-muted: #6b6b6b;
+		--color-border: #2a2a2a;
+		--color-border-subtle: #1f1f1f;
+		--color-surface: #181818;
+		--color-brand: #4d9fff;
+		--color-brand-hover: #6eb0ff;
+	}
+
+	:root.light {
+		color-scheme: light;
+		--lightningcss-light: initial;
+		--lightningcss-dark: ;
+		--color-bg: #ffffff;
+		--color-bg-subtle: #fafafa;
+		--color-text: #1a1a1a;
+		--color-text-secondary: #525252;
+		--color-muted: #8b8b8b;
+		--color-border: #e5e5e5;
+		--color-border-subtle: #f0f0f0;
+		--color-surface: #f7f7f7;
+		--color-brand: #0066cc;
+		--color-brand-hover: #0052a3;
+	}
+
 	/*
 	 * Light-mode values for browsers without light-dark() (Safari < 17.5,
 	 * Chrome < 123). Must mirror the light values above.

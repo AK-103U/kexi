@@ -49,6 +49,16 @@
 	--font-weight-display: 600;
 }
 
+:root.dark {
+	--color-brand: #db7753;
+	--color-brand-hover: #e28969;
+}
+
+:root.light {
+	--color-brand: #e86233;
+	--color-brand-hover: #c94f22;
+}
+
 /* 中文页面使用 Lato 字体栈，并保留自然字距；Lato 不含中文字形，汉字回退到系统字体。 */
 html[lang^="zh"] {
 	--font-body: var(--font-lato);

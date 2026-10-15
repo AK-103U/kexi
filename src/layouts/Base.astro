@@ -101,6 +101,12 @@ const pageCtx = createPublicPageContext({
 
 // Check if user is logged in (for showing admin link)
 const isLoggedIn = !!Astro.locals.user;
+if (!isLoggedIn) {
+	Astro.response.headers.set(
+		"Cache-Control",
+		"public, max-age=60, s-maxage=300, stale-while-revalidate=86400",
+	);
+}
 ---
 
 <!doctype html>
@@ -122,6 +128,7 @@ const isLoggedIn = !!Astro.locals.user;
 			底层仍是 MPA —— 首屏 SSR、SEO、hreflang、RSS 全部保留。
 		*/}
 		<ClientRouter />
+		<div id="route-progress" class="route-progress" aria-hidden="true"></div>
 		<script is:inline>
 			// Apply an explicit theme choice immediately to prevent flash.
 			// With no cookie, color-scheme: light dark follows the OS.
@@ -133,6 +140,35 @@ const isLoggedIn = !!Astro.locals.user;
 				if (theme === "dark" || theme === "light") {
 					document.documentElement.classList.add(theme);
 				}
+
+				// 全局路由加载指示线：点击链接与切换语言时立即反馈
+				var bar = null;
+				var timer = null;
+				function getBar() {
+					if (!bar) bar = document.getElementById("route-progress");
+					return bar;
+				}
+				document.addEventListener("astro:before-preparation", function () {
+					var el = getBar();
+					if (!el) return;
+					clearTimeout(timer);
+					el.style.transition = "none";
+					el.style.width = "0%";
+					el.style.opacity = "1";
+					el.offsetWidth; // 触发回流
+					el.style.transition = "width 0.4s ease-out";
+					el.style.width = "75%";
+				});
+				document.addEventListener("astro:page-load", function () {
+					var el = getBar();
+					if (!el) return;
+					el.style.transition = "width 0.15s ease-out, opacity 0.25s ease-out 0.15s";
+					el.style.width = "100%";
+					el.style.opacity = "0";
+					timer = setTimeout(function () {
+						if (el) el.style.width = "0%";
+					}, 400);
+				});
 			})();
 		</script>
 	</head>
@@ -378,14 +414,24 @@ const isLoggedIn = !!Astro.locals.user;
 				 * @supports guard keeps the toggle from forcing dark UA form
 				 * controls on browsers stuck on the plain-light fallback.
 				 */
-				@supports (color: light-dark(#000, #fff)) {
-					:root.light {
-						color-scheme: light;
-					}
+				:root.light {
+					color-scheme: light;
+				}
 
-					:root.dark {
-						color-scheme: dark;
-					}
+				:root.dark {
+					color-scheme: dark;
+				}
+
+				.route-progress {
+					position: fixed;
+					top: 0;
+					left: 0;
+					height: 2.5px;
+					width: 0%;
+					background: var(--color-brand);
+					z-index: 9999;
+					pointer-events: none;
+					opacity: 0;
 				}
 
 				html {
