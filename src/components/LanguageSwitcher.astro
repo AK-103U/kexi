@@ -31,6 +31,7 @@ const nextLabel = siteConfig.localeLabels[next];
 	href={`${localePath(next, path)}${search}`}
 	hreflang={next}
 	lang={next}
+	data-astro-prefetch="viewport"
 	aria-label={t("header.switchTo", { lang: nextLabel })}
 	title={t("header.switchTo", { lang: nextLabel })}
 >

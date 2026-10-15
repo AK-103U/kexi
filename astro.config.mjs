@@ -42,6 +42,7 @@ export default defineConfig({
 		layout: "constrained",
 		responsiveStyles: true,
 	},
+	prefetch: true,
 	integrations: [
 		react(),
 		emdash({
