@@ -12,8 +12,8 @@ export interface BlogSiteIdentitySettings {
 	favicon?: MediaReference;
 }
 
-const DEFAULT_SITE_TITLE = "My Blog";
-const DEFAULT_SITE_TAGLINE = "Thoughts, stories, and ideas.";
+const DEFAULT_SITE_TITLE = "Kexi";
+const DEFAULT_SITE_TAGLINE = "";
 export const DEFAULT_SITE_LOGO = "/logo.webp";
 
 /**
