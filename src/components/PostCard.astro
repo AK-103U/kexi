@@ -30,136 +30,156 @@ const {
 
 const t = useTranslations(lang);
 
-const formattedDate = date ? formatDate(date, lang) : null;
+const formattedDate = date ? formatDate(date, lang, "long") : null;
 ---
 
-<article class="post-card">
-	<a href={href} class="card-link">
-		{
-			featuredImage ? (
-				<div class="card-image" {...edit?.featured_image}>
-					<Image image={featuredImage} />
-				</div>
-			) : (
-				<div class="card-placeholder" />
-			)
-		}
-		<div class="card-body">
-			<div class="card-meta">
+<article class="post-item">
+	<div class="post-content">
+		<a href={href} class="post-title-link">
+			<h2 class="post-title" {...edit?.title}>{title}</h2>
+		</a>
+
+		<div class="post-details">
+			<div class="post-meta">
 				{
 					bylines && bylines.length > 0 && (
 						<>
-							<div class="card-bylines">
-								{bylines.slice(0, 1).map((credit) => (
-									<span class="card-byline">
-										{credit.byline.avatarStorageKey && (
-											<img
-												src={avatarUrl(credit.byline.avatarStorageKey, 96)}
-												alt={credit.byline.displayName}
-												class="card-byline-avatar"
-											/>
-										)}
-										<span class="card-byline-name">
-											{credit.byline.displayName}
+							<div class="post-bylines">
+								{bylines.slice(0, 2).map((credit, index) => (
+									<>
+										{index > 0 && <span class="byline-sep">,</span>}
+										<span class="post-byline">
+											{credit.byline.avatarStorageKey && (
+												<img
+													src={avatarUrl(credit.byline.avatarStorageKey, 96)}
+													alt={credit.byline.displayName}
+													class="post-byline-avatar"
+												/>
+											)}
+											<span class="post-byline-name">
+												{credit.byline.displayName}
+											</span>
 										</span>
-									</span>
+									</>
 								))}
-								{bylines.length > 1 && (
+								{bylines.length > 2 && (
 									<span
 										class="byline-more"
 										data-tooltip={bylines
-											.slice(1)
+											.slice(2)
 											.map((c) => c.byline.displayName)
 											.join(", ")}
 										title={bylines
-											.slice(1)
+											.slice(2)
 											.map((c) => c.byline.displayName)
 											.join(", ")}
 										tabindex="0"
 									>
-										+{bylines.length - 1}
+										+{bylines.length - 2}
 									</span>
 								)}
 							</div>
-							{(formattedDate || readingTime) && <span class="meta-dot" />}
+							<span class="meta-dot" />
 						</>
 					)
 				}
 				{formattedDate && <time>{formattedDate}</time>}
 				{formattedDate && readingTime && <span class="meta-dot" />}
-				{readingTime && <span>{t("post.min", { n: readingTime })}</span>}
+				{readingTime && <span>{t("post.minRead", { n: readingTime })}</span>}
 			</div>
-			<h2 class="card-title" {...edit?.title}>{title}</h2>
+
+			{
+				tags && tags.length > 0 && (
+					<div class="post-tags">
+						{tags.slice(0, 3).map((tag) => (
+							<a href={localePath(lang, `/tag/${tag.slug}`)} class="post-tag">
+								{tag.label}
+							</a>
+						))}
+					</div>
+				)
+			}
 		</div>
-	</a>
+	</div>
+
 	{
-		tags && tags.length > 0 && (
-			<div class="card-tags">
-				{tags.slice(0, 2).map((tag) => (
-					<a href={localePath(lang, `/tag/${tag.slug}`)} class="card-tag">
-						{tag.label}
-					</a>
-				))}
-			</div>
+		featuredImage && (
+			<a
+				href={href}
+				class="post-thumbnail-link"
+				tabindex="-1"
+				aria-hidden="true"
+				{...edit?.featured_image}
+			>
+				<div class="post-thumbnail">
+					<Image image={featuredImage} />
+				</div>
+			</a>
 		)
 	}
 </article>
 
 <style>
-	.post-card {
+	.post-item {
 		display: flex;
-		flex-direction: column;
+		align-items: flex-start;
+		justify-content: space-between;
+		gap: var(--spacing-6);
+		padding: var(--spacing-8) 0;
+		border-bottom: 1px solid var(--color-border-subtle);
 	}
 
-	.card-link {
+	.post-item:first-child {
+		padding-top: 0;
+	}
+
+	.post-item:last-child {
+		border-bottom: none;
+	}
+
+	.post-content {
+		flex: 1;
+		min-width: 0;
+	}
+
+	.post-title-link {
 		display: block;
 		text-decoration: none;
 		color: inherit;
 	}
 
-	.card-image {
-		aspect-ratio: 16 / 10;
-		overflow: hidden;
-		border-radius: var(--radius-lg);
-		background: var(--color-surface);
-		margin-bottom: var(--spacing-4);
+	.post-title {
+		font-size: var(--font-size-2xl);
+		font-weight: var(--font-weight-heading);
+		line-height: var(--leading-snug);
+		letter-spacing: var(--tracking-snug);
+		margin-bottom: var(--spacing-3);
+		transition: color var(--transition-fast);
 	}
 
-	.card-image img {
-		width: 100%;
-		height: 100%;
-		object-fit: cover;
-		transition: transform 0.3s ease;
+	.post-title-link:hover .post-title {
+		color: var(--color-brand);
 	}
 
-	.card-link:hover .card-image img {
-		transform: scale(1.03);
-	}
-
-	.card-placeholder {
-		aspect-ratio: 16 / 10;
-		border-radius: var(--radius-lg);
-		background: var(--color-surface);
-		margin-bottom: var(--spacing-4);
-	}
-
-	.card-body {
-		flex: 1;
-	}
-
-	.card-meta {
+	.post-details {
 		display: flex;
 		align-items: center;
 		flex-wrap: wrap;
 		column-gap: var(--spacing-3);
-		row-gap: 0;
-		font-size: var(--font-size-sm);
-		color: var(--color-muted);
-		margin-bottom: var(--spacing-2);
+		row-gap: var(--spacing-2);
 	}
 
-	.card-meta time,
-	.card-meta span:not(.meta-dot) {
+	.post-meta {
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: var(--spacing-3);
+		font-size: var(--font-size-sm);
+		color: var(--color-muted);
+	}
+
+	.post-meta time,
+	.post-meta span:not(.meta-dot):not(.post-byline-name) {
 		white-space: nowrap;
 	}
 
@@ -170,69 +190,35 @@ const formattedDate = date ? formatDate(date, lang) : null;
 		background: var(--color-muted);
 	}
 
-	.card-title {
-		font-size: var(--font-size-xl);
-		font-weight: var(--font-weight-heading);
-		line-height: var(--leading-snug);
-		letter-spacing: var(--tracking-snug);
-		margin-bottom: var(--spacing-2);
-		transition: color var(--transition-fast);
-	}
-
-	.card-link:hover .card-title {
-		color: var(--color-brand);
-	}
-
-
-	.card-tags {
-		display: flex;
-		flex-wrap: wrap;
-		gap: var(--spacing-2);
-		margin-top: var(--spacing-3);
-	}
-
-	.card-tag {
-		display: inline-block;
-		padding: var(--tag-padding-y) var(--spacing-2);
-		font-size: var(--font-size-xs);
-		color: var(--color-text-secondary);
-		background: var(--color-surface);
-		border-radius: var(--radius);
-		text-decoration: none;
-		transition:
-			color var(--transition-fast),
-			background var(--transition-fast);
-	}
-
-	.card-tag:hover {
-		color: var(--color-text);
-		background: var(--color-border);
-	}
-
-	/* Byline styles */
-	.card-bylines {
+	/* Bylines */
+	.post-bylines {
 		display: flex;
 		align-items: center;
 		gap: 2px;
 		white-space: nowrap;
 	}
 
-	.card-byline {
+	.post-byline {
 		display: inline-flex;
 		align-items: center;
 		gap: var(--spacing-1);
 	}
 
-	.card-byline-avatar {
-		width: var(--avatar-size-xs);
-		height: var(--avatar-size-xs);
+	.post-byline-avatar {
+		width: var(--avatar-size-sm);
+		height: var(--avatar-size-sm);
 		border-radius: 50%;
 		object-fit: contain;
 	}
 
-	.card-byline-name {
+	.post-byline-name {
 		font-weight: 500;
 		color: var(--color-text-secondary);
+	}
+
+	.byline-sep {
+		color: var(--color-muted);
+		margin-right: 2px;
 	}
 
 	.byline-more {
@@ -265,5 +251,74 @@ const formattedDate = date ? formatDate(date, lang) : null;
 		border-radius: var(--radius);
 		pointer-events: none;
 		z-index: 10;
+	}
+
+	/* Tags */
+	.post-tags {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--spacing-2);
+	}
+
+	.post-tag {
+		display: inline-block;
+		padding: var(--tag-padding-y) var(--spacing-2);
+		font-size: var(--font-size-xs);
+		color: var(--color-text-secondary);
+		background: var(--color-surface);
+		border-radius: var(--radius);
+		text-decoration: none;
+		transition:
+			color var(--transition-fast),
+			background var(--transition-fast);
+	}
+
+	.post-tag:hover {
+		color: var(--color-text);
+		background: var(--color-border);
+	}
+
+	/* Thumbnail */
+	.post-thumbnail-link {
+		flex-shrink: 0;
+		display: block;
+		text-decoration: none;
+	}
+
+	.post-thumbnail {
+		width: 144px;
+		aspect-ratio: 16 / 10;
+		border-radius: var(--radius-lg);
+		overflow: hidden;
+		background: var(--color-surface);
+	}
+
+	.post-thumbnail img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		transition: transform 0.3s ease;
+	}
+
+	.post-thumbnail-link:hover .post-thumbnail img {
+		transform: scale(1.04);
+	}
+
+	/* 移动端响应式 */
+	@media (max-width: 600px) {
+		.post-item {
+			gap: var(--spacing-3);
+			padding: var(--spacing-6) 0;
+		}
+
+		.post-title {
+			font-size: var(--font-size-xl);
+			margin-bottom: var(--spacing-2);
+		}
+
+		.post-thumbnail {
+			width: 96px;
+			border-radius: var(--radius);
+		}
 	}
 </style>

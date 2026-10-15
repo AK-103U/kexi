@@ -1,10 +1,10 @@
 ---
 import { getEmDashCollection, getTermsForEntries } from "emdash";
 import Base from "../../layouts/Base.astro";
+import PostCard from "../../components/PostCard.astro";
 import { getReadingTime } from "../../utils/reading-time";
 import { resolveEntryBylines, readEntryLocale } from "../../utils/bylines";
-import { avatarUrl } from "../../utils/media";
-import { formatDate, localePath, pageLang, useTranslations } from "../../i18n/ui";
+import { localePath, pageLang, useTranslations } from "../../i18n/ui";
 
 interface Props {
 	locale?: string;
@@ -73,70 +73,17 @@ const postsWithTags = posts.map((post) => ({
 			) : (
 				<div class="posts-list">
 					{postsWithTags.map(({ post, tags, bylines }) => (
-						<article class="post-item">
-							<a
-								href={localePath(lang, `/posts/${post.data.slug}`)}
-								class="post-link"
-							>
-								<h2 class="post-title" {...post.edit.title}>
-									{post.data.title}
-								</h2>
-							</a>
-							<div class="post-details">
-								<div class="post-meta">
-									{bylines.length > 0 && (
-										<>
-											<div class="post-bylines">
-												{bylines.slice(0, 2).map((credit, index) => (
-													<>
-														{index > 0 && <span class="byline-sep">,</span>}
-														<span class="post-byline">
-															{credit.byline.avatarStorageKey && (
-																<img
-																	src={avatarUrl(credit.byline.avatarStorageKey, 96)}
-																	alt={credit.byline.displayName}
-																	class="post-byline-avatar"
-																/>
-															)}
-															<span class="post-byline-name">
-																{credit.byline.displayName}
-															</span>
-														</span>
-													</>
-												))}
-												{bylines.length > 2 && (
-													<span class="byline-more">+{bylines.length - 2}</span>
-												)}
-											</div>
-											<span class="meta-dot" />
-										</>
-									)}
-									{post.data.publishedAt && (
-										<time>
-											{formatDate(post.data.publishedAt, lang, "long")}
-										</time>
-									)}
-									{post.data.publishedAt && <span class="meta-dot" />}
-									<span>
-										{t("post.minRead", {
-											n: getReadingTime(post.data.content),
-										})}
-									</span>
-								</div>
-								{tags.length > 0 && (
-									<div class="post-tags">
-										{tags.slice(0, 3).map((tag) => (
-											<a
-												href={localePath(lang, `/tag/${tag.slug}`)}
-												class="post-tag"
-											>
-												{tag.label}
-											</a>
-										))}
-									</div>
-								)}
-							</div>
-						</article>
+						<PostCard
+							lang={lang}
+							title={post.data.title ?? t("common.untitled")}
+							featuredImage={post.data.featured_image}
+							href={localePath(lang, `/posts/${post.data.slug}`)}
+							date={post.data.publishedAt ?? undefined}
+							readingTime={getReadingTime(post.data.content)}
+							tags={tags.map((t) => ({ slug: t.slug, label: t.label }))}
+							bylines={bylines}
+							edit={post.edit}
+						/>
 					))}
 				</div>
 			)
@@ -188,121 +135,28 @@ const postsWithTags = posts.map((post) => ({
 		flex-direction: column;
 	}
 
-	.post-item {
-		padding: var(--spacing-8) 0;
-		border-bottom: 1px solid var(--color-border-subtle);
-	}
-
-	.post-item:first-child {
-		padding-top: 0;
-	}
-
-	.post-item:last-child {
-		border-bottom: none;
-	}
-
-	.post-link {
-		display: block;
-		text-decoration: none;
-		color: inherit;
-	}
-
-	.post-details {
+	.pagination {
 		display: flex;
-		align-items: center;
-		flex-wrap: wrap;
-		column-gap: var(--spacing-3);
-		row-gap: var(--spacing-2);
+		justify-content: center;
+		gap: var(--spacing-4);
+		margin-top: var(--spacing-12);
 	}
 
-	.post-meta {
-		display: flex;
-		align-items: center;
-		flex-wrap: wrap;
-		gap: var(--spacing-3);
-		font-size: var(--font-size-sm);
-		color: var(--color-muted);
-	}
-
-	.meta-dot {
-		width: 3px;
-		height: 3px;
-		border-radius: 50%;
-		background: var(--color-muted);
-	}
-
-	/* Post bylines */
-	.post-bylines {
-		display: flex;
-		align-items: center;
-		gap: 2px;
-	}
-
-	.post-byline {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--spacing-1);
-	}
-
-	.post-byline-avatar {
-		width: var(--avatar-size-sm);
-		height: var(--avatar-size-sm);
-		border-radius: 50%;
-		object-fit: contain;
-	}
-
-	.post-byline-name {
-		font-weight: 500;
-		color: var(--color-text-secondary);
-	}
-
-	.byline-sep {
-		color: var(--color-muted);
-		margin-right: 2px;
-	}
-
-	.byline-more {
-		font-size: var(--font-size-xs);
-		color: var(--color-muted);
-		margin-left: 2px;
-	}
-
-	.post-title {
-		font-size: var(--font-size-2xl);
-		font-weight: var(--font-weight-heading);
-		line-height: var(--leading-snug);
-		letter-spacing: var(--tracking-snug);
-		margin-bottom: var(--spacing-2);
-		transition: color var(--transition-fast);
-	}
-
-	.post-link:hover .post-title {
-		color: var(--color-brand);
-	}
-
-
-	.post-tags {
-		display: flex;
-		flex-wrap: wrap;
-		gap: var(--spacing-2);
-	}
-
-	.post-tag {
-		display: inline-block;
-		padding: var(--tag-padding-y) var(--spacing-2);
-		font-size: var(--font-size-xs);
-		color: var(--color-text-secondary);
-		background: var(--color-surface);
+	.pagination a {
+		padding: var(--spacing-2) var(--spacing-4);
+		border: 1px solid var(--color-border);
 		border-radius: var(--radius);
+		color: var(--color-text);
 		text-decoration: none;
+		font-size: var(--font-size-sm);
 		transition:
-			color var(--transition-fast),
-			background var(--transition-fast);
+			border-color var(--transition-fast),
+			color var(--transition-fast);
 	}
 
-	.post-tag:hover {
-		color: var(--color-text);
-		background: var(--color-border);
+	.pagination a:hover {
+		border-color: var(--color-brand);
+		color: var(--color-brand);
 	}
 
 	@media (max-width: 600px) {
@@ -312,10 +166,6 @@ const postsWithTags = posts.map((post) => ({
 
 		.page-title {
 			font-size: var(--font-size-3xl);
-		}
-
-		.post-title {
-			font-size: var(--font-size-xl);
 		}
 	}
 </style>

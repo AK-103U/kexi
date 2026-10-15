@@ -156,11 +156,10 @@ const filteredPosts = posts.map((post) => ({
 		margin-bottom: var(--spacing-2);
 	}
 
-	/* 中栏只有 680px，三列卡片挤不下 —— 单列堆叠 */
+	/* 中栏只有 680px，采用与 posts 一致的单列条目流排版 */
 	.posts-grid {
 		display: flex;
 		flex-direction: column;
-		gap: var(--spacing-10);
 	}
 
 	.no-posts {
