@@ -4,6 +4,24 @@
 		"pagination": "Pagination",
 		"backToTop": "Back to top"
 	},
+	"mermaid": {
+		"diagram": "Diagram",
+		"code": "Code",
+		"zoomIn": "Zoom in",
+		"zoomOut": "Zoom out",
+		"zoomReset": "Reset zoom",
+		"download": "Download",
+		"downloadSvg": "SVG (Vector image)",
+		"downloadPng": "PNG (High-res image)",
+		"fullscreen": "Fullscreen",
+		"exitFullscreen": "Exit fullscreen",
+		"copyCode": "Copy code",
+		"copied": "Copied",
+		"copyFailed": "Copy failed",
+		"hint": "Scroll to zoom · Drag to pan · Double-click to reset",
+		"rendering": "Rendering diagram…",
+		"syntaxError": "⚠️ Diagram syntax error, switched to code view"
+	},
 	"header": {
 		"searchPlaceholder": "Search…",
 		"admin": "Admin",

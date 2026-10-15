@@ -4,6 +4,24 @@
 		"pagination": "分页",
 		"backToTop": "回到顶部"
 	},
+	"mermaid": {
+		"diagram": "图表",
+		"code": "源码",
+		"zoomIn": "放大",
+		"zoomOut": "缩小",
+		"zoomReset": "复位缩放",
+		"download": "下载",
+		"downloadSvg": "SVG 矢量图 (可编辑)",
+		"downloadPng": "PNG 高清图片 (便于分享)",
+		"fullscreen": "全屏",
+		"exitFullscreen": "退出全屏",
+		"copyCode": "复制代码",
+		"copied": "已复制",
+		"copyFailed": "复制失败",
+		"hint": "滚轮缩放 · 拖拽平移 · 双击复位",
+		"rendering": "正在渲染图表…",
+		"syntaxError": "⚠️ 图表语法解析异常，已自动切换至代码视图"
+	},
 	"header": {
 		"searchPlaceholder": "搜索…",
 		"admin": "管理",

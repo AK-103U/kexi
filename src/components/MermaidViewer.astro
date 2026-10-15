@@ -1,0 +1,872 @@
+---
+/**
+ * DeepSeek 风格的交互式 Mermaid 图表工作台 (MermaidViewer)
+ *
+ * 特性：
+ *  - Diagram / Code 双视图无缝切换
+ *  - 画布手势平移（Drag / Pan）与滚轮自由缩放（Zoom 0.25x ~ 5x）
+ *  - 彻底杜绝拖拽时文本被选中的问题（双重防选区保护）
+ *  - 全面支持 i18n 国际化（中英文文案与动态反馈）
+ *  - 一键导出高精度 SVG / PNG 图片
+ *  - 全屏沉浸式查看（模态全屏，Esc 或点击关闭）
+ *  - 客户端按需异步加载本地 Mermaid 运行时，Worker 零体积开销
+ *  - 语法错误优雅降级，明暗模式自适应
+ */
+import type { Lang } from "../i18n/config";
+import { useTranslations } from "../i18n/ui";
+
+interface Props {
+	code: string;
+	title?: string;
+	lang?: Lang;
+}
+
+const { code, title, lang = "zh" } = Astro.props;
+const t = useTranslations(lang);
+const viewerTitle = title ?? t("mermaid.diagram");
+---
+
+<div class="mermaid-viewer" data-mermaid-viewer aria-label={viewerTitle}>
+	{/* 源码备份（用于渲染与代码视图） */}
+	<pre class="mermaid-raw-source" style="display: none;">{code.trim()}</pre>
+
+	{/* 顶部工具栏 (DeepSeek 风格) */}
+	<header class="mermaid-viewer-header">
+		{/* 左侧分段按钮 */}
+		<div class="viewer-segmented" role="tablist" aria-label={t("mermaid.diagram")}>
+			<button
+				type="button"
+				class="viewer-tab is-active"
+				data-tab="diagram"
+				role="tab"
+				aria-selected="true"
+			>
+				<svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+					<rect x="3" y="3" width="18" height="18" rx="2" />
+					<line x1="3" y1="9" x2="21" y2="9" />
+					<line x1="9" y1="21" x2="9" y2="9" />
+				</svg>
+				<span>{t("mermaid.diagram")}</span>
+			</button>
+			<button
+				type="button"
+				class="viewer-tab"
+				data-tab="code"
+				role="tab"
+				aria-selected="false"
+			>
+				<svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+					<polyline points="16 18 22 12 16 6" />
+					<polyline points="8 6 2 12 8 18" />
+				</svg>
+				<span>{t("mermaid.code")}</span>
+			</button>
+		</div>
+
+		{/* 右侧操作栏 */}
+		<div class="viewer-actions">
+			{/* 缩放控制器 (仅在 Diagram 视图可用) */}
+			<div class="zoom-controls" data-zoom-controls>
+				<button type="button" class="action-btn" data-action="zoom-out" title={t("mermaid.zoomOut")} aria-label={t("mermaid.zoomOut")}>
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+						<line x1="5" y1="12" x2="19" y2="12" />
+					</svg>
+				</button>
+				<button type="button" class="action-btn action-btn--scale" data-action="zoom-reset" title={t("mermaid.zoomReset")} aria-label={t("mermaid.zoomReset")}>
+					<span class="scale-text" data-scale-text>100%</span>
+				</button>
+				<button type="button" class="action-btn" data-action="zoom-in" title={t("mermaid.zoomIn")} aria-label={t("mermaid.zoomIn")}>
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+						<line x1="12" y1="5" x2="12" y2="19" />
+						<line x1="5" y1="12" x2="19" y2="12" />
+					</svg>
+				</button>
+			</div>
+
+			<div class="action-divider"></div>
+
+			{/* 下载按钮与下拉菜单 */}
+			<div class="download-dropdown-wrap">
+				<button type="button" class="action-btn action-btn--labeled" data-action="download-toggle" title={t("mermaid.download")} aria-label={t("mermaid.download")}>
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+						<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+						<polyline points="7 10 12 15 17 10" />
+						<line x1="12" y1="15" x2="12" y2="3" />
+					</svg>
+					<span class="btn-label">{t("mermaid.download")}</span>
+				</button>
+				<div class="download-menu" data-download-menu>
+					<button type="button" class="download-menu-item" data-export="svg">
+						<span class="format-badge">SVG</span>
+						<span>{t("mermaid.downloadSvg")}</span>
+					</button>
+					<button type="button" class="download-menu-item" data-export="png">
+						<span class="format-badge">PNG</span>
+						<span>{t("mermaid.downloadPng")}</span>
+					</button>
+				</div>
+			</div>
+
+			{/* 全屏按钮 */}
+			<button type="button" class="action-btn action-btn--labeled" data-action="fullscreen" title={t("mermaid.fullscreen")} aria-label={t("mermaid.fullscreen")}>
+				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+					<path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+				</svg>
+				<span class="btn-label">{t("mermaid.fullscreen")}</span>
+			</button>
+		</div>
+	</header>
+
+	{/* 视图主体容器 */}
+	<div class="mermaid-viewer-body">
+		{/* 1. 图表画布面板 (支持平移缩放) */}
+		<div class="panel-diagram" data-panel="diagram">
+			<div class="diagram-viewport" data-viewport>
+				<div class="diagram-canvas" data-canvas>
+					<div class="diagram-render-target" data-render-target>
+						{/* 加载骨架屏 */}
+						<div class="diagram-skeleton">
+							<div class="skeleton-spinner"></div>
+							<span>{t("mermaid.rendering")}</span>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="viewport-hint">{t("mermaid.hint")}</div>
+		</div>
+
+		{/* 2. 源码面板 (Code 视图) */}
+		<div class="panel-code is-hidden" data-panel="code">
+			<div class="code-header">
+				<span class="code-lang">mermaid</span>
+				<button
+					type="button"
+					class="code-copy-btn"
+					data-copy-source
+					data-label-copy={t("mermaid.copyCode")}
+					data-label-copied={t("mermaid.copied")}
+					data-label-failed={t("mermaid.copyFailed")}
+					title={t("mermaid.copyCode")}
+					aria-label={t("mermaid.copyCode")}
+				>
+					<svg class="icon-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+						<rect x="8" y="8" width="13" height="13" rx="2" />
+						<path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3" />
+					</svg>
+					<span class="copy-text">{t("mermaid.copyCode")}</span>
+				</button>
+			</div>
+			<pre class="code-pre"><code>{code.trim()}</code></pre>
+		</div>
+	</div>
+
+	{/* 错误提示浮条 */}
+	<div class="viewer-error-bar is-hidden" data-error-bar>
+		<span>{t("mermaid.syntaxError")}</span>
+	</div>
+</div>
+
+<script>
+	// 动态管理 Mermaid 工作台
+	function initMermaidViewers() {
+		const viewers = document.querySelectorAll<HTMLElement>("[data-mermaid-viewer]");
+		if (viewers.length === 0) return;
+
+		let mermaidPromise: Promise<any> | null = null;
+		function loadMermaid() {
+			if (!mermaidPromise) {
+				mermaidPromise = new Promise((resolve, reject) => {
+					const w = window as any;
+					if (w.mermaid) {
+						resolve(w.mermaid.default || w.mermaid);
+						return;
+					}
+					const script = document.createElement("script");
+					script.src = "/vendor/mermaid/mermaid.min.js";
+					script.onload = () => {
+						resolve(w.mermaid.default || w.mermaid);
+					};
+					script.onerror = reject;
+					document.head.appendChild(script);
+				});
+			}
+			return mermaidPromise;
+		}
+
+		viewers.forEach((viewer) => {
+			if (viewer.dataset.initialized === "true") return;
+			viewer.dataset.initialized = "true";
+
+			const rawSource = viewer.querySelector<HTMLElement>(".mermaid-raw-source")?.textContent?.trim() ?? "";
+			const renderTarget = viewer.querySelector<HTMLElement>("[data-render-target]");
+			const viewport = viewer.querySelector<HTMLElement>("[data-viewport]");
+			const canvas = viewer.querySelector<HTMLElement>("[data-canvas]");
+			const scaleText = viewer.querySelector<HTMLElement>("[data-scale-text]");
+			const errorBar = viewer.querySelector<HTMLElement>("[data-error-bar]");
+			const zoomControls = viewer.querySelector<HTMLElement>("[data-zoom-controls]");
+
+			// 状态管理
+			let scale = 1.0;
+			let translateX = 0;
+			let translateY = 0;
+			let isDragging = false;
+			let startX = 0;
+			let startY = 0;
+			let currentView = "diagram";
+
+			function updateTransform() {
+				if (!canvas) return;
+				canvas.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+				if (scaleText) scaleText.textContent = `${Math.round(scale * 100)}%`;
+			}
+
+			function resetTransform() {
+				scale = 1.0;
+				translateX = 0;
+				translateY = 0;
+				updateTransform();
+			}
+
+			// 渲染流程
+			async function renderDiagram() {
+				try {
+					const mermaid = await loadMermaid();
+					const isDark = document.documentElement.classList.contains("dark");
+					mermaid.initialize({
+						startOnLoad: false,
+						theme: isDark ? "dark" : "neutral",
+						themeVariables: {
+							primaryColor: isDark ? "#2a221b" : "#fdf0ea",
+							primaryBorderColor: "#ff8800",
+							primaryTextColor: isDark ? "#f0f2f5" : "#1a1c20",
+							lineColor: isDark ? "#8b929e" : "#525a66",
+							secondaryColor: isDark ? "#1e2025" : "#f5f5f5",
+							tertiaryColor: isDark ? "#181b21" : "#fafafa",
+						},
+						securityLevel: "loose",
+						suppressErrorRendering: true,
+					});
+
+					const uniqueId = `mermaid-svg-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+					const { svg } = await mermaid.render(uniqueId, rawSource);
+
+					if (renderTarget) {
+						renderTarget.innerHTML = svg;
+						const svgElement = renderTarget.querySelector("svg");
+						if (svgElement) {
+							svgElement.style.maxWidth = "100%";
+							svgElement.style.height = "auto";
+						}
+					}
+					resetTransform();
+				} catch (err) {
+					console.warn("Mermaid render fallback to code:", err);
+					switchTab("code");
+					if (errorBar) errorBar.classList.remove("is-hidden");
+				}
+			}
+
+			renderDiagram();
+
+			// 视图 Tab 切换
+			function switchTab(tab: string) {
+				currentView = tab;
+				viewer.querySelectorAll(".viewer-tab").forEach((btn) => {
+					const isActive = (btn as HTMLElement).dataset.tab === tab;
+					btn.classList.toggle("is-active", isActive);
+					btn.setAttribute("aria-selected", String(isActive));
+				});
+				viewer.querySelectorAll("[data-panel]").forEach((panel) => {
+					const isTarget = (panel as HTMLElement).dataset.panel === tab;
+					panel.classList.toggle("is-hidden", !isTarget);
+				});
+				if (zoomControls) {
+					zoomControls.style.display = tab === "diagram" ? "flex" : "none";
+				}
+			}
+
+			viewer.querySelectorAll(".viewer-tab").forEach((btn) => {
+				btn.addEventListener("click", () => {
+					const tab = (btn as HTMLElement).dataset.tab ?? "diagram";
+					switchTab(tab);
+				});
+			});
+
+			// 手势交互：滚轮缩放
+			viewport?.addEventListener("wheel", (e: WheelEvent) => {
+				if (currentView !== "diagram") return;
+				e.preventDefault();
+				const factor = e.deltaY < 0 ? 1.15 : 0.88;
+				const newScale = Math.min(5.0, Math.max(0.25, scale * factor));
+				scale = newScale;
+				updateTransform();
+			}, { passive: false });
+
+			// 手势交互：拖拽平移（防文本选择保护）
+			viewport?.addEventListener("pointerdown", (e: PointerEvent) => {
+				if (currentView !== "diagram" || e.button !== 0) return;
+				e.preventDefault(); // 阻止原生文本选取
+				window.getSelection()?.removeAllRanges(); // 彻底清除残余选区
+
+				isDragging = true;
+				startX = e.clientX - translateX;
+				startY = e.clientY - translateY;
+				viewport.classList.add("is-dragging");
+				viewport.setPointerCapture(e.pointerId);
+			});
+
+			viewport?.addEventListener("pointermove", (e: PointerEvent) => {
+				if (!isDragging) return;
+				e.preventDefault();
+				translateX = e.clientX - startX;
+				translateY = e.clientY - startY;
+				updateTransform();
+			});
+
+			function stopDragging(e: PointerEvent) {
+				if (!isDragging) return;
+				isDragging = false;
+				viewport?.classList.remove("is-dragging");
+				try {
+					viewport?.releasePointerCapture(e.pointerId);
+				} catch {}
+			}
+
+			viewport?.addEventListener("pointerup", stopDragging);
+			viewport?.addEventListener("pointercancel", stopDragging);
+
+			// 双击复位
+			viewport?.addEventListener("dblclick", () => {
+				resetTransform();
+			});
+
+			// 缩放按钮
+			viewer.querySelector("[data-action='zoom-in']")?.addEventListener("click", () => {
+				scale = Math.min(5.0, scale * 1.25);
+				updateTransform();
+			});
+			viewer.querySelector("[data-action='zoom-out']")?.addEventListener("click", () => {
+				scale = Math.max(0.25, scale * 0.8);
+				updateTransform();
+			});
+			viewer.querySelector("[data-action='zoom-reset']")?.addEventListener("click", () => {
+				resetTransform();
+			});
+
+			// 导出下载
+			const dlToggle = viewer.querySelector("[data-action='download-toggle']");
+			const dlMenu = viewer.querySelector("[data-download-menu]");
+
+			dlToggle?.addEventListener("click", (e) => {
+				e.stopPropagation();
+				dlMenu?.classList.toggle("is-open");
+			});
+
+			document.addEventListener("click", () => {
+				dlMenu?.classList.remove("is-open");
+			});
+
+			// 下载 SVG
+			viewer.querySelector("[data-export='svg']")?.addEventListener("click", () => {
+				const svg = renderTarget?.querySelector("svg");
+				if (!svg) return;
+				const svgData = new XMLSerializer().serializeToString(svg);
+				const blob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
+				const url = URL.createObjectURL(blob);
+				const a = document.createElement("a");
+				a.href = url;
+				a.download = `diagram-${Date.now()}.svg`;
+				a.click();
+				URL.revokeObjectURL(url);
+			});
+
+			// 下载 PNG (通过离屏 Canvas 以 2x 清晰度栅格化)
+			viewer.querySelector("[data-export='png']")?.addEventListener("click", () => {
+				const svg = renderTarget?.querySelector("svg");
+				if (!svg) return;
+				const svgData = new XMLSerializer().serializeToString(svg);
+				const img = new Image();
+				const blob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
+				const url = URL.createObjectURL(blob);
+
+				img.onload = () => {
+					const canvasEl = document.createElement("canvas");
+					const dpr = 2;
+					canvasEl.width = (img.naturalWidth || 800) * dpr;
+					canvasEl.height = (img.naturalHeight || 600) * dpr;
+					const ctx = canvasEl.getContext("2d");
+					if (ctx) {
+						ctx.scale(dpr, dpr);
+						ctx.fillStyle = document.documentElement.classList.contains("dark") ? "#181b21" : "#ffffff";
+						ctx.fillRect(0, 0, canvasEl.width, canvasEl.height);
+						ctx.drawImage(img, 0, 0);
+						const pngUrl = canvasEl.toDataURL("image/png");
+						const a = document.createElement("a");
+						a.href = pngUrl;
+						a.download = `diagram-${Date.now()}.png`;
+						a.click();
+					}
+					URL.revokeObjectURL(url);
+				};
+				img.src = url;
+			});
+
+			// 全屏模式
+			const fsBtn = viewer.querySelector("[data-action='fullscreen']");
+			fsBtn?.addEventListener("click", () => {
+				viewer.classList.toggle("is-fullscreen");
+				document.body.classList.toggle("has-fullscreen-viewer", viewer.classList.contains("is-fullscreen"));
+				resetTransform();
+			});
+
+			document.addEventListener("keydown", (e) => {
+				if (e.key === "Escape" && viewer.classList.contains("is-fullscreen")) {
+					viewer.classList.remove("is-fullscreen");
+					document.body.classList.remove("has-fullscreen-viewer");
+					resetTransform();
+				}
+			});
+
+			// 复制代码 (多语言文案适配)
+			const copyBtn = viewer.querySelector<HTMLButtonElement>("[data-copy-source]");
+			const copyText = copyBtn?.querySelector(".copy-text");
+			copyBtn?.addEventListener("click", async () => {
+				const labelCopy = copyBtn.dataset.labelCopy || "复制源码";
+				const labelCopied = copyBtn.dataset.labelCopied || "已复制";
+				try {
+					await navigator.clipboard.writeText(rawSource);
+					if (copyText) copyText.textContent = labelCopied;
+					setTimeout(() => {
+						if (copyText) copyText.textContent = labelCopy;
+					}, 1500);
+				} catch {}
+			});
+		});
+	}
+
+	initMermaidViewers();
+	document.addEventListener("astro:page-load", initMermaidViewers);
+
+	// 监听主题切换以重绘
+	const themeObserver = new MutationObserver((mutations) => {
+		for (const mutation of mutations) {
+			if (mutation.type === "attributes" && mutation.attributeName === "class") {
+				document.querySelectorAll<HTMLElement>("[data-mermaid-viewer]").forEach((el) => {
+					el.dataset.initialized = "false";
+				});
+				initMermaidViewers();
+				break;
+			}
+		}
+	});
+	themeObserver.observe(document.documentElement, { attributes: true });
+</script>
+
+<style>
+	.mermaid-viewer {
+		position: relative;
+		margin: var(--spacing-6) 0;
+		background: var(--color-surface);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-lg);
+		overflow: hidden;
+		display: flex;
+		flex-direction: column;
+		box-shadow: 0 4px 16px color-mix(in srgb, var(--color-text) 4%, transparent);
+		transition: border-color var(--transition-fast) ease, box-shadow var(--transition-fast) ease;
+	}
+
+	.mermaid-viewer:hover {
+		border-color: color-mix(in srgb, var(--color-border) 70%, var(--color-brand));
+	}
+
+	/* 顶部工具栏 */
+	.mermaid-viewer-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: var(--spacing-2) var(--spacing-3);
+		background: color-mix(in srgb, var(--color-surface) 95%, transparent);
+		border-bottom: 1px solid var(--color-border-subtle);
+		gap: var(--spacing-3);
+		flex-wrap: wrap;
+	}
+
+	/* 分段切换按钮 (Diagram / Code) */
+	.viewer-segmented {
+		display: inline-flex;
+		align-items: center;
+		background: color-mix(in srgb, var(--color-bg) 60%, transparent);
+		border: 1px solid var(--color-border-subtle);
+		border-radius: var(--radius-full, 9999px);
+		padding: 2px;
+		gap: 2px;
+	}
+
+	.viewer-tab {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		padding: 4px 12px;
+		border-radius: var(--radius-full, 9999px);
+		border: none;
+		background: transparent;
+		color: var(--color-text-secondary);
+		font-size: var(--font-size-xs, 12px);
+		font-weight: 500;
+		cursor: pointer;
+		transition: all var(--transition-fast) ease;
+	}
+
+	.viewer-tab:hover {
+		color: var(--color-text);
+	}
+
+	.viewer-tab.is-active {
+		background: var(--color-surface);
+		color: var(--color-brand);
+		font-weight: 600;
+		box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+	}
+
+	.tab-icon {
+		width: 14px;
+		height: 14px;
+	}
+
+	/* 右侧操作按钮组 */
+	.viewer-actions {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--spacing-2);
+	}
+
+	.zoom-controls {
+		display: inline-flex;
+		align-items: center;
+		gap: 2px;
+		background: color-mix(in srgb, var(--color-bg) 60%, transparent);
+		border: 1px solid var(--color-border-subtle);
+		border-radius: var(--radius);
+		padding: 2px;
+	}
+
+	.action-btn {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		padding: 4px 8px;
+		height: 28px;
+		border-radius: var(--radius-sm, 4px);
+		border: none;
+		background: transparent;
+		color: var(--color-text-secondary);
+		cursor: pointer;
+		font-size: var(--font-size-xs, 12px);
+		transition: all var(--transition-fast) ease;
+	}
+
+	.action-btn:hover {
+		background: color-mix(in srgb, var(--color-surface) 90%, transparent);
+		color: var(--color-text);
+	}
+
+	.action-btn svg {
+		width: 14px;
+		height: 14px;
+	}
+
+	.action-btn--scale {
+		font-family: var(--font-mono);
+		font-size: 11px;
+		padding: 0 6px;
+		min-width: 44px;
+	}
+
+	.action-btn--labeled {
+		gap: 6px;
+		border: 1px solid var(--color-border-subtle);
+		border-radius: var(--radius);
+		background: color-mix(in srgb, var(--color-bg) 40%, transparent);
+		padding: 4px 10px;
+	}
+
+	.action-btn--labeled:hover {
+		border-color: var(--color-border);
+		color: var(--color-brand);
+	}
+
+	.action-divider {
+		width: 1px;
+		height: 16px;
+		background: var(--color-border-subtle);
+	}
+
+	/* 下拉菜单 */
+	.download-dropdown-wrap {
+		position: relative;
+	}
+
+	.download-menu {
+		position: absolute;
+		top: calc(100% + 6px);
+		right: 0;
+		z-index: 100;
+		background: var(--color-surface);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius);
+		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+		padding: 4px;
+		display: none;
+		flex-direction: column;
+		min-width: 220px;
+	}
+
+	.download-menu.is-open {
+		display: flex;
+	}
+
+	.download-menu-item {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding: 8px 10px;
+		border: none;
+		background: transparent;
+		color: var(--color-text);
+		font-size: var(--font-size-xs, 12px);
+		text-align: left;
+		cursor: pointer;
+		border-radius: var(--radius-sm, 4px);
+		transition: background var(--transition-fast) ease;
+	}
+
+	.download-menu-item:hover {
+		background: color-mix(in srgb, var(--color-bg) 70%, transparent);
+		color: var(--color-brand);
+	}
+
+	.format-badge {
+		font-family: var(--font-mono);
+		font-size: 10px;
+		font-weight: 700;
+		padding: 2px 5px;
+		border-radius: 3px;
+		background: color-mix(in srgb, var(--color-text) 10%, transparent);
+	}
+
+	/* 内容主体 */
+	.mermaid-viewer-body {
+		position: relative;
+		min-height: 280px;
+		background: var(--color-bg);
+	}
+
+	.panel-diagram {
+		position: relative;
+		width: 100%;
+		height: 380px;
+		overflow: hidden;
+		display: flex;
+		flex-direction: column;
+	}
+
+	/*
+	 * 彻底禁用画布内的文字选区，保证拖拽平移时纯净无干扰
+	 */
+	.diagram-viewport,
+	.diagram-canvas,
+	.diagram-render-target,
+	.diagram-render-target :global(svg),
+	.diagram-render-target :global(svg *) {
+		user-select: none !important;
+		-webkit-user-select: none !important;
+		-moz-user-select: none !important;
+	}
+
+	.diagram-viewport {
+		position: relative;
+		flex: 1;
+		width: 100%;
+		height: 100%;
+		overflow: hidden;
+		cursor: grab;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.diagram-viewport.is-dragging {
+		cursor: grabbing;
+	}
+
+	.diagram-canvas {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		transform-origin: center center;
+		will-change: transform;
+		transition: transform 50ms linear;
+	}
+
+	.diagram-render-target {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: var(--spacing-6);
+	}
+
+	.diagram-render-target :global(svg) {
+		display: block;
+		margin: auto;
+	}
+
+	.viewport-hint {
+		position: absolute;
+		bottom: var(--spacing-2);
+		left: 50%;
+		transform: translateX(-50%);
+		font-size: 11px;
+		color: var(--color-text-secondary);
+		opacity: 0.6;
+		pointer-events: none;
+		white-space: nowrap;
+	}
+
+	/* 骨架屏 */
+	.diagram-skeleton {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 12px;
+		color: var(--color-text-secondary);
+		font-size: var(--font-size-xs, 12px);
+	}
+
+	.skeleton-spinner {
+		width: 24px;
+		height: 24px;
+		border: 2px solid var(--color-border);
+		border-top-color: var(--color-brand);
+		border-radius: 50%;
+		animation: skeleton-spin 0.8s linear infinite;
+	}
+
+	@keyframes skeleton-spin {
+		to { transform: rotate(360deg); }
+	}
+
+	/* 源码面板 */
+	.panel-code {
+		display: flex;
+		flex-direction: column;
+		background: var(--color-surface);
+	}
+
+	.code-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: var(--spacing-2) var(--spacing-4);
+		border-bottom: 1px solid var(--color-border-subtle);
+		background: color-mix(in srgb, var(--color-bg) 40%, transparent);
+	}
+
+	.code-lang {
+		font-family: var(--font-mono);
+		font-size: 11px;
+		text-transform: uppercase;
+		color: var(--color-text-secondary);
+	}
+
+	.code-copy-btn {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		padding: 3px 8px;
+		border-radius: var(--radius-sm, 4px);
+		border: 1px solid var(--color-border-subtle);
+		background: var(--color-surface);
+		color: var(--color-text-secondary);
+		font-size: 11px;
+		cursor: pointer;
+	}
+
+	.code-copy-btn:hover {
+		color: var(--color-brand);
+		border-color: var(--color-brand);
+	}
+
+	.code-copy-btn .icon-copy {
+		width: 12px;
+		height: 12px;
+	}
+
+	.code-pre {
+		margin: 0;
+		padding: var(--spacing-4);
+		max-height: 380px;
+		overflow: auto;
+		font-family: var(--font-mono);
+		font-size: var(--font-size-xs, 12px);
+		line-height: 1.6;
+		color: var(--color-text);
+		background: var(--color-surface);
+	}
+
+	/* 全屏模态 */
+	.mermaid-viewer.is-fullscreen {
+		position: fixed !important;
+		inset: 0 !important;
+		z-index: 9999 !important;
+		margin: 0 !important;
+		border-radius: 0 !important;
+		width: 100vw !important;
+		height: 100vh !important;
+		height: 100dvh !important;
+		max-width: none !important;
+	}
+
+	.mermaid-viewer.is-fullscreen .mermaid-viewer-body {
+		flex: 1;
+		height: calc(100% - 50px);
+	}
+
+	.mermaid-viewer.is-fullscreen .panel-diagram {
+		height: 100%;
+	}
+
+	.mermaid-viewer.is-fullscreen .panel-code {
+		height: 100%;
+	}
+
+	.mermaid-viewer.is-fullscreen .code-pre {
+		max-height: none;
+		flex: 1;
+	}
+
+	.is-hidden {
+		display: none !important;
+	}
+
+	.viewer-error-bar {
+		padding: var(--spacing-2) var(--spacing-4);
+		background: color-mix(in srgb, #e74c3c 15%, transparent);
+		color: #e74c3c;
+		font-size: 12px;
+		text-align: center;
+		border-top: 1px solid color-mix(in srgb, #e74c3c 30%, transparent);
+	}
+
+	@media (max-width: 640px) {
+		.mermaid-viewer-header {
+			padding: var(--spacing-2);
+		}
+		.btn-label {
+			display: none;
+		}
+		.panel-diagram {
+			height: 300px;
+		}
+	}
+</style>

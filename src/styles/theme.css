@@ -173,3 +173,47 @@ html[lang^="zh"] :is(.article-content, .page-content) hr {
 	--emdash-math-bg: light-dark(#fdf0ea, #2a1a12);
 	--emdash-math-border: light-dark(#f3c4ae, #6b3a22);
 }
+
+/*
+ * 文章与页面正文表格样式 (Responsive Tables)
+ */
+:is(.article-content, .page-content) .table-wrapper,
+:is(.article-content, .page-content) .emdash-table-wrapper {
+	max-width: 100%;
+	margin: var(--spacing-6) 0;
+	overflow-x: auto;
+	-webkit-overflow-scrolling: touch;
+	border-radius: var(--radius);
+	border: 1px solid var(--color-border-subtle);
+}
+
+:is(.article-content, .page-content) table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: var(--font-size-sm);
+	line-height: var(--leading-normal);
+	text-align: left;
+	background: var(--color-bg);
+}
+
+:is(.article-content, .page-content) :is(th, td) {
+	padding: var(--spacing-3) var(--spacing-4);
+	border-bottom: 1px solid var(--color-border-subtle);
+	vertical-align: top;
+}
+
+:is(.article-content, .page-content) th {
+	font-weight: 600;
+	color: var(--color-text);
+	background: var(--color-surface);
+	white-space: nowrap;
+}
+
+:is(.article-content, .page-content) tr:last-child td {
+	border-bottom: none;
+}
+
+:is(.article-content, .page-content) tbody tr:hover {
+	background: color-mix(in srgb, var(--color-surface) 60%, transparent);
+}
+

@@ -19,6 +19,8 @@
  */
 import type { CodeLanguage } from "astro";
 import { Code } from "astro:components";
+import MermaidViewer from "./MermaidViewer.astro";
+import type { Lang } from "../i18n/config";
 
 interface Props {
 	node: {
@@ -28,52 +30,61 @@ interface Props {
 		language?: string;
 		filename?: string;
 	};
+	lang?: Lang;
 }
 
-const { node } = Astro.props;
+const { node, lang: propLang } = Astro.props;
 
 if (!node?.code) {
 	return null;
 }
 
+const lang: Lang = propLang ?? (Astro.url.pathname.startsWith("/en/") ? "en" : "zh");
 const { code, language, filename } = node;
-const copyLabels = Astro.url.pathname.startsWith("/en/")
+const isMermaid = language === "mermaid";
+const copyLabels = lang === "en"
 	? { copy: "Copy code", copied: "Copied", failed: "Copy failed" }
 	: { copy: "复制代码", copied: "已复制", failed: "复制失败" };
 ---
 
-<div class:list={["code-block", { "code-block--has-filename": Boolean(filename) }]}>
-	{filename && <div class="code-block-filename">{filename}</div>}
-	<button
-		class="code-copy-button"
-		type="button"
-		data-code-copy
-		data-copy-state="idle"
-		data-label-copy={copyLabels.copy}
-		data-label-copied={copyLabels.copied}
-		data-label-failed={copyLabels.failed}
-		aria-label={copyLabels.copy}
-		title={copyLabels.copy}
-	>
-		<svg class="copy-icon" viewBox="0 0 24 24" aria-hidden="true">
-			<rect x="8" y="8" width="13" height="13" rx="2" />
-			<path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3" />
-		</svg>
-		<svg class="copied-icon" viewBox="0 0 24 24" aria-hidden="true">
-			<path d="m5 12 4 4L19 6" />
-		</svg>
-		<svg class="failed-icon" viewBox="0 0 24 24" aria-hidden="true">
-			<path d="m7 7 10 10M17 7 7 17" />
-		</svg>
-	</button>
-	<span class="code-copy-status" role="status" aria-live="polite"></span>
-	<Code
-		code={code}
-		lang={(language ?? "plaintext") as CodeLanguage}
-		themes={{ light: "github-light", dark: "github-dark" }}
-		defaultColor="light-dark()"
-	/>
-</div>
+{
+	isMermaid ? (
+		<MermaidViewer code={code} lang={lang} />
+	) : (
+		<div class:list={["code-block", { "code-block--has-filename": Boolean(filename) }]}>
+			{filename && <div class="code-block-filename">{filename}</div>}
+			<button
+				class="code-copy-button"
+				type="button"
+				data-code-copy
+				data-copy-state="idle"
+				data-label-copy={copyLabels.copy}
+				data-label-copied={copyLabels.copied}
+				data-label-failed={copyLabels.failed}
+				aria-label={copyLabels.copy}
+				title={copyLabels.copy}
+			>
+				<svg class="copy-icon" viewBox="0 0 24 24" aria-hidden="true">
+					<rect x="8" y="8" width="13" height="13" rx="2" />
+					<path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3" />
+				</svg>
+				<svg class="copied-icon" viewBox="0 0 24 24" aria-hidden="true">
+					<path d="m5 12 4 4L19 6" />
+				</svg>
+				<svg class="failed-icon" viewBox="0 0 24 24" aria-hidden="true">
+					<path d="m7 7 10 10M17 7 7 17" />
+				</svg>
+			</button>
+			<span class="code-copy-status" role="status" aria-live="polite"></span>
+			<Code
+				code={code}
+				lang={(language ?? "plaintext") as CodeLanguage}
+				themes={{ light: "github-light", dark: "github-dark" }}
+				defaultColor="light-dark()"
+			/>
+		</div>
+	)
+}
 
 <script>
 	function setCopyState(button: HTMLButtonElement, state: "idle" | "copied" | "failed") {

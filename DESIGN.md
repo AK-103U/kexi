@@ -50,3 +50,11 @@
 正文中的代码块由 [CodeBlock.astro](./src/components/CodeBlock.astro) 渲染，内部用 Astro 内置的 `<Code />` 调用 Shiki 着色，输出 `github-light` / `github-dark` 双主题与 `light-dark()` 行内样式，跟随站点明暗模式。右上角复制按钮用浏览器 Clipboard API 复制当前代码文本，并显示本地化状态；代码块的几何与字体（内边距、边框、圆角、等宽字体）也由该组件负责，页面不重复声明 `pre` 规则。
 
 代码配色来自 Shiki 主题，不写入本文的令牌体系；需要调整配色时更换 Shiki 主题，而不是覆盖 `--color-*`。决定与边界见 [ADR 0004](./docs/adr/0004-code-block-syntax-highlighting.md)。
+
+## Mermaid 图表工作台
+
+正文中 `language === "mermaid"` 的代码块由 [MermaidViewer.astro](./src/components/MermaidViewer.astro) 接管，采用类似 DeepSeek 网页端交互工作台模式：
+1. **双模式切换**：顶部分段按钮支持在 `Diagram`（交互矢量画布）与 `Code`（语法源码与复制）之间平滑切换；
+2. **手势平移与缩放**：画布支持鼠标滚轮自由缩放（`0.25x ~ 5x`）与鼠标左键拖拽平移，画布内部元素禁用原生文本选中，双击画布或点击缩放按钮可随时复位；
+3. **导出与全屏**：支持一键导出 SVG 矢量图与 2x Retina PNG 高清位图，支持独立模态全屏沉浸查看；
+4. **性能与国际化**：客户端异步按需加载本地 Mermaid 运行时，Cloudflare Worker 运行时零体积开销；控件按钮、提示文案与复制反馈全部随页面语言（中/英）完整本地化。
