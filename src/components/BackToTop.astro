@@ -1,0 +1,198 @@
+---
+/**
+ * 回到顶部按钮（悬浮在视口右下角）。
+ *
+ * 全局按需生效：
+ * 仅在页面向下滚动超过 400px 时平滑淡入浮现；
+ * 滚回顶部（< 150px）或页面较短时 100% 隐藏，不产生任何占位与视觉干扰。
+ */
+import { type Lang } from "../i18n/config";
+import { useTranslations } from "../i18n/ui";
+
+interface Props {
+	lang: Lang;
+	label?: string;
+}
+
+const { lang, label } = Astro.props;
+const t = useTranslations(lang);
+const ariaLabel = label ?? t("common.backToTop");
+---
+
+<button
+	type="button"
+	class="back-to-top"
+	data-back-to-top
+	aria-label={ariaLabel}
+	title={ariaLabel}
+>
+	<svg
+		class="back-to-top-icon"
+		viewBox="0 0 24 24"
+		fill="none"
+		stroke="currentColor"
+		stroke-width="2"
+		stroke-linecap="round"
+		stroke-linejoin="round"
+		aria-hidden="true"
+	>
+		<path d="M12 5l0 14"></path>
+		<path d="M18 11l-6 -6"></path>
+		<path d="M6 11l6 -6"></path>
+	</svg>
+</button>
+
+<script>
+	let scrollCleanup: (() => void) | null = null;
+
+	function setupBackToTop() {
+		scrollCleanup?.();
+		scrollCleanup = null;
+
+		const btn = document.querySelector<HTMLButtonElement>("[data-back-to-top]");
+		if (!btn) return;
+
+		let ticking = false;
+
+		function update() {
+			ticking = false;
+			const scrollY = window.scrollY || document.documentElement.scrollTop;
+			const isVisible = btn!.dataset.visible === "true";
+
+			if (!isVisible && scrollY > 400) {
+				btn!.dataset.visible = "true";
+			} else if (isVisible && scrollY < 150) {
+				btn!.dataset.visible = "false";
+			}
+		}
+
+		function onScroll() {
+			if (!ticking) {
+				requestAnimationFrame(update);
+				ticking = true;
+			}
+		}
+
+		btn.onclick = () => {
+			const prefersReduced = window.matchMedia(
+				"(prefers-reduced-motion: reduce)",
+			).matches;
+			window.scrollTo({
+				top: 0,
+				behavior: prefersReduced ? "instant" : "smooth",
+			});
+		};
+
+		update();
+		window.addEventListener("scroll", onScroll, { passive: true });
+
+		scrollCleanup = () => {
+			window.removeEventListener("scroll", onScroll);
+		};
+	}
+
+	setupBackToTop();
+	document.addEventListener("astro:page-load", setupBackToTop);
+	document.addEventListener("astro:before-swap", () => {
+		scrollCleanup?.();
+		scrollCleanup = null;
+	});
+</script>
+
+<style>
+	.back-to-top {
+		position: fixed;
+		right: var(--spacing-6);
+		bottom: var(--spacing-6);
+		z-index: 90;
+		width: 40px;
+		height: 40px;
+		padding: 0;
+		border-radius: var(--radius-full, 9999px);
+		border: 1px solid var(--color-border-subtle);
+		background: var(--color-surface);
+		color: var(--color-text-secondary);
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		cursor: pointer;
+		opacity: 0;
+		visibility: hidden;
+		pointer-events: none;
+		transform: translateY(8px);
+		transition:
+			opacity var(--transition-base) ease,
+			transform var(--transition-base) ease,
+			background var(--transition-fast) ease,
+			color var(--transition-fast) ease,
+			border-color var(--transition-fast) ease,
+			visibility var(--transition-base) ease;
+		box-shadow: 0 2px 8px color-mix(in srgb, var(--color-text) 8%, transparent);
+	}
+
+	.back-to-top[data-visible="true"] {
+		opacity: 0.85;
+		visibility: visible;
+		pointer-events: auto;
+		transform: translateY(0);
+	}
+
+	.back-to-top[data-visible="true"]:hover {
+		opacity: 1;
+		color: var(--color-brand);
+		background: var(--color-bg);
+		border-color: var(--color-border);
+		transform: translateY(-2px);
+		box-shadow: 0 4px 12px color-mix(in srgb, var(--color-text) 12%, transparent);
+	}
+
+	.back-to-top:focus-visible {
+		outline: 2px solid var(--color-brand);
+		outline-offset: 2px;
+		opacity: 1;
+		visibility: visible;
+	}
+
+	.back-to-top-icon {
+		width: 20px;
+		height: 20px;
+		flex-shrink: 0;
+	}
+
+	/* 桌面宽屏跟随三栏居中内容区右外侧留白，视线不离开正文焦点；视口空间不足时自适应贴紧右侧 */
+	@media (min-width: 1200px) {
+		.back-to-top {
+			/*
+			 * 三栏半宽 564px = var(--rail-width) + (var(--content-width) / 2) + var(--spacing-6)
+			 * 加上右外间距 24px (var(--spacing-6)) 与按钮宽 40px，总偏置 628px。
+			 */
+			right: max(
+				var(--spacing-6),
+				calc(
+					50% - (var(--rail-width) + (var(--content-width) / 2) + var(--spacing-6) + 40px + var(--spacing-6))
+				)
+			);
+		}
+	}
+
+	@media (max-width: 640px) {
+		.back-to-top {
+			right: var(--spacing-4);
+			bottom: calc(var(--spacing-4) + env(safe-area-inset-bottom, 0px));
+			width: 38px;
+			height: 38px;
+		}
+
+		.back-to-top-icon {
+			width: 18px;
+			height: 18px;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.back-to-top {
+			transition: none !important;
+			transform: none !important;
+		}
+	}
+</style>

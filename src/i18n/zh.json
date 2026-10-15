@@ -1,7 +1,8 @@
 {
 	"common": {
 		"untitled": "无标题",
-		"pagination": "分页"
+		"pagination": "分页",
+		"backToTop": "回到顶部"
 	},
 	"header": {
 		"searchPlaceholder": "搜索…",

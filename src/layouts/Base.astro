@@ -11,6 +11,7 @@ import SiteIdentity from "../components/SiteIdentity.astro";
 import SiteRail from "../components/SiteRail.astro";
 import SiteFooter from "../components/SiteFooter.astro";
 import SocialLinks from "../components/SocialLinks.astro";
+import BackToTop from "../components/BackToTop.astro";
 import { type Lang } from "../i18n/config";
 import { htmlLang, localePath, useTranslations } from "../i18n/ui";
 import { OWNER_BYLINE_SLUG, resolveBlogSiteIdentity } from "../utils/site-identity";
@@ -248,6 +249,8 @@ const isLoggedIn = !!Astro.locals.user;
 				<slot name="rail" />
 			</aside>
 		</div>
+
+		<BackToTop lang={lang} />
 
 
 		<script>

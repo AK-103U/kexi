@@ -1,0 +1,385 @@
+---
+/**
+ * DeepSeek 风格右侧浮动导航轨 (ScrollNav)。
+ *
+ * 专门用于视窗不够大（< 1200px，右侧目录收起）后的场景：
+ *  - 默认折叠态：右侧边缘一列极简胶囊短横线（高度 3.5px），当前阅读小节拉长并以品牌色高亮；
+ *  - 悬停展开态：鼠标移入时面板原地向左舒展展开，章节文字平滑淡入，移出即隐；
+ *  - 点击平滑跳转：点击条目平滑定位，目标标题产生温和的微光闪烁（Flash Highlight）；
+ *  - 实时滚动跟踪：正文滚动时游标实时指示当前小节。
+ */
+interface Props {
+	/** 提取小节标题的根节点选择器。 */
+	source?: string;
+	/** 无障碍标签。 */
+	label?: string;
+}
+
+const { source = ".article-content", label = "文章目录导航" } = Astro.props;
+---
+
+<aside
+	class="ds-scroll-nav"
+	aria-label={label}
+	data-ds-nav
+	data-ds-source={source}
+	hidden
+>
+	<div class="ds-nav-wrapper">
+		<ul class="ds-nav-list" data-ds-list></ul>
+	</div>
+</aside>
+
+<script>
+	let navCleanup: (() => void) | null = null;
+
+	function buildScrollNav() {
+		navCleanup?.();
+		navCleanup = null;
+
+		const navRoot = document.querySelector<HTMLElement>("[data-ds-nav]");
+		const listContainer =
+			navRoot?.querySelector<HTMLUListElement>("[data-ds-list]");
+		if (!navRoot || !listContainer) return;
+
+		listContainer.innerHTML = "";
+		const content = document.querySelector(
+			navRoot.dataset.dsSource ?? ".article-content",
+		);
+		if (!content) {
+			navRoot.hidden = true;
+			return;
+		}
+
+		const headings = Array.from(
+			content.querySelectorAll<HTMLElement>("h2, h3"),
+		);
+		if (headings.length === 0) {
+			navRoot.hidden = true;
+			return;
+		}
+		navRoot.hidden = false;
+
+		// 确保每个标题有稳定 ID
+		headings.forEach((heading, index) => {
+			if (!heading.id) {
+				heading.id = `heading-${index}`;
+			}
+		});
+
+		// 渲染导航条目
+		headings.forEach((heading, index) => {
+			const li = document.createElement("li");
+			li.className = "ds-nav-item";
+			if (index === 0) li.classList.add("is-current");
+			li.dataset.targetId = heading.id;
+
+			const labelSpan = document.createElement("span");
+			labelSpan.className = "ds-nav-label";
+			labelSpan.textContent = heading.textContent?.trim() ?? "";
+
+			const barSpan = document.createElement("span");
+			barSpan.className = "ds-nav-bar";
+
+			// Tooltip 完整预览气泡
+			const tooltip = document.createElement("div");
+			tooltip.className = "ds-nav-tooltip";
+			tooltip.textContent = heading.textContent?.trim() ?? "";
+
+			li.appendChild(tooltip);
+			li.appendChild(labelSpan);
+			li.appendChild(barSpan);
+			listContainer.appendChild(li);
+
+			// 点击平滑滚动与落地微闪
+			li.addEventListener("click", () => {
+				const target = document.getElementById(heading.id);
+				if (!target) return;
+
+				listContainer
+					.querySelectorAll(".ds-nav-item")
+					.forEach((el) => el.classList.remove("is-current"));
+				li.classList.add("is-current");
+
+				const prefersReduced = window.matchMedia(
+					"(prefers-reduced-motion: reduce)",
+				).matches;
+				target.scrollIntoView({
+					behavior: prefersReduced ? "instant" : "smooth",
+					block: "start",
+				});
+
+				// 落地微闪动画
+				target.classList.remove("ds-heading-flash");
+				void target.offsetWidth;
+				target.classList.add("ds-heading-flash");
+				setTimeout(() => {
+					target.classList.remove("ds-heading-flash");
+				}, 1400);
+			});
+
+			// 悬停超过 350ms 展示 Tooltip
+			let hoverTimer: ReturnType<typeof setTimeout> | null = null;
+			li.addEventListener("mouseenter", () => {
+				hoverTimer = setTimeout(() => {
+					tooltip.classList.add("is-visible");
+				}, 350);
+			});
+			li.addEventListener("mouseleave", () => {
+				if (hoverTimer) clearTimeout(hoverTimer);
+				tooltip.classList.remove("is-visible");
+			});
+		});
+
+		// 滚动监听 (Scroll-Spy)
+		let ticking = false;
+		function onScroll() {
+			if (!ticking) {
+				requestAnimationFrame(() => {
+					ticking = false;
+					const scrollPos = window.scrollY + 140;
+					let activeHeadingId = "";
+
+					for (let i = headings.length - 1; i >= 0; i--) {
+						const heading = headings[i];
+						if (heading.offsetTop <= scrollPos) {
+							activeHeadingId = heading.id;
+							break;
+						}
+					}
+					if (!activeHeadingId && headings.length > 0) {
+						activeHeadingId = headings[0].id;
+					}
+
+					if (activeHeadingId) {
+						const items =
+							listContainer!.querySelectorAll<HTMLElement>(".ds-nav-item");
+						items.forEach((item) => {
+							if (item.dataset.targetId === activeHeadingId) {
+								item.classList.add("is-current");
+							} else {
+								item.classList.remove("is-current");
+							}
+						});
+					}
+				});
+				ticking = true;
+			}
+		}
+
+		window.addEventListener("scroll", onScroll, { passive: true });
+		navCleanup = () => {
+			window.removeEventListener("scroll", onScroll);
+		};
+	}
+
+	buildScrollNav();
+	document.addEventListener("astro:page-load", buildScrollNav);
+	document.addEventListener("astro:before-swap", () => {
+		navCleanup?.();
+		navCleanup = null;
+	});
+</script>
+
+<style>
+	/*
+	 * 仅在视窗不够大（< 1200px，此时桌面右栏隐藏）时激活显示；
+	 * 在宽屏（>= 1200px）时保持隐藏，避免与右栏完整目录重复。
+	 */
+	.ds-scroll-nav {
+		display: none;
+	}
+
+	@media (max-width: 1199px) {
+		.ds-scroll-nav:not([hidden]) {
+			display: block;
+			position: fixed;
+			right: var(--spacing-3, 12px);
+			top: 50%;
+			transform: translateY(-50%);
+			z-index: 95;
+			user-select: none;
+		}
+	}
+
+	.ds-nav-wrapper {
+		position: relative;
+		display: flex;
+		flex-direction: column;
+		align-items: flex-end;
+		background: transparent;
+		border: 1px solid transparent;
+		border-radius: var(--radius-lg, 14px);
+		padding: var(--spacing-2) 6px;
+		transition:
+			background var(--transition-base, 180ms) cubic-bezier(0.16, 1, 0.3, 1),
+			border-color var(--transition-base, 180ms) cubic-bezier(0.16, 1, 0.3, 1),
+			box-shadow var(--transition-base, 180ms) cubic-bezier(0.16, 1, 0.3, 1),
+			padding var(--transition-base, 180ms) cubic-bezier(0.16, 1, 0.3, 1);
+	}
+
+	/* 悬停唤醒：原地舒展毛玻璃面板 */
+	.ds-scroll-nav:hover .ds-nav-wrapper {
+		background: color-mix(in srgb, var(--color-surface) 88%, transparent);
+		backdrop-filter: blur(20px);
+		-webkit-backdrop-filter: blur(20px);
+		border-color: var(--color-border);
+		box-shadow:
+			0 10px 30px -4px rgba(0, 0, 0, 0.25),
+			0 2px 8px rgba(0, 0, 0, 0.12);
+		padding: var(--spacing-3) var(--spacing-3);
+	}
+
+	.ds-nav-wrapper :global(.ds-nav-list) {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 4px; /* 未展开时紧凑排列，呈现微型刻度尺感 */
+		max-height: 70vh;
+		overflow-y: auto;
+		scrollbar-width: none;
+		transition: gap var(--transition-fast, 120ms) ease;
+	}
+
+	.ds-scroll-nav:hover .ds-nav-wrapper :global(.ds-nav-list) {
+		gap: 7px; /* 展开后恢复舒适阅读间距 */
+	}
+
+	.ds-nav-wrapper :global(.ds-nav-list::-webkit-scrollbar) {
+		display: none;
+	}
+
+	.ds-nav-wrapper :global(.ds-nav-item) {
+		display: flex;
+		align-items: center;
+		justify-content: flex-end;
+		gap: var(--spacing-3, 12px);
+		cursor: pointer;
+		padding: 0;
+		position: relative;
+		transition: padding var(--transition-fast, 120ms) ease;
+	}
+
+	.ds-scroll-nav:hover .ds-nav-wrapper :global(.ds-nav-item) {
+		padding: 2px 0;
+	}
+
+	/* 标题文字：折叠时完全隐藏，悬停时平滑淡入 */
+	.ds-nav-wrapper :global(.ds-nav-label) {
+		font-size: var(--font-size-xs, 12px);
+		line-height: var(--leading-snug, 1.35);
+		color: var(--color-text-secondary);
+		max-width: 0;
+		opacity: 0;
+		overflow: hidden;
+		white-space: nowrap;
+		text-overflow: ellipsis;
+		pointer-events: none;
+		transition:
+			max-width 220ms cubic-bezier(0.16, 1, 0.3, 1),
+			opacity 180ms ease,
+			color var(--transition-fast, 120ms) ease;
+	}
+
+	.ds-scroll-nav:hover .ds-nav-wrapper :global(.ds-nav-label) {
+		max-width: 220px;
+		opacity: 1;
+		pointer-events: auto;
+	}
+
+	/* 胶囊指示短线：默认更短 (8px)、更薄 (2px)、淡化程度更深 (10%) */
+	.ds-nav-wrapper :global(.ds-nav-bar) {
+		width: 8px;
+		height: 2px;
+		border-radius: 1px;
+		background: color-mix(in srgb, var(--color-text) 10%, transparent);
+		flex-shrink: 0;
+		transition:
+			width 180ms cubic-bezier(0.16, 1, 0.3, 1),
+			background-color var(--transition-fast, 120ms) ease,
+			transform 150ms ease;
+	}
+
+	.ds-nav-wrapper :global(.ds-nav-item:hover .ds-nav-bar) {
+		background: color-mix(in srgb, var(--color-text) 30%, transparent);
+		transform: scaleY(1.2);
+	}
+
+	.ds-nav-wrapper :global(.ds-nav-item:hover .ds-nav-label) {
+		color: var(--color-text);
+	}
+
+	/* 当前高亮条目：去除发光光晕，颜色更温润柔和，宽度适度拉长至 14px */
+	.ds-nav-wrapper :global(.ds-nav-item.is-current .ds-nav-bar) {
+		background: color-mix(in srgb, var(--color-brand) 82%, var(--color-text-secondary));
+		width: 14px;
+		box-shadow: none; /* 去除刺眼光晕 */
+	}
+
+	.ds-nav-wrapper :global(.ds-nav-item.is-current .ds-nav-label) {
+		color: var(--color-brand);
+		font-weight: 500;
+	}
+
+	/* 悬停气泡 Tooltip */
+	.ds-nav-wrapper :global(.ds-nav-tooltip) {
+		position: absolute;
+		right: calc(100% + 10px);
+		top: 50%;
+		transform: translateY(-50%) translateX(4px);
+		background: var(--color-text);
+		color: var(--color-bg);
+		border-radius: var(--radius-sm, 6px);
+		padding: 6px 10px;
+		font-size: 11px;
+		line-height: 1.4;
+		white-space: normal;
+		width: max-content;
+		max-width: 240px;
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+		opacity: 0;
+		pointer-events: none;
+		transition:
+			opacity 150ms ease,
+			transform 150ms ease;
+		z-index: 100;
+	}
+
+	.ds-nav-wrapper :global(.ds-nav-tooltip.is-visible) {
+		opacity: 1;
+		transform: translateY(-50%) translateX(0);
+	}
+
+	@media (max-width: 640px) {
+		.ds-scroll-nav:not([hidden]) {
+			right: var(--spacing-2, 8px);
+		}
+
+		.ds-nav-wrapper :global(.ds-nav-label) {
+			font-size: 11px;
+		}
+
+		.ds-scroll-nav:hover .ds-nav-wrapper :global(.ds-nav-label) {
+			max-width: 170px;
+		}
+	}
+</style>
+
+<style is:global>
+	/* 点击跳转后的微光高亮闪烁 */
+	@keyframes ds-heading-flash-anim {
+		0% {
+			background-color: color-mix(in srgb, var(--color-brand) 22%, transparent);
+			border-radius: var(--radius-sm, 4px);
+		}
+		100% {
+			background-color: transparent;
+		}
+	}
+
+	.ds-heading-flash {
+		animation: ds-heading-flash-anim 1.2s ease-out;
+	}
+</style>

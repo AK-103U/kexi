@@ -10,6 +10,7 @@ import { Comments, CommentForm } from "emdash/ui/comments";
 import Base from "../../layouts/Base.astro";
 import CodeBlock from "../../components/CodeBlock.astro";
 import TableOfContents from "../../components/TableOfContents.astro";
+import ScrollNav from "../../components/ScrollNav.astro";
 import { getReadingTime } from "../../utils/reading-time";
 import { resolveEntryBylines, readEntryLocale } from "../../utils/bylines";
 import { resolveBlogSiteIdentity } from "../../utils/site-identity";
@@ -282,6 +283,11 @@ const commentFormLabels = {
 	<TableOfContents
 		slot="rail"
 		title={t("post.onThisPage")}
+		label={t("post.toc")}
+	/>
+
+	<ScrollNav
+		source=".article-content"
 		label={t("post.toc")}
 	/>
 </Base>

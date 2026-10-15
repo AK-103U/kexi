@@ -1,7 +1,8 @@
 {
 	"common": {
 		"untitled": "Untitled",
-		"pagination": "Pagination"
+		"pagination": "Pagination",
+		"backToTop": "Back to top"
 	},
 	"header": {
 		"searchPlaceholder": "Search…",
