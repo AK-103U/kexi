@@ -144,7 +144,7 @@ const isLoggedIn = !!Astro.locals.user;
 			<1000px 同一份导航变成贴顶横栏，身份、搜索、语言/主题和汉堡同排，页脚链接位于展开菜单底部。
 		*/}
 		<div class="shell">
-			<aside class="rail rail--left">
+			<aside class="rail rail--left" data-reading-fade={type === "article" ? "true" : undefined}>
 				<div class="rail-top">
 					{/* 署名缺失时名字回退到站点标题，头像回退到默认图。 */}
 					<div class="rail-identity">
@@ -459,6 +459,26 @@ const isLoggedIn = !!Astro.locals.user;
 				padding-right: var(--spacing-2);
 				border-right: 1px solid var(--color-border-subtle);
 				background: var(--color-bg);
+			}
+
+			/*
+			 * 桌面侧栏文章阅读退火（Dimming）：
+			 * 仅在文章详情页向上/向下滚动进入正文阅读时生效；
+			 * 滚动阅读时完全隐形（opacity: 0），彻底消除余光视觉干扰；
+			 * 鼠标悬停到左侧轨道（hover）或键盘聚焦（focus-within）即时平滑唤醒。
+			 */
+			.rail--left[data-reading-fade="true"] {
+				transition: opacity 350ms ease;
+			}
+
+			.rail--left[data-reading-fade="true"][data-dimmed="true"] {
+				opacity: 0;
+			}
+
+			.rail--left[data-reading-fade="true"][data-dimmed="true"]:hover,
+			.rail--left[data-reading-fade="true"][data-dimmed="true"]:focus-within {
+				opacity: 1;
+				transition: opacity var(--transition-fast) ease;
 			}
 
 			.rail-top {
@@ -810,6 +830,12 @@ const isLoggedIn = !!Astro.locals.user;
 			 * 横栏是 fixed，所以 .shell 的顶部内边距要额外让出它的高度。
 			 */
 			@media (max-width: 999px) {
+				.rail--left[data-reading-fade="true"] {
+					opacity: 1 !important;
+					filter: none !important;
+					transition: none;
+				}
+
 				.shell {
 					grid-template-columns: minmax(0, var(--content-width));
 
@@ -975,6 +1001,12 @@ const isLoggedIn = !!Astro.locals.user;
 					display: none;
 				}
 			}
+
+			@media (prefers-reduced-motion: reduce) {
+				.rail--left[data-reading-fade="true"] {
+					transition: none !important;
+				}
+			}
 		</style>
 
 		<script>
@@ -1007,6 +1039,60 @@ const isLoggedIn = !!Astro.locals.user;
 
 			setupRailMenu();
 			document.addEventListener("astro:page-load", setupRailMenu);
+
+			// 文章阅读侧栏退火：桌面端长文向下滚动后，左侧栏柔和变淡避免余光干扰；
+			// 鼠标悬停（hover）或键盘聚焦（focus-within）即时恢复。
+			let railFadeCleanup: (() => void) | null = null;
+
+			function setupRailFade() {
+				railFadeCleanup?.();
+				railFadeCleanup = null;
+
+				const rail = document.querySelector<HTMLElement>(
+					".rail--left[data-reading-fade='true']",
+				);
+				if (!rail) return;
+
+				let ticking = false;
+
+				function update() {
+					ticking = false;
+					if (!window.matchMedia("(min-width: 1000px)").matches) {
+						rail!.dataset.dimmed = "false";
+						return;
+					}
+					const scrollY = window.scrollY || document.documentElement.scrollTop;
+					const isDimmed = rail!.dataset.dimmed === "true";
+					if (!isDimmed && scrollY > 120) {
+						rail!.dataset.dimmed = "true";
+					} else if (isDimmed && scrollY < 60) {
+						rail!.dataset.dimmed = "false";
+					}
+				}
+
+				function onScroll() {
+					if (!ticking) {
+						requestAnimationFrame(update);
+						ticking = true;
+					}
+				}
+
+				update();
+				window.addEventListener("scroll", onScroll, { passive: true });
+				window.addEventListener("resize", onScroll, { passive: true });
+
+				railFadeCleanup = () => {
+					window.removeEventListener("scroll", onScroll);
+					window.removeEventListener("resize", onScroll);
+				};
+			}
+
+			setupRailFade();
+			document.addEventListener("astro:page-load", setupRailFade);
+			document.addEventListener("astro:before-swap", () => {
+				railFadeCleanup?.();
+				railFadeCleanup = null;
+			});
 		</script>
 		<EmDashBodyEnd page={pageCtx} />
 	</body>
