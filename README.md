@@ -38,7 +38,7 @@ pnpm deploy
 ## 项目文件
 
 - `src/pages/`：首页、文章、普通页面、分类、标签、搜索、RSS 和 404。
-- `src/layouts/Base.astro`：三栏外壳、页头、页脚、客户端导航和 EmDash 接入。
+- `src/layouts/Base.astro`：三栏外壳、单份左栏（侧栏/贴顶横栏）、页脚、客户端导航和 EmDash 接入。
 - `src/components/`：文章卡片、站主身份、侧栏、目录等。
 - `src/styles/`：设计令牌与主题覆盖。
 - `seed/seed.json`：初始内容模型和可选示例内容。

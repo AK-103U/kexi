@@ -3,7 +3,6 @@ import react from "@astrojs/react";
 import { d1, r2 } from "@emdash-cms/cloudflare";
 import { defineConfig, fontProviders } from "astro/config";
 import emdash from "emdash/astro";
-import { mathPlugin } from "@ak-103u/emdash-plugin-math";
 import { siteConfig } from "./src/i18n/config.ts";
 
 const latoFont = {
@@ -49,7 +48,10 @@ export default defineConfig({
 			// D1 与 R2 绑定名需与 wrangler.jsonc 一致。
 			database: d1({ binding: "DB", session: "auto" }),
 			storage: r2({ binding: "MEDIA" }),
-			plugins: [mathPlugin()],
+			admin: {
+				logo: "/logo.webp",
+				favicon: "/logo.webp",
+			},
 		}),
 	],
 	fonts: [

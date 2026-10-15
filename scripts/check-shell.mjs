@@ -138,8 +138,8 @@ if (await av.count()) {
 	check("圆形", radius === "50%", radius);
 	check("桌面渲染 52px", Math.abs(box.width - 52) < 1, `${box.width.toFixed(0)}px`);
 	/*
-	 * seed 的站主署名没有上传头像，左栏身份按设计回退到内置默认头像
-	 * （public/default-avatar.webp）。管理员上传头像后才改走 /_image
+	 * seed 的站主署名没有上传头像，左栏身份按设计回退到内置默认标志
+	 * （public/logo.webp）。管理员上传头像后才改走 /_image
 	 * 做服务端裁剪 —— 两种状态都合法，断言按实际分支检查，
 	 * 不能假定一定存在自定义头像（此前正是因此长期误报）。
 	 */
@@ -151,8 +151,8 @@ if (await av.count()) {
 		);
 	} else {
 		check(
-			"未上传头像时回退到内置默认头像",
-			src === "/default-avatar.webp",
+			"未上传头像时回退到内置默认标志",
+			src === "/logo.webp",
 			src ?? "(无 src)",
 		);
 	}

@@ -9,7 +9,7 @@ EmDash 的 Portable Text 渲染把 `code` 类型的块交给 `src/components/Cod
 - 只覆盖 `code` 一种类型。`mergeComponents` 按键浅合并，`image`、`table` 等内置类型保持不变。
 - 明暗取值来自 Shiki 主题，不写入 `theme.css` 的令牌。调整配色换 Shiki 主题，不覆盖 token。
 - 代码块的几何与字体（内边距、边框、圆角、等宽字体）由 `CodeBlock.astro` 负责，页面不重复声明 `pre` 规则。
-- 不做一键复制等客户端增强，因此不需要处理客户端导航后的重绑定。
+- 提供一键复制按钮与本地化状态反馈，使用浏览器 Clipboard API，通过文档级事件委托实现幂等初始化，在 Astro 客户端导航（`ClientRouter`）下无需反复重绑节点事件。语言为 `mermaid` 的图表块由 `MermaidViewer.astro` 交互工作台接管。
 - 正文是 Portable Text，没有 Markdown AST，Astro 的 `markdown.shikiConfig` 不参与正文着色。
 
 ## Cloudflare 下的 WASM 加载

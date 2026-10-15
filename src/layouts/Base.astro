@@ -115,6 +115,7 @@ const isLoggedIn = !!Astro.locals.user;
 		)}
 		<Font cssVariable="--font-mono" />
 		<title>{fullTitle}</title>
+		<link rel="icon" type="image/webp" href={settingsResult.data.favicon?.url ?? "/logo.webp"} />
 		<EmDashHead page={pageCtx} />
 		{/*
 			客户端接管站内导航（含语言切换）：不再整页刷新，且带过渡动画。

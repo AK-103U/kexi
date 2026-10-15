@@ -10,7 +10,7 @@
 | Worker 入口、资源绑定和定时任务 | [src/worker.ts](../src/worker.ts)、[wrangler.jsonc](../wrangler.jsonc) |
 | 内容集合、分类法和演示内容 | [seed/seed.json](../seed/seed.json) |
 | 页面语言、路径和界面文案 | [src/i18n/config.ts](../src/i18n/config.ts)、[ui.ts](../src/i18n/ui.ts) 与同目录字典 |
-| 公开页外壳、头部和客户端导航 | [Base.astro](../src/layouts/Base.astro) |
+| 公开页外壳、单份左栏与客户端导航 | [Base.astro](../src/layouts/Base.astro) |
 | 页脚布局、CMS 联系链接和社交链接 | [SiteFooter.astro](../src/components/SiteFooter.astro)、[Base.astro](../src/layouts/Base.astro) |
 | 页面查询与正文渲染 | [src/pages](../src/pages/) |
 | 正文代码块渲染与语法着色 | [CodeBlock.astro](../src/components/CodeBlock.astro) |
@@ -28,7 +28,7 @@
 
 内容标识需要区分。`entry.data.slug` 是裸 slug，生成页面链接用它配合 `localePath()`；`entry.data.id` 是数据库 ULID，用于内容 API。`entry.id` 由 loader 的 `entryIdForRow()` 构造：默认语言下等于裸 slug，非默认语言下为 `{locale}/{slug}`，因此不能直接拼 URL（会得到 `/posts/en/foo` 这样的路径）；它只在需要「语言限定的唯一键」时使用。
 
-图片字段是对象，使用 `emdash/ui` 的 `<Image image={...} />`。媒体直链使用存储键（storageKey），通过 `mediaUrl()` 构造；署名头像读取 `avatarStorageKey`，媒体 ID 和 `avatarMediaId` 用于数据库关联，不能替代存储键拼文件 URL。署名头像统一通过 `avatarUrl()` 生成 `/_image` 地址，将头像等比缩放到方形画布并保留完整图像（`fit=contain`），避免头像图标被中心裁切；首页、列表、文章详情和侧栏都应使用该函数，不要直接用 `mediaUrl()` 输出头像原图。在 Cloudflare 下由 Images binding 处理，不依赖 `sharp`。站主未设置头像时回退到内置的 `public/default-avatar.webp`，站主可在后台为自己的署名上传头像。
+图片字段是对象，使用 `emdash/ui` 的 `<Image image={...} />`。媒体直链使用存储键（storageKey），通过 `mediaUrl()` 构造；署名头像读取 `avatarStorageKey`，媒体 ID 和 `avatarMediaId` 用于数据库关联，不能替代存储键拼文件 URL。署名头像统一通过 `avatarUrl()` 生成 `/_image` 地址，将头像等比缩放到方形画布并保留完整图像（`fit=contain`），避免头像图标被中心裁切；首页、列表、文章详情和侧栏都应使用该函数，不要直接用 `mediaUrl()` 输出头像原图。在 Cloudflare 下由 Images binding 处理，不依赖 `sharp`。站主未设置头像时回退到内置的 `public/logo.webp`，站主可在后台为自己的署名上传头像。
 
 启用 Astro 路由缓存时，将查询结果的 `cacheHint` 交给 `Astro.cache.set()`。页面共同读取的菜单和站点设置使用相应的 `WithCacheHint` 查询；新增缓存页面时检查它读取的内容是否都能参与失效。
 

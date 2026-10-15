@@ -5,7 +5,7 @@
  * 两者横向排列并共用一条基线；长署名在左栏内截断，不溢入正文列。极窄屏
  * 由外壳隐藏名字、保留头像，给搜索输入框留出空间。
  *
- * 没有头像时回退到内置的默认头像 `public/default-avatar.webp`，
+ * 没有头像时回退到内置的默认标志 `public/logo.webp`，
  * 站主可在后台为署名上传头像后自动切换。
  */
 import { avatarUrl } from "../utils/media";
@@ -21,8 +21,8 @@ interface Props {
 
 const { displayName, avatarStorageKey, avatarAlt, href, class: className } = Astro.props;
 
-// 有署名头像就用服务端裁剪后的 URL；否则回退到内置默认头像。
-const DEFAULT_AVATAR_SRC = "/default-avatar.webp";
+// 有署名头像就用服务端裁剪后的 URL；否则回退到内置默认标志。
+const DEFAULT_AVATAR_SRC = "/logo.webp";
 const avatarSrc = avatarStorageKey ? avatarUrl(avatarStorageKey, 96) : DEFAULT_AVATAR_SRC;
 ---
 

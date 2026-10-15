@@ -14,6 +14,7 @@ export interface BlogSiteIdentitySettings {
 
 const DEFAULT_SITE_TITLE = "My Blog";
 const DEFAULT_SITE_TAGLINE = "Thoughts, stories, and ideas.";
+export const DEFAULT_SITE_LOGO = "/logo.webp";
 
 /**
  * 左栏展示的站主署名。头像与名字都取自这条 byline
@@ -25,6 +26,8 @@ export function resolveBlogSiteIdentity(settings?: BlogSiteIdentitySettings) {
 	return {
 		siteTitle: settings?.title ?? DEFAULT_SITE_TITLE,
 		siteTagline: settings?.tagline ?? DEFAULT_SITE_TAGLINE,
-		siteLogo: settings?.logo?.url ? settings.logo : null,
+		siteLogo: settings?.logo?.url
+			? settings.logo
+			: { url: DEFAULT_SITE_LOGO, alt: settings?.title ?? DEFAULT_SITE_TITLE },
 	};
 }

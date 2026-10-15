@@ -31,7 +31,7 @@ node scripts/check-shell.mjs http://localhost:4400
 node scripts/check-spa.mjs http://localhost:4400
 ```
 
-[check-shell.mjs](../scripts/check-shell.mjs) 检查中栏位置、断点布局、单份控件与汉堡菜单、桌面搜索展开、语言/主题切换器排布、左栏品牌与导航的共同左起点、窄屏顶部控件是否同排、搜索框计算样式、页脚在侧栏中的位置、RSS/社交图标与无障碍名称，以及滚动后切页是否漂移。[check-spa.mjs](../scripts/check-spa.mjs) 通过 `window` 标记是否存活确认客户端导航，并检查语言、标题、正文、浏览器后退和目录重建。
+[check-shell.mjs](../scripts/check-shell.mjs) 检查中栏位置、断点布局、单份控件与汉堡菜单、桌面搜索输入框常驻显示、语言/主题切换器排布、左栏品牌与导航的共同左起点、窄屏顶部控件是否同排、搜索框计算样式、页脚在侧栏中的位置、RSS/社交图标与无障碍名称，以及滚动后切页是否漂移。[check-spa.mjs](../scripts/check-spa.mjs) 通过 `window` 标记是否存活确认客户端导航，并检查语言、标题、正文、浏览器后退和目录重建。
 
 布局量测保留真实滚动条，脚本通过 `ignoreDefaultArgs: ["--hide-scrollbars"]` 取消 Playwright 的隐藏行为。搜索框等第三方组件的覆盖通过 `getComputedStyle()` 核对；源码中有声明并不能证明它在浏览器中生效。历史原因见 [探索笔记](../NOTES.md#布局漂移与验证盲区)。
 
