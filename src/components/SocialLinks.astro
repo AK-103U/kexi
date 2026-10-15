@@ -1,0 +1,170 @@
+---
+import {
+	faFacebookF,
+	faGithub,
+	faInstagram,
+	faLinkedinIn,
+	faXTwitter,
+	faYoutube,
+} from "@fortawesome/free-brands-svg-icons";
+import { type Lang } from "../i18n/config";
+import { localePath, useTranslations } from "../i18n/ui";
+
+interface SocialSettings {
+	twitter?: string;
+	github?: string;
+	facebook?: string;
+	instagram?: string;
+	linkedin?: string;
+	youtube?: string;
+}
+
+interface Props {
+	lang: Lang;
+	social?: SocialSettings;
+	class?: string;
+}
+
+const { lang, social, class: className } = Astro.props;
+const t = useTranslations(lang);
+
+const socialPlatforms = [
+	{ key: "twitter", label: "X", baseUrl: "https://x.com/", icon: faXTwitter },
+	{ key: "github", label: "GitHub", baseUrl: "https://github.com/", icon: faGithub },
+	{ key: "facebook", label: "Facebook", baseUrl: "https://facebook.com/", icon: faFacebookF },
+	{ key: "instagram", label: "Instagram", baseUrl: "https://instagram.com/", icon: faInstagram },
+	{ key: "linkedin", label: "LinkedIn", baseUrl: "https://linkedin.com/", icon: faLinkedinIn },
+	{ key: "youtube", label: "YouTube", baseUrl: "https://youtube.com/", icon: faYoutube },
+] as const;
+
+function socialHref(baseUrl: string, value: string, keepAt = false): string | null {
+	const input = value.trim();
+	if (!input) return null;
+
+	const candidate = input.startsWith("www.") ? `https://${input}` : input;
+	try {
+		const url = new URL(candidate);
+		if (url.protocol === "https:" || url.protocol === "http:") return url.href;
+	} catch {
+		// EmDash settings may store a handle instead of a full URL.
+	}
+
+	if (/^[a-z][a-z\d+.-]*:/i.test(input) || input.startsWith("//")) return null;
+	const handle = (keepAt ? input : input.replace(/^@/, "")).replace(/^\/+/, "");
+	if (!handle) return null;
+	const safePath = handle.split("/").map(encodeURIComponent).join("/");
+	return `${baseUrl}${safePath}`;
+}
+
+const socialLinks = socialPlatforms.flatMap(({ key, label, baseUrl, icon }) => {
+	const value = social?.[key];
+	if (!value) return [];
+	const href = socialHref(baseUrl, value, key === "youtube");
+	if (!href) return [];
+	const [width, height, , , pathData] = icon.icon;
+	const paths = Array.isArray(pathData) ? pathData : [pathData];
+	return [{ label, href, width, height, paths }];
+});
+---
+
+<nav class:list={["social-links", className]} aria-label={t("footer.socialLinks")}>
+	<ul class="social-icon-list">
+		<li>
+			<a
+				class="social-icon-link footer-icon-link"
+				href={localePath(lang, "/rss.xml")}
+				aria-label={t("footer.rss")}
+				title={t("footer.rss")}
+			>
+				<svg
+					width="16"
+					height="16"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					aria-hidden="true"
+				>
+					<path d="M4 11a9 9 0 0 1 9 9"></path>
+					<path d="M4 4a16 16 0 0 1 16 16"></path>
+					<circle cx="5" cy="19" r="1"></circle>
+				</svg>
+			</a>
+		</li>
+		{
+			socialLinks.map((link) => (
+				<li>
+					<a
+						class="social-icon-link footer-icon-link"
+						href={link.href}
+						aria-label={link.label}
+						title={link.label}
+						target="_blank"
+						rel="noopener noreferrer"
+					>
+						<svg
+							viewBox={`0 0 ${link.width} ${link.height}`}
+							fill="currentColor"
+							aria-hidden="true"
+						>
+							{link.paths.map((path) => (
+								<path d={path} />
+							))}
+						</svg>
+					</a>
+				</li>
+			))
+		}
+	</ul>
+</nav>
+
+<style>
+	.social-links {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.social-icon-list {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		flex-wrap: wrap;
+		gap: var(--spacing-2);
+		list-style: none;
+		margin: 0;
+		padding: 0;
+	}
+
+	.social-icon-link {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 28px;
+		height: 28px;
+		border-radius: var(--radius);
+		color: var(--color-text-secondary);
+		transition:
+			color var(--transition-fast),
+			background var(--transition-fast);
+	}
+
+	.social-icon-link:hover,
+	.social-icon-link:focus-visible {
+		color: var(--color-brand);
+		background: var(--color-surface);
+	}
+
+	.social-icon-link:focus-visible {
+		outline: 2px solid var(--color-brand);
+		outline-offset: 2px;
+	}
+
+	.social-icon-link svg {
+		flex: 0 0 auto;
+		width: 15px;
+		height: 15px;
+	}
+</style>

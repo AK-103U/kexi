@@ -10,6 +10,7 @@ import ThemeSwitcher from "../components/ThemeSwitcher.astro";
 import SiteIdentity from "../components/SiteIdentity.astro";
 import SiteRail from "../components/SiteRail.astro";
 import SiteFooter from "../components/SiteFooter.astro";
+import SocialLinks from "../components/SocialLinks.astro";
 import { type Lang } from "../i18n/config";
 import { htmlLang, localePath, useTranslations } from "../i18n/ui";
 import { OWNER_BYLINE_SLUG, resolveBlogSiteIdentity } from "../utils/site-identity";
@@ -153,6 +154,11 @@ const isLoggedIn = !!Astro.locals.user;
 							avatarAlt={ownerByline?.avatarAlt}
 							href={localePath(lang, "/")}
 						/>
+						<SocialLinks
+							lang={lang}
+							social={settingsResult.data.social}
+							class="rail-identity-socials"
+						/>
 					</div>
 					<div class="rail-tools" role="group" aria-label={t("header.sitePreferences")}>
 						<LanguageSwitcher lang={lang} />
@@ -218,27 +224,7 @@ const isLoggedIn = !!Astro.locals.user;
 				</div>
 
 				<div class="rail-bottom">
-					<div class="rail-search" id="rail-search-control" data-search-open="false">
-						<button
-							type="button"
-							class="search-trigger"
-							data-search-toggle
-							aria-expanded="false"
-							aria-controls="rail-search-control"
-							aria-label={t("header.searchPlaceholder")}
-						>
-							<svg
-								viewBox="0 0 24 24"
-								fill="none"
-								stroke="currentColor"
-								stroke-width="2"
-								stroke-linecap="round"
-								aria-hidden="true"
-							>
-								<circle cx="11" cy="11" r="7"></circle>
-								<path d="m20 20-4-4"></path>
-							</svg>
-						</button>
+					<div class="rail-search">
 						<LiveSearch
 							placeholder={t("header.searchPlaceholder")}
 							locale={lang}
@@ -476,90 +462,74 @@ const isLoggedIn = !!Astro.locals.user;
 			}
 
 			.rail-top {
-				display: flex;
-				flex-direction: column;
-				align-items: stretch;
-				gap: var(--spacing-2);
-				padding-bottom: var(--spacing-3);
-				border-bottom: 1px solid var(--color-border-subtle);
+				display: contents;
 			}
 
 			.rail-identity {
+				order: 1;
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				justify-content: center;
+				text-align: center;
+				gap: var(--spacing-3);
+				width: 100%;
 				min-width: 0;
+				padding-bottom: var(--spacing-4);
+				border-bottom: 1px solid var(--color-border-subtle);
 			}
 
-			.rail-tools {
+			:global(.rail-identity-socials) {
 				display: flex;
-				flex-direction: row;
-				align-items: center;
-				justify-content: flex-end;
-				gap: var(--spacing-1);
+				justify-content: center;
+				width: 100%;
 			}
 
 			.rail-menu {
-				order: 3;
-				display: flex;
-				flex: 1;
-				flex-direction: column;
-				min-width: 0;
-				min-height: 0;
-				width: 100%;
-				overflow-y: auto;
-				overscroll-behavior: contain;
+				display: contents;
 			}
 
 			:global(.rail-menu > .rail-content) {
+				order: 2;
 				width: 100%;
+				margin-top: var(--spacing-2);
+			}
+
+			:global(.rail-menu > .nav-admin) {
+				order: 2;
 			}
 
 			.rail-bottom {
-				order: 2;
-				padding-top: var(--spacing-3);
-				border-top: 1px solid var(--color-border-subtle);
+				display: contents;
 			}
 
 			.rail-search {
+				order: 3;
 				position: relative;
 				display: flex;
 				justify-content: flex-start;
 				width: 100%;
 				min-width: 0;
+				margin-top: var(--spacing-4);
 			}
 
-			.rail-search:not([data-search-open="true"]) :global(.site-search) {
-				display: none;
-			}
-
-			.rail-search[data-search-open="true"] .search-trigger {
-				display: none;
-			}
-
-			.search-trigger {
+			.rail-tools {
+				order: 4;
+				margin-top: var(--spacing-2);
 				display: flex;
+				flex-direction: row;
 				align-items: center;
-				justify-content: center;
-				width: 38px;
-				height: 38px;
-				padding: 0;
-				background: transparent;
-				border: none;
-				border-radius: var(--radius);
-				color: var(--color-text-secondary);
-				cursor: pointer;
-				transition:
-					color var(--transition-fast),
-					background var(--transition-fast);
+				justify-content: flex-start;
+				column-gap: var(--spacing-1);
+				width: 100%;
 			}
 
-			.search-trigger:hover,
-			.search-trigger:focus-visible {
-				color: var(--color-brand);
-				background: var(--color-surface);
-			}
-
-			.search-trigger svg {
-				width: 20px;
-				height: 20px;
+			:global(.rail-menu > .site-footer) {
+				order: 5;
+				width: 100%;
+				margin-top: auto;
+				padding-top: var(--spacing-3);
+				border-top: 1px solid var(--color-border-subtle);
 			}
 
 			/* 汉堡：只在 <1000px 出现（左栏变横栏、菜单折叠时）。 */
@@ -702,7 +672,7 @@ const isLoggedIn = !!Astro.locals.user;
 			 */
 			:global(.site-search) {
 				position: relative;
-				width: var(--search-input-width);
+				width: 100%;
 			}
 
 			:global(.site-search-input) {
@@ -713,7 +683,7 @@ const isLoggedIn = !!Astro.locals.user;
 				 * 就生效，不参与特异性比较，所以这一条不需要 !important。
 				 */
 				--emdash-search-bg: var(--color-surface);
-				width: var(--search-input-width);
+				width: 100% !important;
 				/* 剩下几条组件硬编码了值（0.5rem 1rem / 1rem / 0.25rem），
 				   只能 !important 压过 */
 				border: 0 !important;
@@ -740,12 +710,13 @@ const isLoggedIn = !!Astro.locals.user;
 				position: absolute;
 				top: 100%;
 				left: 0;
+				right: auto !important;
 				/*
 				 * 搜索结果不再受输入框宽度限制：桌面左栏只有 200px，按输入框宽度
 				 * 会把带摘要的结果挤成一列单字。
 				 */
-				width: max-content;
-				min-width: 100%;
+				width: max-content !important;
+				min-width: 280px;
 				max-width: min(360px, calc(100vw - var(--spacing-8)));
 				margin-top: var(--spacing-2);
 				background: var(--color-bg);
@@ -885,8 +856,20 @@ const isLoggedIn = !!Astro.locals.user;
 
 				.rail-identity {
 					grid-area: identity;
+					order: unset;
+					display: flex;
+					flex-direction: row;
+					align-items: center;
+					justify-content: flex-start;
+					gap: var(--spacing-2);
+					padding-bottom: 0;
+					border-bottom: none;
 					width: auto;
 					min-width: 0;
+				}
+
+				:global(.rail-identity-socials) {
+					display: none !important;
 				}
 
 				.nav-burger {
@@ -897,16 +880,10 @@ const isLoggedIn = !!Astro.locals.user;
 
 				.rail-search {
 					grid-area: search;
+					order: unset;
+					margin-top: 0;
 					width: auto;
 					min-width: 0;
-				}
-
-				.search-trigger {
-					display: none;
-				}
-
-				.rail-search:not([data-search-open="true"]) :global(.site-search) {
-					display: block;
 				}
 
 				:global(.site-search) {
@@ -929,6 +906,11 @@ const isLoggedIn = !!Astro.locals.user;
 
 				.rail-tools {
 					grid-area: tools;
+					order: unset;
+					margin-top: 0;
+					padding-top: 0;
+					border-top: none;
+					width: auto;
 					flex-direction: row;
 					justify-content: flex-end;
 					gap: 0;
@@ -936,6 +918,7 @@ const isLoggedIn = !!Astro.locals.user;
 
 				.rail-menu {
 					display: none;
+					order: unset;
 					position: absolute;
 					top: var(--nav-height);
 					right: 0;
@@ -957,10 +940,12 @@ const isLoggedIn = !!Astro.locals.user;
 				}
 
 				:global(.rail-menu > .rail-content) {
+					order: unset;
 					width: min(100%, 360px);
 				}
 
 				.nav-admin {
+					order: unset;
 					width: min(100%, 360px);
 				}
 
@@ -970,7 +955,10 @@ const isLoggedIn = !!Astro.locals.user;
 
 				/* 页脚是左栏的收尾分组，只有菜单展开时出现，顺序位于导航之后。 */
 				:global(.rail-menu > .site-footer) {
+					order: unset;
 					margin-top: auto;
+					padding-top: var(--spacing-3);
+					border-top: 1px solid var(--color-border-subtle);
 					width: min(100%, 360px);
 				}
 			}
@@ -990,50 +978,6 @@ const isLoggedIn = !!Astro.locals.user;
 		</style>
 
 		<script>
-			// ⌘K / Ctrl+K 展开桌面搜索（若收起）并聚焦输入框。
-			document.addEventListener("keydown", (e) => {
-				if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
-					e.preventDefault();
-					const searchInput = document.querySelector<HTMLInputElement>(".site-search-input");
-					const search = searchInput?.closest<HTMLElement>(".rail-search");
-					if (searchInput && search) {
-						if (window.matchMedia("(min-width: 1000px)").matches) {
-							search.dataset.searchOpen = "true";
-							search
-								.querySelector("[data-search-toggle]")
-								?.setAttribute("aria-expanded", "true");
-						}
-						searchInput.focus();
-					}
-				}
-			});
-
-			// 桌面搜索：图标展开唯一的 LiveSearch 输入框；失焦或 Escape 后收起。
-			// ClientRouter 导航后重新绑定，并恢复收起态。
-			function setupRailSearch() {
-				const search = document.querySelector<HTMLElement>(".rail-search");
-				const button = search?.querySelector<HTMLButtonElement>("[data-search-toggle]");
-				const input = search?.querySelector<HTMLInputElement>(".site-search-input");
-				if (!search || !button || !input) return;
-
-				const setOpen = (open: boolean, focus = false) => {
-					search.dataset.searchOpen = String(open);
-					button.setAttribute("aria-expanded", String(open));
-					if (open && focus) input.focus();
-				};
-
-				setOpen(false);
-				button.onclick = () => setOpen(search.dataset.searchOpen !== "true", true);
-				input.onblur = () => {
-					queueMicrotask(() => {
-						if (!search.contains(document.activeElement)) setOpen(false);
-					});
-				};
-			}
-
-			setupRailSearch();
-			document.addEventListener("astro:page-load", setupRailSearch);
-
 			// 窄屏菜单：左栏在 <1000px 变成贴顶横栏，菜单由汉堡展开。
 			// 与主题切换同一套 ClientRouter 规矩：每次导航后按钮是新节点，
 			// 所以要在 astro:page-load 重绑，且用 onclick 赋值（不是

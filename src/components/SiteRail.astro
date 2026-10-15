@@ -78,7 +78,8 @@ function isCurrent(url: string): boolean {
 	}
 
 	.rail-nav-link {
-		display: block;
+		display: flex;
+		align-items: center;
 		width: 100%;
 		padding: var(--spacing-2) var(--spacing-3);
 		border-radius: var(--radius);
@@ -86,6 +87,7 @@ function isCurrent(url: string): boolean {
 		line-height: var(--leading-snug);
 		color: var(--color-text-secondary);
 		text-decoration: none;
+		position: relative;
 		transition:
 			color var(--transition-fast),
 			background var(--transition-fast);
@@ -105,8 +107,19 @@ function isCurrent(url: string): boolean {
 
 	.rail-nav-link.is-current {
 		color: var(--color-brand);
-		background: var(--color-surface);
+		background: transparent;
 		font-weight: 600;
+	}
+
+	.rail-nav-link.is-current::before {
+		content: "";
+		position: absolute;
+		left: 0;
+		top: 6px;
+		bottom: 6px;
+		width: 3px;
+		border-radius: 2px;
+		background: var(--color-brand);
 	}
 
 	@media (max-width: 999px) {

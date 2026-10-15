@@ -13,7 +13,7 @@ const BASE = process.argv[2] ?? "http://localhost:4321";
  * 因此在漂移存在的情况下全绿）。去掉后本机量到 15px。
  */
 const browser = await chromium.launch({
-	channel: "chrome",
+	...(process.env.CHROME_BIN ? { executablePath: process.env.CHROME_BIN } : { channel: "chrome" }),
 	ignoreDefaultArgs: ["--hide-scrollbars"],
 });
 
@@ -66,7 +66,6 @@ for (const w of [1440, 1200, 1199, 1000, 999, 640, 390]) {
 	const burger = await vis(".nav-burger");
 	const menu = await vis(".rail-nav-link");
 	const searchInputVisible = await vis(".site-search-input");
-	const searchTriggerVisible = await vis(".search-trigger");
 	const toolsVisible = await vis(".rail-tools");
 	const toc = await p.locator(".toc-link").count();
 
@@ -89,7 +88,7 @@ for (const w of [1440, 1200, 1199, 1000, 999, 640, 390]) {
 	const expectMenu = w >= 1000;
 	const expectRailMode = "fixed";
 	const counts = await Promise.all(
-		[".site-search-input", ".search-trigger", ".theme-btn", ".lang-toggle", ".nav-burger"].map((sel) =>
+		[".site-search-input", ".theme-btn", ".lang-toggle", ".nav-burger"].map((sel) =>
 			p.locator(sel).count(),
 		),
 	);
@@ -100,15 +99,14 @@ for (const w of [1440, 1200, 1199, 1000, 999, 640, 390]) {
 		right === expectRight &&
 		burger === expectBurger &&
 		menu === expectMenu &&
-		searchInputVisible === !expectMenu &&
-		searchTriggerVisible === expectMenu &&
+		searchInputVisible &&
 		toolsVisible &&
 		singleDom &&
 		railMode.position === expectRailMode;
 	check(
 		`${w}px`,
 		ok,
-		`左栏=${left ? "有" : "无"} 右栏=${right ? "有" : "无"}(期望${expectRight ? "有" : "无"}) 汉堡=${burger ? "有" : "无"}(期望${expectBurger ? "有" : "无"}) 菜单=${menu ? "展开" : "收起"}(期望${expectMenu ? "展开" : "收起"}) 搜索框=${searchInputVisible ? "显示" : "隐藏"} 搜索图标=${searchTriggerVisible ? "显示" : "隐藏"} 工具=${toolsVisible} 单份DOM=${singleDom} 左栏排布=${railMode.position}(期望${expectRailMode}) 左栏 ${railMode.w}×${railMode.h} TOC链接=${toc}`,
+		`左栏=${left ? "有" : "无"} 右栏=${right ? "有" : "无"}(期望${expectRight ? "有" : "无"}) 汉堡=${burger ? "有" : "无"}(期望${expectBurger ? "有" : "无"}) 菜单=${menu ? "展开" : "收起"}(期望${expectMenu ? "展开" : "收起"}) 搜索框=${searchInputVisible ? "显示" : "隐藏"} 工具=${toolsVisible} 单份DOM=${singleDom} 左栏排布=${railMode.position}(期望${expectRailMode}) 左栏 ${railMode.w}×${railMode.h} TOC链接=${toc}`,
 	);
 
 	// 非文章页右栏轨道保留但内容空
@@ -138,7 +136,7 @@ if (await av.count()) {
 	const src = await av.getAttribute("src");
 	check("头像存在", true);
 	check("圆形", radius === "50%", radius);
-	check("渲染 24px", Math.abs(box.width - 24) < 1, `${box.width.toFixed(0)}px`);
+	check("桌面渲染 52px", Math.abs(box.width - 52) < 1, `${box.width.toFixed(0)}px`);
 	/*
 	 * seed 的站主署名没有上传头像，左栏身份按设计回退到内置默认头像
 	 * （public/default-avatar.webp）。管理员上传头像后才改走 /_image
@@ -206,76 +204,89 @@ await p4.goto(BASE + "/posts/building-for-the-long-term", { waitUntil: "networki
 
 const align = await p4.evaluate(() => {
 	const left = (el) => el.getBoundingClientRect().left;
+	const centerX = (el) => {
+		const b = el.getBoundingClientRect();
+		return b.x + b.width / 2;
+	};
 	const centerY = (el) => {
 		const b = el.getBoundingClientRect();
 		return b.y + b.height / 2;
 	};
 	const avatar = document.querySelector(".site-identity-avatar");
 	const name = document.querySelector(".site-identity-name");
+	const socials = document.querySelector(".rail-identity-socials");
 	const navLink = document.querySelector(".rail-nav-link");
-	const searchButton = document.querySelector(".search-trigger");
+	const searchInput = document.querySelector(".site-search-input");
 	const tools = document.querySelector(".rail-tools");
 	return {
 		avatarLeft: left(avatar),
 		nameLeft: left(name),
 		navLeft: left(navLink),
-		searchLeft: left(searchButton),
+		searchLeft: left(searchInput),
+		avatarCenterX: centerX(avatar),
+		nameCenterX: centerX(name),
+		socialsCenterX: centerX(socials),
 		avatarCenterY: centerY(avatar),
 		nameCenterY: centerY(name),
+		socialsCenterY: centerY(socials),
+		searchCenterY: centerY(searchInput),
+		toolsCenterY: centerY(tools),
 		toolsDirection: getComputedStyle(tools).flexDirection,
 	};
 });
 
 check(
-	"品牌头像、导航点击区与搜索入口共享左起点",
-	Math.max(
-		Math.abs(align.avatarLeft - align.navLeft),
-		Math.abs(align.avatarLeft - align.searchLeft),
-	) < 1,
-	`头像 x=${align.avatarLeft.toFixed(1)} / 导航 x=${align.navLeft.toFixed(1)} / 搜索 x=${align.searchLeft.toFixed(1)}`,
+	"站长身份区居中排列且头像在上、名称居中在下、之后是外链",
+	align.avatarCenterY < align.nameCenterY &&
+		align.nameCenterY < align.socialsCenterY &&
+		Math.abs(align.avatarCenterX - align.nameCenterX) < 2 &&
+		Math.abs(align.nameCenterX - align.socialsCenterX) < 2,
+	`头像 y=${align.avatarCenterY.toFixed(1)} cx=${align.avatarCenterX.toFixed(1)} / 名字 y=${align.nameCenterY.toFixed(1)} cx=${align.nameCenterX.toFixed(1)} / 外链 y=${align.socialsCenterY.toFixed(1)} cx=${align.socialsCenterX.toFixed(1)}`,
 );
 check(
-	"品牌名与头像水平排列",
-	align.nameLeft > align.avatarLeft && Math.abs(align.avatarCenterY - align.nameCenterY) < 1,
-	`头像 x=${align.avatarLeft.toFixed(1)} y=${align.avatarCenterY.toFixed(1)} / 名字 x=${align.nameLeft.toFixed(1)} y=${align.nameCenterY.toFixed(1)}`,
+	"主导航与搜索框共享左起点",
+	Math.abs(align.navLeft - align.searchLeft) < 1,
+	`导航 x=${align.navLeft.toFixed(1)} / 搜索 x=${align.searchLeft.toFixed(1)}`,
 );
-check("桌面语言与主题同组横向排列", align.toolsDirection === "row", align.toolsDirection);
+check(
+	"桌面语言与主题同组横向排列并置于搜索框下方",
+	align.toolsDirection === "row" && align.toolsCenterY > align.searchCenterY,
+	`${align.toolsDirection}，工具 y=${align.toolsCenterY.toFixed(1)} > 搜索 y=${align.searchCenterY.toFixed(1)}`,
+);
 
-// 共同左起点要在每个桌面断点都成立。
+// 导航与搜索共同左起点要在每个桌面断点都成立。
 const alignDev = [];
 for (const w of [1440, 1280, 1200, 1199, 1100, 1000]) {
 	await p4.setViewportSize({ width: w, height: 900 });
 	await p4.waitForTimeout(150);
 	const d = await p4.evaluate(() => {
 		const x = (s) => document.querySelector(s).getBoundingClientRect().left;
-		return x(".site-identity-avatar") - x(".rail-nav-link");
+		return x(".site-search-input") - x(".rail-nav-link");
 	});
 	alignDev.push(`${w}:${d.toFixed(1)}`);
 }
 check(
-	"品牌与导航共享左起点在各桌面断点成立（±1px）",
+	"导航与搜索共享左起点在各桌面断点成立（±1px）",
 	alignDev.every((s) => Math.abs(Number(s.split(":")[1])) < 1),
 	alignDev.join(" "),
 );
 
-/* 桌面搜索图标展开唯一输入框；搜索入口与品牌共享左起点。 */
+/* 桌面搜索输入框常驻显示；搜索输入框与导航共享左起点。 */
 await p4.setViewportSize({ width: 1440, height: 900 });
 await p4.waitForTimeout(150);
-check("桌面搜索默认显示图标而非输入框", await p4.locator(".search-trigger").isVisible() && !(await p4.locator(".site-search-input").isVisible()));
-await p4.locator(".search-trigger").click();
-check("点击搜索图标后显示并聚焦输入框", await p4.locator(".site-search-input").isVisible() && (await p4.locator(".site-search-input").evaluate((el) => el === document.activeElement)));
+check("桌面搜索输入框默认常驻显示", await p4.locator(".site-search-input").isVisible());
 const railEdges = await p4.evaluate(() => {
 	const left = (s) => document.querySelector(s).getBoundingClientRect().left;
 	return {
 		rail: document.querySelector(".rail--left").getBoundingClientRect(),
 		search: left(".site-search"),
-		avatar: left(".site-identity-avatar"),
+		nav: left(".rail-nav-link"),
 	};
 });
 check(
-	"搜索输入框与品牌共享左起点",
-	Math.abs(railEdges.search - railEdges.avatar) < 1,
-	`搜索 x=${railEdges.search.toFixed(1)} / 头像 x=${railEdges.avatar.toFixed(1)}`,
+	"搜索输入框与导航共享左起点",
+	Math.abs(railEdges.search - railEdges.nav) < 1,
+	`搜索 x=${railEdges.search.toFixed(1)} / 导航 x=${railEdges.nav.toFixed(1)}`,
 );
 
 /*
@@ -483,7 +494,7 @@ const footerContents = await p6.evaluate(() => ({
 		visibleName: link.textContent.trim(),
 	})),
 	badges: document.querySelectorAll(".footer-badge").length,
-	emdash: document.querySelector(".footer-credit")?.textContent.trim(),
+	emdash: document.querySelector(".footer-credit a")?.textContent.trim(),
 }));
 check("侧栏页脚以图标显示 RSS", footerContents.rss);
 check(

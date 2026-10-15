@@ -31,8 +31,8 @@ const avatarSrc = avatarStorageKey ? avatarUrl(avatarStorageKey, 96) : DEFAULT_A
 		class="site-identity-avatar"
 		src={avatarSrc}
 		alt={avatarAlt || displayName}
-		width="24"
-		height="24"
+		width="52"
+		height="52"
 		loading="eager"
 	/>
 	<span class="site-identity-name">{displayName}</span>
@@ -41,7 +41,10 @@ const avatarSrc = avatarStorageKey ? avatarUrl(avatarStorageKey, 96) : DEFAULT_A
 <style>
 	.site-identity {
 		display: flex;
+		flex-direction: column;
 		align-items: center;
+		justify-content: center;
+		text-align: center;
 		gap: var(--spacing-2);
 		width: 100%;
 		min-width: 0;
@@ -49,30 +52,56 @@ const avatarSrc = avatarStorageKey ? avatarUrl(avatarStorageKey, 96) : DEFAULT_A
 		text-decoration: none;
 	}
 
-	/* 小头像与站名组成紧凑的品牌标记。 */
+	/* 桌面端大头像在上、居中对齐 */
 	.site-identity-avatar {
-		width: var(--avatar-size-md);
-		height: var(--avatar-size-md);
+		width: 52px;
+		height: 52px;
 		border-radius: 50%;
 		object-fit: cover;
 		flex-shrink: 0;
 		background: var(--color-surface);
+		transition: transform var(--transition-fast);
+	}
+
+	.site-identity:hover .site-identity-avatar {
+		transform: scale(1.04);
 	}
 
 	.site-identity-name {
 		min-width: 0;
 		max-width: 100%;
-		text-align: left;
+		text-align: center;
 		overflow: hidden;
 		text-overflow: ellipsis;
-		font-size: var(--font-size-sm);
+		font-size: var(--font-size-base);
 		font-weight: 600;
 		letter-spacing: var(--tracking-snug);
 		line-height: var(--leading-snug);
 		white-space: nowrap;
+		transition: color var(--transition-fast);
 	}
 
 	.site-identity:hover .site-identity-name {
 		color: var(--color-brand);
+	}
+
+	@media (max-width: 999px) {
+		.site-identity {
+			flex-direction: row;
+			align-items: center;
+			justify-content: flex-start;
+			text-align: left;
+			gap: var(--spacing-2);
+		}
+
+		.site-identity-avatar {
+			width: var(--avatar-size-md);
+			height: var(--avatar-size-md);
+		}
+
+		.site-identity-name {
+			font-size: var(--font-size-sm);
+			text-align: left;
+		}
 	}
 </style>

@@ -248,6 +248,21 @@ const socialLinks = socialPlatforms.flatMap(({ key, label, baseUrl, icon }) => {
 		color: var(--color-muted);
 	}
 
+	@media (min-width: 1000px) {
+		.footer-socials {
+			display: none;
+		}
+
+		.footer-groups {
+			align-items: center;
+			text-align: center;
+		}
+
+		.footer-credit {
+			text-align: center;
+		}
+	}
+
 	.footer-credit a {
 		color: var(--color-brand);
 		text-decoration: none;
