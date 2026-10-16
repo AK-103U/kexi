@@ -78,7 +78,7 @@ pnpm dev
 
 ## ☁️ 部署到 Cloudflare
 
-### 1. 一键发布
+### 1. 本地一键初始化发布
 
 ```bash
 # 登录 Cloudflare 账号（首次）
@@ -97,13 +97,22 @@ pnpm deploy
 2. 访问 `https://<你的-worker>.workers.dev/_emdash/admin`，根据向导提示创建第一个管理员账号并设置站点标题；
 3. 若后续为站点配置了自定义域名（如 `https://your-domain.com`），直接在后台管理界面的「站点设置」中填入即可，全站 OpenGraph、hreflang 与 RSS 会自动同步更新，无需修改代码。
 
-### 3. CI/CD 自动化部署（推荐）
+### 3. 持续集成与自动化更新（二选一）
 
-项目内置 GitHub Actions 工作流（`.github/workflows/deploy.yml`）。在 GitHub 仓库的 **Settings -> Secrets and variables -> Actions** 中添加：
-- `CLOUDFLARE_API_TOKEN`：具有 `Edit Cloudflare Workers` 权限的 API 令牌（可在 [Cloudflare API Tokens](https://dash.cloudflare.com/profile/api-tokens) 生成）；
-- `CLOUDFLARE_ACCOUNT_ID`（可选）：Cloudflare 账户 ID（可在 Workers 概览页右侧获取）。
+项目原生支持两种持续部署方式，按需选用：
 
-后续每次向 `main` 分支推送代码，GitHub Actions 均会自动完成类型检查、单元测试、编译与一键发布。
+#### 方案 A：Cloudflare 原生 Git 部署（免配置 Token，控制台直接托管）
+无需在 GitHub 配置任何 API Token，完全由 Cloudflare 托管构建：
+1. 确保在 GitHub 上安装了 [Cloudflare Workers and Pages](https://github.com/settings/installations) 并授权了你的 Fork 仓库；
+2. 进入 Cloudflare 控制台 -> **Workers & Pages** -> 选择已部署的 **`kexi`** -> **Settings** -> **Build** -> **Connect to Git**；
+3. 选择你的仓库，构建命令保持默认（仓库已内置 `.node-version` 与 `wrangler.jsonc` 预构建命令），点击保存即可。后续每次 push 代码，Cloudflare 均会自动拉取构建并发布。
+
+#### 方案 B：GitHub Actions CI/CD 流水线（带测试与类型检查门禁）
+适合需要自动化测试门禁或多分支协作的场景：
+1. 在 GitHub 仓库的 **Settings -> Secrets and variables -> Actions** 中添加：
+   - `CLOUDFLARE_API_TOKEN`：具有 `Edit Cloudflare Workers` 权限的 API 令牌（可在 [Cloudflare API Tokens](https://dash.cloudflare.com/profile/api-tokens) 生成）；
+   - `CLOUDFLARE_ACCOUNT_ID`（可选）：Cloudflare 账户 ID（可在 Workers 概览页右侧获取）。
+2. 项目内置的 `.github/workflows/deploy.yml` 会在每次推送到 `main` 分支时自动执行单元测试、类型检查、编译与发布；未配置 Token 时会自动跳过发布，不会产生多余报错。
 
 ---
 
