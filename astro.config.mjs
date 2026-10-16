@@ -1,4 +1,5 @@
 import cloudflare from "@astrojs/cloudflare";
+import { cacheCloudflare } from "@astrojs/cloudflare/cache";
 import react from "@astrojs/react";
 import { d1, r2 } from "@emdash-cms/cloudflare";
 import { defineConfig, fontProviders } from "astro/config";
@@ -45,6 +46,23 @@ export default defineConfig({
 		locales: [...siteConfig.locales],
 	},
 	adapter: cloudflare(),
+	cache: {
+		provider: cacheCloudflare(),
+	},
+	routeRules: {
+		"/": { maxAge: 300, swr: 86400 },
+		"/posts": { maxAge: 300, swr: 86400 },
+		"/posts/[...slug]": { maxAge: 3600, swr: 86400 },
+		"/pages/[...slug]": { maxAge: 3600, swr: 86400 },
+		"/category/[...slug]": { maxAge: 600, swr: 86400 },
+		"/tag/[...slug]": { maxAge: 600, swr: 86400 },
+		"/[locale]": { maxAge: 300, swr: 86400 },
+		"/[locale]/posts": { maxAge: 300, swr: 86400 },
+		"/[locale]/posts/[...slug]": { maxAge: 3600, swr: 86400 },
+		"/[locale]/pages/[...slug]": { maxAge: 3600, swr: 86400 },
+		"/[locale]/category/[...slug]": { maxAge: 600, swr: 86400 },
+		"/[locale]/tag/[...slug]": { maxAge: 600, swr: 86400 },
+	},
 	image: {
 		layout: "constrained",
 		responsiveStyles: true,
@@ -58,6 +76,8 @@ export default defineConfig({
 			storage: r2({ binding: "MEDIA" }),
 			// 生产自动迁移由初始化闹钟驱动；访客与 Cron 在就绪前不进入 CMS。
 			migrations: { runtime: "auto", dev: "auto" },
+			// 开启客户端工具栏，让公共 HTML 完全同构且可被 Workers Cache 全球缓存
+			toolbar: "client",
 			admin: {
 				logo: "/logo.webp",
 				favicon: "/logo.webp",

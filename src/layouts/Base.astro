@@ -99,14 +99,11 @@ const pageCtx = createPublicPageContext({
 	siteName: siteTitle,
 });
 
-// Check if user is logged in (for showing admin link)
-const isLoggedIn = !!Astro.locals.user;
-if (!isLoggedIn) {
-	Astro.response.headers.set(
-		"Cache-Control",
-		"public, max-age=60, s-maxage=300, stale-while-revalidate=86400",
-	);
-}
+// 浏览器每次向边缘验证新鲜度；边缘专属的 TTL 和 SWR 策略由 Astro cache provider 写入 Cloudflare-CDN-Cache-Control。
+Astro.response.headers.set(
+	"Cache-Control",
+	"public, max-age=0, must-revalidate",
+);
 ---
 
 <!doctype html>
@@ -247,13 +244,9 @@ if (!isLoggedIn) {
 				{/* 菜单桌面纵排；窄屏折叠在顶部栏下方。 */}
 				<div class="rail-menu" id="rail-menu">
 					<SiteRail items={menu?.items ?? []} pathname={Astro.url.pathname} />
-					{
-						isLoggedIn && (
-							<a href="/_emdash/admin" class="nav-admin">
-								{t("header.admin")}
-							</a>
-						)
-					}
+					<a href="/_emdash/admin" class="nav-admin" data-admin-link style="display: none;">
+						{t("header.admin")}
+					</a>
 					<SiteFooter
 						lang={lang}
 						items={footerMenu?.items ?? []}
@@ -1143,6 +1136,19 @@ if (!isLoggedIn) {
 				railFadeCleanup?.();
 				railFadeCleanup = null;
 			});
+
+			// 已登录编辑者入口：公共 HTML 保持同构可全量缓存，通过浏览器本地标记按需展现后台链接。
+			function setupAdminLink() {
+				try {
+					if (localStorage.getItem("emdash-editor")) {
+						document.querySelectorAll<HTMLElement>("[data-admin-link]").forEach((el) => {
+							el.removeAttribute("style");
+						});
+					}
+				} catch (_) {}
+			}
+			setupAdminLink();
+			document.addEventListener("astro:page-load", setupAdminLink);
 		</script>
 		<EmDashBodyEnd page={pageCtx} />
 	</body>

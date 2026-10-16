@@ -5,6 +5,9 @@
   "upload_source_maps": true,
   "compatibility_date": "2026-02-24",
   "compatibility_flags": ["nodejs_compat"],
+  "cache": {
+    "enabled": true
+  },
   // 记录请求、定时任务与 console 日志；不保存 URL 查询参数。
   "observability": {
     "enabled": true,
