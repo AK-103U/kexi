@@ -47,7 +47,7 @@ export default defineConfig({
 		react(),
 		emdash({
 			// D1 与 R2 绑定名需与 wrangler.jsonc 一致。
-			database: d1({ binding: "DB" }),
+			database: d1({ binding: "DB", session: "auto" }),
 			storage: r2({ binding: "MEDIA" }),
 			admin: {
 				logo: "/logo.webp",
