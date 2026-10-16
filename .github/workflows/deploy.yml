@@ -39,7 +39,13 @@ jobs:
       - name: Build site
         run: pnpm build
 
+      - name: Check Cloudflare Token
+        if: ${{ secrets.CLOUDFLARE_API_TOKEN == '' }}
+        run: |
+          echo "::notice title=Cloudflare API Token 未配置::未检测到 CLOUDFLARE_API_TOKEN Secret。已完成代码构建与测试并跳过自动发布。若需开启全自动部署，请在 GitHub 仓库 Settings -> Secrets and variables -> Actions 中添加 CLOUDFLARE_API_TOKEN。"
+
       - name: Deploy Worker
+        if: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
