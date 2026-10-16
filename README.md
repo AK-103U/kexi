@@ -97,6 +97,14 @@ pnpm deploy
 2. 访问 `https://<你的-worker>.workers.dev/_emdash/admin`，根据向导提示创建第一个管理员账号并设置站点标题；
 3. 若后续为站点配置了自定义域名（如 `https://your-domain.com`），直接在后台管理界面的「站点设置」中填入即可，全站 OpenGraph、hreflang 与 RSS 会自动同步更新，无需修改代码。
 
+### 3. CI/CD 自动化部署（推荐）
+
+项目内置 GitHub Actions 工作流（`.github/workflows/deploy.yml`）。在 GitHub 仓库的 **Settings -> Secrets and variables -> Actions** 中添加：
+- `CLOUDFLARE_API_TOKEN`：具有 `Edit Cloudflare Workers` 权限的 API 令牌（可在 [Cloudflare API Tokens](https://dash.cloudflare.com/profile/api-tokens) 生成）；
+- `CLOUDFLARE_ACCOUNT_ID`（可选）：Cloudflare 账户 ID（可在 Workers 概览页右侧获取）。
+
+后续每次向 `main` 分支推送代码，GitHub Actions 均会自动完成类型检查、单元测试、编译与一键发布。
+
 ---
 
 ## 🛠️ 个性化定制
