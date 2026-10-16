@@ -21,6 +21,7 @@ class MemoryStorage {
 	values = new Map<string, unknown>();
 	alarmTime: number | null = null;
 	failWrites = false;
+	transactionCount = 0;
 	private queue = Promise.resolve();
 
 	async get<T>(key: string): Promise<T | undefined> {
@@ -36,6 +37,7 @@ class MemoryStorage {
 		this.alarmTime = time;
 	}
 	async transaction<T>(fn: (txn: MemoryStorage) => Promise<T>): Promise<T> {
+		this.transactionCount++;
 		const previous = this.queue;
 		let unlock!: () => void;
 		this.queue = new Promise<void>((resolve) => { unlock = resolve; });
@@ -50,12 +52,14 @@ function coordinator(
 	initialize: (token: number) => Promise<void>,
 	version = "v1",
 	now = () => 1_792_000_000_000,
+	maxAttempts = 5,
 ) {
 	return new InitializationCoordinator(
 		storage as unknown as ConstructorParameters<typeof InitializationCoordinator>[0],
 		version,
 		initialize,
 		now,
+		maxAttempts,
 	);
 }
 
@@ -165,6 +169,96 @@ test("new schema versions recheck readiness and run migrations for the new versi
 	await fire(storage, fresh);
 	assert.equal((await fresh.ensureReady("v2")).state, "ready");
 	assert.equal((await fresh.ensureReady("v2")).state, "ready");
+});
+
+test("initialization terminates after maxAttempts and does not schedule runaway alarms", async () => {
+	const storage = new MemoryStorage();
+	let attemptsMade = 0;
+	const maxAttempts = 3;
+	const instance = coordinator(
+		storage,
+		async () => {
+			attemptsMade++;
+			throw new Error("persistent database error");
+		},
+		"v1",
+		() => 1_792_000_000_000,
+		maxAttempts,
+	);
+
+	await instance.ensureReady("v1");
+	assert.ok(storage.alarmTime, "initial alarm must be scheduled");
+
+	// Attempt 1 -> retrying
+	await fire(storage, instance);
+	assert.equal(attemptsMade, 1);
+	assert.equal((await storage.job())?.state, "retrying");
+	assert.ok(storage.alarmTime !== null, "retry alarm must be scheduled for attempt 2");
+
+	// Attempt 2 -> retrying
+	await fire(storage, instance);
+	assert.equal(attemptsMade, 2);
+	assert.equal((await storage.job())?.state, "retrying");
+	assert.ok(storage.alarmTime !== null, "retry alarm must be scheduled for attempt 3");
+
+	// Attempt 3 (reaches maxAttempts) -> failed
+	await fire(storage, instance);
+	assert.equal(attemptsMade, 3);
+	const job = await storage.job();
+	assert.equal(job?.state, "failed");
+	assert.equal(job?.attempt, 3);
+	assert.equal(job?.error, "persistent database error");
+	// CRITICAL: Alarm must be null! No infinite loop!
+	assert.equal(storage.alarmTime, null, "no alarm may be scheduled after reaching maxAttempts");
+
+	// Ensure polling visitors do NOT trigger a new alarm
+	for (let i = 0; i < 20; i++) {
+		const status = await instance.ensureReady("v1");
+		assert.equal(status.state, "failed");
+		assert.equal(status.attempt, 3);
+		assert.equal(storage.alarmTime, null, "polling must never revive alarm in failed state");
+	}
+});
+
+test("a failed initialization can be safely revived by a new schema version", async () => {
+	const storage = new MemoryStorage();
+	const old = coordinator(
+		storage,
+		async () => { throw new Error("fatal schema error"); },
+		"v1",
+		() => 1_792_000_000_000,
+		1,
+	);
+	await old.ensureReady("v1");
+	await fire(storage, old);
+	assert.equal((await storage.job())?.state, "failed");
+	assert.equal(storage.alarmTime, null);
+
+	// A newly deployed version should start a fresh job
+	let freshCalls = 0;
+	const fresh = coordinator(storage, async () => { freshCalls++; }, "v2");
+	const status = await fresh.ensureReady("v2");
+	assert.equal(status.state, "initializing");
+	assert.ok(storage.alarmTime, "fresh version must schedule initial alarm");
+	await fire(storage, fresh);
+	assert.equal(freshCalls, 1);
+	assert.equal((await fresh.ensureReady("v2")).state, "ready");
+});
+
+test("in-memory fast path eliminates redundant storage transactions during polling", async () => {
+	const storage = new MemoryStorage();
+	const instance = coordinator(storage, async () => {});
+	await instance.ensureReady("v1");
+	await fire(storage, instance);
+	assert.equal((await instance.ensureReady("v1")).state, "ready");
+
+	const txnBefore = storage.transactionCount;
+	// 50 subsequent visitor checks
+	for (let i = 0; i < 50; i++) {
+		const status = await instance.ensureReady("v1");
+		assert.equal(status.state, "ready");
+	}
+	assert.equal(storage.transactionCount, txnBefore, "in-memory cache must avoid storage transactions for ready state");
 });
 
 test("event-scoped ownership does not leak to concurrent requests", async () => {
