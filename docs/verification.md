@@ -7,6 +7,7 @@
 | 改动 | 检查 |
 |---|---|
 | Astro 页面、TypeScript、内容类型 | `pnpm typecheck` |
+| 初始化协调器、取消保护、所有权锁定 | `pnpm test:init` |
 | 左栏外壳、页脚、三栏布局或样式覆盖 | `pnpm check:shell` 与对应页面截图 |
 | 客户端导航、语言切换、主题切换或目录 | `pnpm check:spa` |
 | 图片处理、字体或构建配置 | `pnpm build` 后本地验证图片端点、字体和页面 |
@@ -60,16 +61,30 @@ node scripts/shots.mjs --base http://localhost:4321 --only post --full
 生产环境部署到 Cloudflare Workers。构建后先用本地预览验证，再部署：
 
 ```bash
+pnpm test:init # 验证协调器状态机与取消保护
+pnpm typecheck # 验证 Astro 与 TypeScript
 pnpm build
 pnpm preview   # 本地预览构建产物
 pnpm deploy    # astro build && wrangler deploy
 ```
 
-`pnpm deploy` 需要 Cloudflare 账号和 `wrangler login`，并会连接或创建 `wrangler.jsonc` 中的 D1、R2 资源。首次部署后访问站点的 `/_emdash/admin` 完成初始化，并在后台设置公开站点 URL。
+发布成功后，访问 `https://your-domain.com/_emdash/admin` 创建管理员账号并初始化站点。首次访问时若初始化仍在运行，前台会返回 503 页面并自动刷新；就绪后直接进入设置向导。
+
+初始化验证应确认 `/_emdash/admin` 跳转到 `/_emdash/admin/setup`，`/_emdash/api/setup/status` 返回 `needsSetup: true`；不创建管理员也不应跳到登录页。只有构建成功不能证明这些条件成立。
 
 确认公开页面、语言变体和 `/_image` 返回正确内容。Cloudflare 下图片走 Images binding，不是 `sharp`；绑定缺失时内网媒体路由会返回原图而非缩放变体。生产验证也可以指向部署后的 `workers.dev` 地址或自定义域名。
 
 部署配置、预览部署和定时任务的细节见 [官方 Cloudflare 部署文档](https://docs.emdashcms.com/deployment/cloudflare/)。
+
+## 生产日志
+
+`wrangler.jsonc` 启用 Workers 可观测性（Observability）和持久化日志，保留请求、定时任务的调用日志及 `console` 输出，并上传源映射（Source Map）辅助还原异常堆栈。可在 Cloudflare 控制台的 `kexi` Worker 日志页面查看历史记录，或实时监听：
+
+```bash
+pnpm exec wrangler tail kexi --format pretty
+```
+
+日志中的 URL 查询参数会被隐藏，避免预览或认证 token 随 URL 写入日志。不要另行输出 Cookie、Authorization、请求体或密钥；查询参数隐藏不负责清理自行打印的 `console` 内容。流量增长后按日志预算调整采样率。Cloudflare Access 拦截发生在 Worker 之前，不会出现在 Worker 调用日志里；账号 CLI 登录也不代表浏览器已经通过 Access。
 
 ## 国际化字典
 

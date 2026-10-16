@@ -3,7 +3,14 @@ import react from "@astrojs/react";
 import { d1, r2 } from "@emdash-cms/cloudflare";
 import { defineConfig, fontProviders } from "astro/config";
 import emdash from "emdash/astro";
+import { fileURLToPath } from "node:url";
 import { siteConfig } from "./src/i18n/config.ts";
+
+const database = {
+	...d1({ binding: "DB", session: "auto" }),
+	// 仅替换迁移锁的所有权，其他 D1 能力继续复用官方适配器。
+	entrypoint: fileURLToPath(new URL("./src/cloudflare/d1-runtime.ts", import.meta.url)),
+};
 
 const latoFont = {
 	provider: fontProviders.google(),
@@ -47,8 +54,10 @@ export default defineConfig({
 		react(),
 		emdash({
 			// D1 与 R2 绑定名需与 wrangler.jsonc 一致。
-			database: d1({ binding: "DB", session: "auto" }),
+			database,
 			storage: r2({ binding: "MEDIA" }),
+			// 生产自动迁移由初始化闹钟驱动；访客与 Cron 在就绪前不进入 CMS。
+			migrations: { runtime: "auto", dev: "auto" },
 			admin: {
 				logo: "/logo.webp",
 				favicon: "/logo.webp",

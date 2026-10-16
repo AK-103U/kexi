@@ -36,6 +36,7 @@
 ### ⚡ Serverless 边缘全栈
 - **极致的边缘性能**：借助 Cloudflare Workers，全球 CDN 节点毫秒级冷启动与响应。
 - **零服务器运维**：数据库使用 **Cloudflare D1**（边缘 SQLite），媒体资源与文件托管于 **Cloudflare R2**，头像与图片处理基于 **Cloudflare Images binding**。
+- **全自动免运维初始化**：首次部署自动创建并绑定所有资源；核心数据库迁移与初始种子由独立 Durable Object 闹钟在后台稳态运行，彻底免疫请求提前取消导致的死锁。
 - **免费额度友好**：整套架构完全运行在 Cloudflare 优厚的基础免费额度之内。
 
 ### 📝 开箱即用的现代 CMS
@@ -77,49 +78,24 @@ pnpm dev
 
 ## ☁️ 部署到 Cloudflare
 
-### 1. 配置生产资源
-
-在 `wrangler.jsonc` 中确认或修改你的 Worker 名称、D1 数据库与 R2 存储桶名：
-
-```jsonc
-{
-  "name": "kexi",
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "kexi-db",
-      "database_id": "<你的-d1-database-id>"
-    }
-  ],
-  "r2_buckets": [
-    {
-      "binding": "MEDIA",
-      "bucket_name": "kexi-media"
-    }
-  ]
-}
-```
-
-在 `src/i18n/config.ts` 中将 `siteUrl` 设为你站点的正式公开域名：
-
-```typescript
-export const siteConfig = {
-  siteUrl: "https://your-domain.com",
-  // ...
-};
-```
-
-### 2. 部署上线
+### 1. 一键发布
 
 ```bash
 # 登录 Cloudflare 账号（首次）
-pnpm wrangler login
+pnpm exec wrangler login
 
-# 一键构建并发布
+# 构建并部署到边缘网络
 pnpm deploy
 ```
 
-首次部署时 Wrangler 会自动连接并创建配置中的资源。发布成功后，访问 `https://your-domain.com/_emdash/admin` 创建管理员账号并初始化站点。
+首次部署时，Wrangler 会自动在你的 Cloudflare 账号下创建并绑定全部所需资源（D1 数据库 `kexi`、R2 存储桶 `kexi-media`、会话 KV `SESSION` 与初始化协调器）。**无需在代码中硬编码任何数据库 ID 或个人域名**。
+
+### 2. 初始化站点
+
+发布完成后：
+1. 访问你的前台地址（如 `https://<你的-worker>.workers.dev`），系统会在后台稳态完成核心数据库迁移与初始模型构建；
+2. 访问 `https://<你的-worker>.workers.dev/_emdash/admin`，根据向导提示创建第一个管理员账号并设置站点标题；
+3. 若后续为站点配置了自定义域名（如 `https://your-domain.com`），直接在后台管理界面的「站点设置」中填入即可，全站 OpenGraph、hreflang 与 RSS 会自动同步更新，无需修改代码。
 
 ---
 
@@ -138,6 +114,7 @@ kexi/
 ├── public/                 # 静态资源（Logo、字体、离线脚本）
 │   └── logo.webp           # 站点标志与图标回退
 ├── src/
+│   ├── cloudflare/         # Cloudflare 专属初始化协调器与 D1 运行时
 │   ├── components/         # 独立 UI 组件（卡片、代码块、Mermaid 工作台等）
 │   ├── layouts/            # 核心外壳布局（Base.astro）
 │   ├── pages/              # Astro 路由（首页、文章详情、搜索、RSS）

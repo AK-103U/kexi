@@ -2,8 +2,20 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "kexi",
   "main": "./src/worker.ts",
+  "upload_source_maps": true,
   "compatibility_date": "2026-02-24",
   "compatibility_flags": ["nodejs_compat"],
+  // 记录请求、定时任务与 console 日志；不保存 URL 查询参数。
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1,
+    "redact_query_string": true,
+    "logs": {
+      "enabled": true,
+      "invocation_logs": true,
+      "persist": true
+    }
+  },
   "placement": {
     "mode": "smart"
   },
@@ -13,6 +25,17 @@
       "database_name": "kexi"
     }
   ],
+  "kv_namespaces": [
+    {
+      "binding": "SESSION"
+    }
+  ],
+  // SQLite-backed DO 只保存初始化任务元数据，CMS 内容仍在 D1。
+  "durable_objects": {
+    "bindings": [{ "name": "INITIALIZER", "class_name": "KexiInitializer" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["KexiInitializer"] }],
+  "version_metadata": { "binding": "CF_VERSION_METADATA" },
   "r2_buckets": [
     {
       "binding": "MEDIA",

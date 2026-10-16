@@ -8,7 +8,7 @@ export const GET: APIRoute = async ({ site, url, params }) => {
 		return new Response("Not found", { status: 404 });
 	}
 
-	const siteUrl = site ?? new URL(url.origin);
+	const siteUrl = site && site.hostname !== "localhost" && site.hostname !== "127.0.0.1" ? site : new URL(url.origin);
 	const rss = await buildRssFeed(locale, siteUrl);
 
 	return new Response(rss, {

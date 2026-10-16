@@ -1,6 +1,35 @@
 # 探索笔记
 
-记录 2026 年 10 月 8 日至 10 日探索中的故障证据、被推翻的假设和未解问题。历史量测与上游行为受当时环境和版本限制，不能当作本轮重新验证的结果。当前机制见 [开发指南](./docs/development.md)，视觉约定见 [DESIGN](./DESIGN.md)，检查步骤见 [验证指南](./docs/verification.md)。
+记录开发探索中的故障证据、被推翻的假设和未解问题。历史量测与上游行为受当时环境和版本限制，不能当作本轮重新验证的结果。当前机制见 [开发指南](./docs/development.md)，视觉约定见 [DESIGN](./DESIGN.md)，检查步骤见 [验证指南](./docs/verification.md)。上游首次初始化死锁缺陷复盘见 [独立专题复盘](./docs/emdash-initialization-deadlock.md)，治本架构决定见 [ADR 0006](./docs/adr/0006-durable-alarm-initialization.md)。
+
+## 2026-10-16：首次自动初始化被请求取消打断
+
+复现版本：`emdash` 与 `@emdash-cms/cloudflare` 为 `1.2.0`，`@astrojs/cloudflare` 为 `14.3.4`，Wrangler 为 `4.149.0`。测试使用独立临时 Worker 和空 D1，不修改正式站点。
+
+原始部署流程本身支持自动化：Wrangler 从没有资源 ID 的绑定配置中自动创建并绑定 D1、R2 和会话 KV；EmDash 默认 `auto` 模式在首次请求中执行核心迁移，再应用主题结构。不能把“迁移存在”解释成“新人必须手工建库或运行迁移 CLI”。
+
+对照实验：
+
+| 条件 | 结果 |
+|---|---|
+| 保持首次后台请求连接，暂停探针的 Cron 处理，避免其他调用抢先初始化 | 约 132 秒后返回 `302` 到初始化向导；90 条核心迁移完成，锁为 `0`，自动创建 2 个内容集合，全程未执行迁移 CLI |
+| 另一个空库的首次首页请求提前结束 | 只完成 34 条迁移，最后为 `035_bounded_404_log`；锁持续占用，集合和用户均为 0，后续请求无法继续初始化 |
+
+失败调用的 `cf-worker` 请求头为 `cfone.cfdata.org`，日志记录 `outcome: "canceled"`、约 39 秒墙钟时间、228 毫秒 CPU 时间，并明确警告：
+
+```text
+waitUntil() tasks did not complete within the allowed time after invocation end and have been cancelled.
+```
+
+因此，本次复现的中断不是 CPU 超限，也不是缺少数据库绑定。首次迁移需要数百次数据库往返，持续时间超过短请求结束后的后台执行窗口。Cloudflare 的 `waitUntil()` 最多延长约 30 秒；即使 EmDash 用它保护初始化，仍可能在建表完成前被平台取消，无法执行迁移锁的释放逻辑。锁不会自动过期抢占，以免与仍在运行的迁移冲突；重新发布同一代码也不会清除数据库里的锁。迁移中断的位置不是固定的 `035` 或 `041`。
+
+内部首页请求的具体用途尚未查明，不能把它直接称为 Wrangler 健康检查。旧生产库最初中断时没有持久化日志，也不能追认它一定由同一个调用来源触发；旧库的 40 条已完成迁移和残留锁，与上述机制一致。
+
+初始化失败还会造成误导性页面：已安装版本的 EmDash 中间件记录部分初始化错误后继续处理，setup 中间件在缺少 `locals.emdash.db` 时跳过检测。本轮浏览器复现到后台外壳可加载、显示 Dashboard，但提示 `Could not load dashboard data`；`/_emdash/api/setup/status` 返回 `500` 和 `EmDash is not initialized`。没有复现到用户原先报告的完整登录页跳转链，不能把登录页或后台 HTML 的 `200` 当作初始化完成。
+
+生产 `check` 模式配合部署 CLI 迁移，是本轮应急恢复使用的绕过方案，不是此问题的根因修复，也不应据此要求所有 Fork 用户手动迁移。修复需要同时保留自动资源配置，并解决首次初始化的执行生命周期与中断恢复；仅改回 `auto` 不能证明故障已经消失。`session: "auto"` 作用于请求级数据库访问，核心迁移使用原始 D1 绑定，本轮没有证据应通过关闭 Sessions 修复。
+
+参考：[官方自动部署流程](https://docs.emdashcms.com/deployment/cloudflare/)、[残留迁移锁恢复](https://docs.emdashcms.com/deployment/core-migrations/#release-a-stuck-migration-lock)、[Workers 执行生命周期](https://developers.cloudflare.com/workers/platform/limits/#duration)。
 
 ## Seed 初始化的误判
 

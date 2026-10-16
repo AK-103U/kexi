@@ -7,8 +7,8 @@
  */
 
 export const siteConfig = {
-	/** 站点绝对 URL。hreflang / SEO 需要绝对链接，必须配置。 */
-	siteUrl: "http://localhost:4321",
+	/** 站点默认基准 URL（本地回退到 localhost，生产优先读取环境变量）。 */
+	siteUrl: process.env.SITE_URL || process.env.EMDASH_SITE_URL || "http://localhost:4321",
 	/** 默认语言：URL 不带前缀。 */
 	defaultLocale: "zh",
 	/** 全部语言，顺序即语言切换器的展示顺序。 */

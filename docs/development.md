@@ -8,6 +8,7 @@
 |---|---|
 | 运行时、数据库、存储、插件和字体配置 | [astro.config.mjs](../astro.config.mjs) |
 | Worker 入口、资源绑定和定时任务 | [src/worker.ts](../src/worker.ts)、[wrangler.jsonc](../wrangler.jsonc) |
+| 初始化协调器与所有权锁定 | [src/cloudflare/](../src/cloudflare/) |
 | 内容集合、分类法和演示内容 | [seed/seed.json](../seed/seed.json) |
 | 页面语言、路径和界面文案 | [src/i18n/config.ts](../src/i18n/config.ts)、[ui.ts](../src/i18n/ui.ts) 与同目录字典 |
 | 公开页外壳、单份左栏与客户端导航 | [Base.astro](../src/layouts/Base.astro) |
@@ -36,7 +37,7 @@
 
 ## 国际化
 
-语言配置以 [config.ts](../src/i18n/config.ts) 为准：当前中文 `zh` 无前缀，英文 `en` 使用 `/en`。`astro.config.mjs` 读取这份配置；上线前将 `siteUrl` 改为站点的公开绝对 URL，用于 SEO 和语言替代链接。
+语言配置以 [config.ts](../src/i18n/config.ts) 为准：当前中文 `zh` 无前缀，英文 `en` 使用 `/en`。`astro.config.mjs` 读取这份配置；公开绝对 URL 默认自适应当前访问域名，亦可在后台「站点设置」或环境变量 `SITE_URL` 中指定，无需在代码中硬编码。
 
 [src/pages/[locale]](../src/pages/[locale]/) 是非默认语言的薄壳：验证 `locale` 后，导入主页面并传入该属性。主页面使用 `pageLang(Astro.props, Astro)`，优先读取显式属性，再回退到 `Astro.currentLocale`，并向 `Base` 传递 `lang`。新增页面沿用这条路径。
 
@@ -66,6 +67,16 @@ EmDash 的 Portable Text 渲染把 `code` 类型的块交给该组件，页面�
 
 主题选择保存在 cookie 中，`.light`、`.dark` 类驱动 `color-scheme`；`astro:before-swap` 将选择带到新文档。新增页面交互时检查首次打开和连续导航两个路径，验证方式见 [验证指南](./verification.md)。
 
+## 首次初始化与核心迁移
+
+本项目采用全自动首次初始化架构（上游死锁缺陷深度剖析见 [专题复盘](./emdash-initialization-deadlock.md)，架构决定见 [ADR 0006](./adr/0006-durable-alarm-initialization.md)）：
+
+1. 生产环境无需执行迁移 CLI，也无需手工核对目标指纹或执行 SQL。
+2. 首次部署上线后，首个进入的请求由 `src/cloudflare/initializer.ts` 登记初始化任务，并触发 Durable Object 闹钟在后台独立执行 90 条核心迁移与初始模型建表。
+3. 闹钟执行具备最长 15 分钟的稳定窗口，不受访客断开连接（如短请求提前中止）的影响；遇到实例重置时平台会自动重试。
+4. 协调器在操作数据库前将微秒级所有权持久化，迁移锁只允许持有该标记的自身任务恢复，彻底避免锁残留或错误抢占。
+5. 初始化就绪前，前台请求返回 503 与自动重试头；就绪后直通 EmDash 运行时，直接访问 `/_emdash/admin` 进入管理员创建向导。
+
 ## Seed 与本地内容
 
 运行时 seed 的查找顺序是 `.emdash/seed.json`、`package.json` 的 `emdash.seed`、`seed/seed.json`，最后回退到 EmDash 内置默认。seed 在开发启动或构建时内联，修改文件后重启开发服务；生产环境重新构建。
@@ -81,7 +92,7 @@ pnpm exec emdash seed
 
 第一条只校验；第二条会写入数据库。CLI 可以通过 `--on-conflict update` 显式更新已有 seed 记录，但也会覆盖相应内容，使用前确认变更范围。开发中需要重建时，先停服务并删除 `.wrangler/state/v3/d1` 下的本地数据库，再重新初始化；重建会丢失本地账号、内容和编辑状态。
 
-seed 应用时按运行时 i18n 配置的 `defaultLocale` 写入行语言，因此由应用内首次请求或设置向导触发时，署名会落在默认语言（`zh`）。EmDash 的署名 hydration 严格按请求语言、没有读取回退，非默认语言缺少署名行时整条 credit 会被丢弃。主题层在 `src/utils/bylines.ts` 补回退：内容行语言不是默认语言时，用默认语言的署名行补齐人名和头像，`roleLabel` 仍取当前语言的值；首页、文章列表、文章详情和分类／标签归档页都走这条回退；背景和边界见 [ADR 0003](./adr/0003-byline-locale-fallback.md)。`bio` 与自定义字段不参与回退，需要在后台为署名建对应语言的翻译行；`SeedByline` 类型本身没有语言字段。
+seed 应用时按运行时 i18n 配置的 `defaultLocale` 写入行语言，因此由应用内首次请求或设置向导触发时，署名会落在默认语言（`zh`）。EmDash 的署名 hydration 严格按请求语言、没有读取回退，非默认语言缺少署名行时整条 credit 会被丢弃。主题层在 `src/utils/bylines.ts` 补回退：内容行语言不是默认语言时，用默认语言的署名行补齐人名和头像，`roleLabel` 仍取当前语言的值；首页、文章列表、文章详情和分类／标签归档页都走这条回退；背景和边界见 [ADR 0003](./docs/adr/0003-byline-locale-fallback.md)。`bio` 与自定义字段不参与回退，需要在后台为署名建对应语言的翻译行；`SeedByline` 类型本身没有语言字段。
 
 Portable Text 节点保留 `_key`。演示内容的 `status: "published"` 在应用时确定发布时间，不能依赖未定义的 `published_at` seed 属性。widget 选项字段是 `props`，不是 `settings`；写错字段不会报错，只是选项静默不生效，`emdash seed --validate` 会给出警告。
 
