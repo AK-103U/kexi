@@ -114,6 +114,10 @@ pnpm deploy
    - `CLOUDFLARE_ACCOUNT_ID`（可选）：Cloudflare 账户 ID（可在 Workers 概览页右侧获取）。
 2. 项目内置的 `.github/workflows/deploy.yml` 会在每次推送到 `main` 分支时自动执行单元测试、类型检查、编译与发布；未配置 Token 时会自动跳过发布，不会产生多余报错。
 
+> ⚡️ **自动构建加速建议**：
+> - **方案 A（Cloudflare 托管）**：进入控制台 **Settings -> Build -> Build cache** 点击 **Enable** 开启构建缓存；在 Trigger 中设置 Path excludes 忽略 `*.md` 与 `docs/**`，构建时间可从近 3 分钟缩短至 40~50 秒；
+> - **方案 B（GitHub Actions）**：工作流已原生内置 pnpm 依赖缓存与 Astro 增量编译缓存，并在只改动文档时自动跳过构建，耗时稳定在 35~45 秒。
+
 ---
 
 ## 🛠️ 个性化定制
